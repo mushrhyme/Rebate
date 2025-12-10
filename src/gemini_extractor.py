@@ -457,3 +457,299 @@ def extract_pages_with_gemini(
     
     return page_jsons, image_paths, pil_images
 
+
+class GeminiTwoStageParser:
+    """
+    2단계 파이프라인을 사용하는 Gemini 파서
+    
+    Step 1: Vision 모델로 이미지에서 raw text 추출 (행 누락 0%)
+    Step 2: Text 모델로 raw text를 JSON으로 구조화 (행 누락 0%)
+    """
+    
+    def __init__(
+        self, 
+        api_key: Optional[str] = None, 
+        vision_model: str = "gemini-3-pro-preview",
+        text_model: str = "gemini-3-pro-preview"
+    ):
+        """
+        Args:
+            api_key: Google Gemini API 키 (None이면 환경변수에서 가져옴)
+            vision_model: Step 1에 사용할 Vision 모델 이름
+            text_model: Step 2에 사용할 Text 모델 이름
+        """
+        if api_key is None:
+            api_key = os.getenv("GEMINI_API_KEY")
+            if not api_key:
+                raise ValueError("GEMINI_API_KEY가 필요합니다. .env 파일에 GEMINI_API_KEY를 설정하거나 api_key 파라미터를 제공하세요.")
+        
+        genai.configure(api_key=api_key)
+        
+        # 안전성 설정: 문서 분석을 위해 필터 완화
+        safety_settings = [
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
+        ]
+        
+        # Vision 모델 (Step 1용)
+        self.vision_model = genai.GenerativeModel(
+            model_name=vision_model,
+            safety_settings=safety_settings
+        )
+        
+        # Text 모델 (Step 2용)
+        self.text_model = genai.GenerativeModel(
+            model_name=text_model,
+            safety_settings=safety_settings
+        )
+        
+        self.vision_model_name = vision_model
+        self.text_model_name = text_model
+    
+    def extract_raw_text(self, image: Image.Image, max_retries: int = 2) -> str:
+        """
+        Step 1: 이미지에서 raw text 추출 (행 누락 0%)
+        
+        Args:
+            image: PIL Image 객체
+            max_retries: 최대 재시도 횟수
+            
+        Returns:
+            raw_text: 줄 단위로 추출된 원본 텍스트 문자열
+            예: "管理番号\t商品名\t数量\t金額\n001\t商品A\t10\t1000\n002\t商品B\t20\t2000"
+        """
+        step1_prompt = """이 이미지에 있는 모든 텍스트를 줄 단위로 순서를 유지하여 그대로 출력해주세요.
+해석하지 말고 원본 텍스트를 그대로 반환하세요.
+요약, 구조화, 통합, 삭제를 하지 마세요.
+이미지에서 감지된 모든 텍스트 라인을 1행도 빠짐없이 출력하세요."""
+        
+        retry_delay = 2
+        for attempt in range(max_retries):
+            try:
+                # 원래 방식 유지: chat을 사용한 2단계 전송 (이 방식이 더 빠름)
+                chat = self.vision_model.start_chat(history=[])
+                _ = chat.send_message([image])  # 이미지 먼저 전달
+                response = chat.send_message(step1_prompt)  # 프롬프트 전달
+                
+                # 응답 텍스트 추출
+                if not response.candidates or not response.candidates[0].content:
+                    raise Exception("Gemini API 응답에 content가 없습니다.")
+                
+                result_text = ""
+                for part in response.candidates[0].content.parts:
+                    if hasattr(part, 'text') and part.text:
+                        result_text += part.text
+                
+                if not result_text:
+                    raise Exception("Gemini API 응답에 텍스트가 없습니다.")
+                
+                return result_text.strip()
+                
+            except Exception as e:
+                error_msg = str(e)
+                if "SAFETY" in error_msg or attempt < max_retries - 1:
+                    if attempt < max_retries - 1:
+                        time.sleep(retry_delay)  # 출력 제거로 속도 개선
+                        retry_delay *= 2
+                        continue
+                raise Exception(f"Step 1 실패 ({max_retries}회 시도): {error_msg}")
+    
+    def build_json_from_raw_text(self, raw_text: str, max_retries: int = 2) -> Dict[str, Any]:
+        """
+        Step 2: raw text를 JSON으로 구조화 (행 누락 0%)
+        
+        Args:
+            raw_text: Step 1에서 추출된 raw text 문자열
+            max_retries: 최대 재시도 횟수
+            
+        Returns:
+            json_result: 구조화된 JSON 딕셔너리
+            예: {
+                "text": "...",
+                "document_number": "...",
+                "items": [{"management_id": "...", ...}, ...],
+                ...
+            }
+        """
+        step2_prompt = f"""다음은 일본어 条件請求書 문서의 OCR 텍스트입니다.
+이 텍스트를 아래 JSON 스키마에 맞게 구조화해주세요.
+
+---
+{raw_text}
+---
+
+아래 구조로 JSON만 출력하세요:
+
+{{
+  "text": "...",
+  "document_number": "...",
+  "customer": "...",
+  "issuer": "...",
+  "issue_date": "...",
+  "billing_period": "...",
+  "total_amount": "...",
+  "items": [
+    {{
+      "management_id": "...",
+      "product_name": "...",
+      "quantity": ...,
+      "case_count": ...,
+      "bara_count": ...,
+      "units_per_case": ...,
+      "amount": ...,
+      "customer": "..."
+    }}
+  ],
+  "page_role": "cover | main | detail | reply"
+}}
+
+규칙:
+- items는 raw_text 내 테이블의 모든 행과 1:1로 대응해야 합니다.
+- 같은 관리番号가 반복되어도 각 행을 개별 item으로 생성하세요.
+- 바코드(13자리 숫자)로 시작하면 상품명에서 제거하세요.
+- 수량이 케이스/바라 형식이면 quantity는 null로 설정하세요.
+- 정보가 없으면 null을 사용하세요.
+
+JSON 외 추가 설명은 출력하지 않습니다."""
+        
+        retry_delay = 2
+        for attempt in range(max_retries):
+            try:
+                response = self.text_model.generate_content(step2_prompt)
+                
+                # 응답 텍스트 추출
+                if not response.candidates or not response.candidates[0].content:
+                    raise Exception("Gemini API 응답에 content가 없습니다.")
+                
+                result_text = ""
+                for part in response.candidates[0].content.parts:
+                    if hasattr(part, 'text') and part.text:
+                        result_text += part.text
+                
+                if not result_text:
+                    raise Exception("Gemini API 응답에 텍스트가 없습니다.")
+                
+                # JSON 추출 (마크다운 코드 블록 제거)
+                json_match = re.search(r'\{.*\}', result_text, re.DOTALL)
+                if json_match:
+                    json_result = json.loads(json_match.group())
+                    return json_result
+                else:
+                    raise Exception("응답에서 JSON을 찾을 수 없습니다.")
+                    
+            except json.JSONDecodeError as e:
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)  # 출력 제거로 속도 개선
+                    retry_delay *= 2
+                    continue
+                raise Exception(f"Step 2 JSON 파싱 실패 ({max_retries}회 시도): {e}")
+            except Exception as e:
+                error_msg = str(e)
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)  # 출력 제거로 속도 개선
+                    retry_delay *= 2
+                    continue
+                raise Exception(f"Step 2 실패 ({max_retries}회 시도): {error_msg}")
+    
+    def parse_image_two_stage(
+        self, 
+        image: Image.Image, 
+        max_size: int = 600,  # 성능 개선: OCR에는 600px로 충분
+        max_retries: int = 2  # 재시도 횟수 감소: 3 → 2
+    ) -> Dict[str, Any]:
+        """
+        2단계 파이프라인으로 이미지를 JSON으로 파싱
+        
+        Args:
+            image: PIL Image 객체
+            max_size: Gemini API에 전달할 최대 이미지 크기 (픽셀, 기본값: 800)
+            max_retries: 각 단계별 최대 재시도 횟수
+            
+        Returns:
+            json_result: 구조화된 JSON 딕셔너리
+        """
+        # 이미지 리사이즈 (속도 개선: 작은 이미지가 더 빠름)
+        original_width, original_height = image.size
+        api_image = image
+        if original_width > max_size or original_height > max_size:
+            ratio = min(max_size / original_width, max_size / original_height)
+            new_width = int(original_width * ratio)
+            new_height = int(original_height * ratio)
+            api_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        
+        # Step 1: Raw Text 추출
+        step1_start = time.time()
+        raw_text = self.extract_raw_text(api_image, max_retries=max_retries)
+        step1_duration = time.time() - step1_start
+        
+        # Step 2: JSON 구조화
+        step2_start = time.time()
+        json_result = self.build_json_from_raw_text(raw_text, max_retries=max_retries)
+        step2_duration = time.time() - step2_start
+        
+        # 소요시간만 출력
+        total_duration = step1_duration + step2_duration
+        print(f"소요 시간: {total_duration:.1f}초 (Step 1: {step1_duration:.1f}초, Step 2: {step2_duration:.1f}초)", end="", flush=True)
+        
+        return json_result
+
+
+def extract_raw_text(image_path: str, api_key: Optional[str] = None, vision_model: str = "gemini-3-pro-preview") -> str:
+    """
+    Step 1만 실행: 이미지에서 raw text 추출
+    
+    Args:
+        image_path: 이미지 파일 경로
+        api_key: Gemini API 키 (None이면 환경변수에서 가져옴)
+        vision_model: Vision 모델 이름
+        
+    Returns:
+        raw_text: 추출된 raw text 문자열
+    """
+    parser = GeminiTwoStageParser(api_key=api_key, vision_model=vision_model)
+    image = Image.open(image_path)
+    return parser.extract_raw_text(image)
+
+
+def build_json_from_raw_text(raw_text: str, api_key: Optional[str] = None, text_model: str = "gemini-3-pro-preview") -> Dict[str, Any]:
+    """
+    Step 2만 실행: raw text를 JSON으로 구조화
+    
+    Args:
+        raw_text: Step 1에서 추출된 raw text 문자열
+        api_key: Gemini API 키 (None이면 환경변수에서 가져옴)
+        text_model: Text 모델 이름
+        
+    Returns:
+        json_result: 구조화된 JSON 딕셔너리
+    """
+    parser = GeminiTwoStageParser(api_key=api_key, text_model=text_model)
+    return parser.build_json_from_raw_text(raw_text)
+
+
+def parse_image_two_stage(
+    image_path: str,
+    api_key: Optional[str] = None,
+    vision_model: str = "gemini-3-pro-preview",
+    text_model: str = "gemini-3-pro-preview",
+    max_size: int = 1000
+) -> Dict[str, Any]:
+    """
+    2단계 파이프라인으로 이미지를 JSON으로 파싱 (편의 함수)
+    
+    Args:
+        image_path: 이미지 파일 경로
+        api_key: Gemini API 키 (None이면 환경변수에서 가져옴)
+        vision_model: Step 1에 사용할 Vision 모델 이름
+        text_model: Step 2에 사용할 Text 모델 이름
+        max_size: 최대 이미지 크기 (픽셀)
+        
+    Returns:
+        json_result: 구조화된 JSON 딕셔너리
+    """
+    parser = GeminiTwoStageParser(api_key=api_key, vision_model=vision_model, text_model=text_model)
+    image = Image.open(image_path)
+    return parser.parse_image_two_stage(image, max_size=max_size)
+
