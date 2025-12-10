@@ -43,13 +43,6 @@ from modules.core.app_processor import (
     check_pdf_in_db
 )
 
-st.set_page_config(
-    page_title="条件請求書パースシステム",
-    page_icon="📄",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
-
 st.markdown("""
 <style>
     /* 사이드바 숨기기 */
@@ -189,10 +182,7 @@ def render_upload_tab():
             status_info = st.session_state.analysis_status.get(pdf_name, {})
             status = status_info.get("status", "pending")
             with col1:
-                if file_info.get("is_in_db") and file_info.get("db_page_count", 0) > 0:
-                    st.text(f"📄 {file_info['original_name']} 🔄 (解析済み: {file_info['db_page_count']}ページ)")
-                else:
-                    st.text(f"📄 {file_info['original_name']}")
+                st.text(f"📄 {file_info['original_name']}")
             with col2:
                 if status == "completed":
                     pages = status_info.get("pages", 0)
@@ -301,8 +291,8 @@ def render_upload_tab():
                 start_time = time.time()
                 for file_idx, (file_info, uploaded_file, pdf_path) in enumerate(files_to_analyze):
                     pdf_name = file_info["name"]
-                    with progress_placeholder.container():
-                        st.info(f"📄 **{pdf_name}.pdf** を処理中... ({file_idx + 1}/{total_files})", icon="🔄")
+                    # process_single_pdf/reprocess_pdf_from_storage 내부에서 진행 상황을 표시하므로
+                    # 여기서는 중복으로 표시하지 않음
                     try:
                         if uploaded_file is not None:
                             success, pages, error, elapsed_time = process_single_pdf(
@@ -496,6 +486,13 @@ def render_download_tab():
 
 def main():
     """메인 함수"""
+    # Streamlit 페이지 설정은 반드시 가장 먼저 호출되어야 함
+    st.set_page_config(
+        page_title="条件請求書パースシステム",
+        page_icon="📄",
+        layout="wide",
+        initial_sidebar_state="collapsed"
+    )
     _ensure_session_state_defaults()
     st.title("Nongshim 条件請求書分析システム")
     tab1, tab2, tab3 = st.tabs(["📤 アップロード & 解析", "📝 レビュー", "📥 ダウンロード"])
