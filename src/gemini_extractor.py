@@ -525,7 +525,7 @@ class GeminiTwoStageParser:
 요약, 구조화, 통합, 삭제를 하지 마세요.
 이미지에서 감지된 모든 텍스트 라인을 1행도 빠짐없이 출력하세요."""
         
-        retry_delay = 2
+        retry_delay = 2  # 원래 설정으로 복원
         for attempt in range(max_retries):
             try:
                 # 원래 방식 유지: chat을 사용한 2단계 전송 (이 방식이 더 빠름)
@@ -614,7 +614,7 @@ class GeminiTwoStageParser:
 
 JSON 외 추가 설명은 출력하지 않습니다."""
         
-        retry_delay = 2
+        retry_delay = 2  # 원래 설정으로 복원
         for attempt in range(max_retries):
             try:
                 response = self.text_model.generate_content(step2_prompt)
@@ -656,7 +656,7 @@ JSON 외 추가 설명은 출력하지 않습니다."""
     def parse_image_two_stage(
         self, 
         image: Image.Image, 
-        max_size: int = 600,  # 성능 개선: OCR에는 600px로 충분
+        max_size: int = 600,  # 원래 설정으로 복원
         max_retries: int = 2  # 재시도 횟수 감소: 3 → 2
     ) -> Dict[str, Any]:
         """
