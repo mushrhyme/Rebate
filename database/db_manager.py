@@ -226,7 +226,8 @@ class DatabaseManager:
         pdf_filename: str,
         session_name: Optional[str] = None,
         notes: Optional[str] = None,
-        image_paths: Optional[List[str]] = None
+        image_paths: Optional[List[str]] = None,
+        image_data_list: Optional[List[bytes]] = None
     ) -> int:
         """
         페이지별 파싱 결과(page_results)를 데이터베이스에 저장
@@ -236,6 +237,8 @@ class DatabaseManager:
             pdf_filename: 원본 PDF 파일명
             session_name: 세션명 (선택)
             notes: 메모 (선택)
+            image_paths: 이미지 파일 경로 리스트 (선택, image_data_list가 없을 때 사용)
+            image_data_list: 이미지 데이터(bytes) 리스트 (선택, image_paths보다 우선)
             
         Returns:
             생성된 session_id
@@ -340,10 +343,19 @@ class DatabaseManager:
                     items_data
                 )
         
-        # 5. 이미지 저장 (이미지 경로가 제공된 경우)
-        if image_paths:
+        # 5. 이미지 저장 (이미지 데이터 또는 이미지 경로가 제공된 경우)
+        images_to_save = []
+        
+        # image_data_list가 있으면 우선 사용 (로컬 저장 없이 직접 전달)
+        if image_data_list:
+            for page_idx, image_data in enumerate(image_data_list):
+                if image_data:
+                    page_number = page_idx + 1
+                    images_to_save.append((page_number, image_data))
+        
+        # image_data_list가 없고 image_paths가 있으면 파일에서 읽기
+        elif image_paths:
             import os
-            images_to_save = []
             for page_idx, image_path in enumerate(image_paths):
                 if image_path and os.path.exists(image_path):
                     try:
@@ -353,9 +365,10 @@ class DatabaseManager:
                         images_to_save.append((page_number, image_data))
                     except Exception as e:
                         print(f"⚠️ 페이지 {page_idx + 1} 이미지 읽기 실패: {e}")
-            
-            if images_to_save:
-                self.save_page_images(session_id, images_to_save)
+        
+        # 이미지 저장
+        if images_to_save:
+            self.save_page_images(session_id, images_to_save)
         
         return session_id
     

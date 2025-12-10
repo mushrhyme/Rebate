@@ -47,7 +47,6 @@ class PdfProcessor:
         try:
             # 순환 import 방지를 위해 함수 내부에서 import
             from utils.session_manager import SessionManager
-            from parser.vision_parser import VisionParser
             from modules.utils.pdf_utils import find_pdf_path
             
             # 1. PDF 파일 경로 확인
@@ -60,28 +59,23 @@ class PdfProcessor:
             PdfRegistry.ensure(pdf_name, source="session")
             PdfRegistry.update(pdf_name, status="processing", pages=0, error=None)
             
-            # 3. 임시 이미지 저장 디렉토리 설정 (DB 저장 후 삭제 가능)
-            images_dir = SessionManager.get_images_dir()
-            pdf_images_dir = os.path.join(images_dir, pdf_name)
-            os.makedirs(pdf_images_dir, exist_ok=True)
-            
-            # 4. VisionParser로 PDF 파싱
-            parser = VisionParser()
-            page_results, image_paths = parser.parse_pdf(
+            # 3. PDF 파싱 (로컬 저장 없이 DB에만 저장)
+            from src.gemini_extractor import extract_pages_with_gemini
+            page_results, image_paths, pil_images = extract_pages_with_gemini(
                 pdf_path=pdf_path,
                 dpi=dpi,
-                use_cache=True,
-                save_images=True,  # 임시로 파일 시스템에 저장 (DB 저장 후 삭제 가능)
-                image_output_dir=pdf_images_dir,
+                use_gemini_cache=True,  # Gemini 캐시 사용
+                save_images=False,  # 로컬 저장 비활성화
                 use_history=False
             )
             
             if not page_results:
                 raise ValueError("파싱 결과가 없습니다")
             
-            # 5. DB에 저장
+            # 4. PIL Image 객체를 bytes로 변환하여 DB에 저장
             try:
                 from database.registry import get_db
+                import io
 
                 # 전역 DB 인스턴스 사용
                 db_manager = get_db()
@@ -89,25 +83,38 @@ class PdfProcessor:
                 # PDF 파일명 (확장자 포함)
                 pdf_filename = f"{pdf_name}.pdf"
 
-                # DB에 저장 (이미지 경로도 함께 전달)
+                # PIL Image 객체를 bytes로 변환
+                image_data_list = None
+                if pil_images:
+                    image_data_list = []
+                    for img in pil_images:
+                        if img:
+                            # PIL Image를 PNG bytes로 변환
+                            img_bytes = io.BytesIO()
+                            img.save(img_bytes, format='PNG', optimize=False)
+                            image_data_list.append(img_bytes.getvalue())
+                        else:
+                            image_data_list.append(None)
+                
+                # DB에 저장 (이미지 데이터 직접 전달)
                 session_id = db_manager.save_from_page_results(
                     page_results=page_results,
                     pdf_filename=pdf_filename,
                     session_name=f"自動パース {pdf_name}",
                     notes=None,
-                    image_paths=image_paths  # 이미지 경로 전달
+                    image_data_list=image_data_list  # 이미지 데이터(bytes) 직접 전달
                 )
             except Exception as db_error:
                 # DB 저장 실패 시 에러 반환
                 raise RuntimeError(f"DB 저장 실패: {db_error}")
             
-            # 6. 진행률 업데이트 및 썸네일 생성
+            # 5. 진행률 업데이트 및 썸네일 생성
             for page_num, page_json in enumerate(page_results, 1):
                 if page_json:
-                    # 썸네일 생성 (선택적)
+                    # 썸네일 생성 (선택적) - PIL Image에서 직접 생성
                     try:
-                        if page_num <= len(image_paths) and image_paths[page_num - 1]:
-                            image = Image.open(image_paths[page_num - 1])
+                        if pil_images and page_num <= len(pil_images) and pil_images[page_num - 1]:
+                            image = pil_images[page_num - 1]
                             # 썸네일 생성 (200x200)
                             thumbnail = image.copy()
                             thumbnail.thumbnail((200, 200), Image.Resampling.LANCZOS)

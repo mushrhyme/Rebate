@@ -311,11 +311,7 @@ def get_gemini_cache_path(pdf_path: str, history_dir: Optional[str] = None) -> s
     
     if history_dir:
         return os.path.join(history_dir, cache_filename)
-    
-    # 프로젝트 루트 기준으로 절대 경로 생성
-    # gemini_extractor.py는 Rebate/src/ 디렉토리에 있으므로 parent.parent가 프로젝트 루트
-    project_root = Path(__file__).parent.parent.resolve()
-    return str(project_root / cache_filename)
+    return cache_filename
 
 
 def create_history_dir(base_dir: str, pdf_name: str) -> str:
@@ -468,9 +464,11 @@ def get_image_output_dir(pdf_path: str) -> str:
     Returns:
         이미지 저장 디렉토리 경로 (img/{pdf_name}/)
     """
-    from storage_utils import get_img_dir
     pdf_name = Path(pdf_path).stem  # 확장자 제거
-    return get_img_dir(pdf_name)
+    # 프로젝트 루트 기준으로 img/{pdf_name}/ 디렉토리 경로 생성
+    project_root = Path(__file__).parent.parent
+    img_dir = project_root / "img" / pdf_name
+    return str(img_dir)
 
 
 def load_gemini_cache(cache_path: str) -> Optional[List[Dict[str, Any]]]:
@@ -502,18 +500,38 @@ def load_gemini_cache(cache_path: str) -> Optional[List[Dict[str, Any]]]:
 
 def save_gemini_cache(cache_path: str, page_jsons: List[Dict[str, Any]]):
     """
-    Gemini 결과를 캐시 파일로 저장 (비활성화됨 - DB 사용)
+    Gemini 결과를 캐시 파일로 저장
     
     Args:
-        cache_path: 캐시 파일 경로 (상대 또는 절대 경로) - 사용 안 함
-        page_jsons: 페이지 JSON 리스트 - 사용 안 함
-    
-    Note:
-        로컬 파일 저장을 최소화하기 위해 비활성화됨.
-        모든 데이터는 DB에 저장됩니다.
+        cache_path: 캐시 파일 경로 (상대 또는 절대 경로)
+        page_jsons: 페이지 JSON 리스트
     """
-    # 로컬 파일 저장 비활성화 (DB 사용)
-    pass
+    try:
+        # 절대 경로로 변환
+        abs_cache_path = os.path.abspath(cache_path)
+        
+        # 디렉토리가 없으면 생성
+        cache_dir = os.path.dirname(abs_cache_path)
+        if cache_dir and not os.path.exists(cache_dir):
+            os.makedirs(cache_dir, exist_ok=True)
+            print(f"📂 캐시 디렉토리 생성: {cache_dir}")
+        
+        # 파일 저장
+        with open(abs_cache_path, 'w', encoding='utf-8') as f:
+            json.dump(page_jsons, f, ensure_ascii=False, indent=2)  # JSON 저장
+        
+        # 파일이 실제로 생성되었는지 확인
+        if os.path.exists(abs_cache_path):
+            file_size = os.path.getsize(abs_cache_path)
+            saved_pages = len(page_jsons)
+            print(f"💾 캐시 저장 완료: {saved_pages}개 페이지 ({file_size:,} bytes) → {abs_cache_path}")
+        else:
+            print(f"⚠️ 파일 저장 후 확인 실패: {abs_cache_path}")
+            
+    except Exception as e:
+        import traceback
+        print(f"⚠️ 캐시 파일 저장 실패: {e}")
+        print(f"   상세 에러: {traceback.format_exc()}")
 
 
 def extract_pages_with_gemini(
@@ -523,15 +541,16 @@ def extract_pages_with_gemini(
         dpi: int = 300,
     use_gemini_cache: bool = True,
     gemini_cache_path: Optional[str] = None,
-    save_images: bool = True,
+    save_images: bool = False,  # 로컬 저장 비활성화 (기본값: False)
     image_output_dir: Optional[str] = None,
     use_history: bool = True,
     history_dir: Optional[str] = None
-) -> tuple[List[Dict[str, Any]], List[str]]:
+) -> tuple[List[Dict[str, Any]], List[str], Optional[List[Image.Image]]]:
     """
     PDF 파일을 Gemini로 분석하여 페이지별 JSON 결과 반환
     
     Gemini 호출 및 결과 저장까지만 수행하는 함수입니다.
+    로컬 이미지 저장 기능은 비활성화되었습니다 (DB에만 저장).
     
     Args:
         pdf_path: PDF 파일 경로
@@ -540,13 +559,15 @@ def extract_pages_with_gemini(
         dpi: PDF 변환 해상도 (기본값: 300)
         use_gemini_cache: Gemini 캐시 사용 여부 (기본값: True)
         gemini_cache_path: Gemini 캐시 파일 경로 (None이면 자동 생성)
-        save_images: 이미지를 파일로 저장할지 여부 (기본값: True)
-        image_output_dir: 이미지 저장 디렉토리 (None이면 자동 생성)
+        save_images: 이미지를 파일로 저장할지 여부 (기본값: False, 사용 안 함)
+        image_output_dir: 이미지 저장 디렉토리 (사용 안 함)
         use_history: 히스토리 관리 사용 여부 (기본값: True)
         history_dir: 히스토리 디렉토리 (None이면 자동 생성)
         
     Returns:
-        (페이지별 Gemini 파싱 결과 JSON 리스트, 이미지 파일 경로 리스트) 튜플
+        (페이지별 Gemini 파싱 결과 JSON 리스트, 이미지 파일 경로 리스트, PIL Image 객체 리스트) 튜플
+        이미지 파일 경로는 항상 None 리스트 (로컬 저장 비활성화)
+        PIL Image 객체 리스트는 새로 변환한 경우에만 반환 (캐시에서 로드한 경우 None)
     """
     pdf_name = Path(pdf_path).stem
     base_dir = os.path.dirname(os.path.abspath(pdf_path)) or os.getcwd()
@@ -585,17 +606,9 @@ def extract_pages_with_gemini(
     abs_cache_path = os.path.abspath(gemini_cache_path)
     print(f"📁 캐시 파일 경로: {abs_cache_path}")
     
-    # 이미지 저장 디렉토리 결정 (히스토리 디렉토리 사용)
-    if image_output_dir is None:
-        if use_history and history_dir:
-            image_output_dir = os.path.join(history_dir, "images")
-        else:
-            image_output_dir = get_image_output_dir(pdf_path)
-    abs_image_dir = os.path.abspath(image_output_dir)
-    print(f"🖼️ 이미지 저장 디렉토리: {abs_image_dir}")
-    
-    # 이미지 경로 리스트 초기화
+    # 이미지 경로 리스트 초기화 (로컬 저장 비활성화로 항상 None 리스트)
     image_paths = []
+    pil_images = None  # PIL Image 객체 리스트 (새로 변환한 경우에만)
     
     # 1. Gemini 결과 로드 또는 생성
     page_jsons = None
@@ -603,30 +616,17 @@ def extract_pages_with_gemini(
         page_jsons = load_gemini_cache(gemini_cache_path)  # 캐시에서 로드 시도
         if page_jsons:
             print(f"💾 기존 캐시 로드: {len(page_jsons)}개 페이지")
-            
-            # 저장된 이미지 경로 확인 (이미 저장되어 있으면)
-            if save_images and os.path.exists(abs_image_dir):
-                for idx in range(len(page_jsons)):
-                    img_path = os.path.join(abs_image_dir, f"page_{idx+1}.png")
-                    if os.path.exists(img_path):
-                        image_paths.append(img_path)
-                    else:
-                        image_paths.append(None)  # 이미지가 없으면 None
     
     # 캐시가 없으면 Gemini API 호출
     if page_jsons is None:
         # PDF를 이미지로 변환
         pdf_processor = PDFProcessor(dpi=dpi)  # PDF 처리기 생성
         images = pdf_processor.convert_pdf_to_images(pdf_path)  # PDF → 이미지 변환
+        pil_images = images  # PIL Image 객체 리스트 저장 (DB 저장용)
         print(f"PDF 변환 완료: {len(images)}개 페이지")
         
-        # 이미지 저장 (고화질)
-        if save_images:
-            print(f"💾 이미지 저장 중... ({abs_image_dir})")
-            image_paths = pdf_processor.save_images(images, abs_image_dir, prefix="page")
-            print(f"✅ 이미지 저장 완료: {len(image_paths)}개 파일")
-        else:
-            image_paths = [None] * len(images)  # 저장하지 않으면 None 리스트
+        # 로컬 저장 비활성화 (DB에만 저장)
+        image_paths = [None] * len(images)  # 항상 None 리스트
         
         # Gemini Vision으로 각 페이지 파싱
         gemini_parser = GeminiVisionParser(api_key=gemini_api_key, model_name=gemini_model)  # Gemini 파서 생성
@@ -793,18 +793,9 @@ def extract_pages_with_gemini(
             if start_idx > 0:
                 print(f"  - 캐시에서 로드한 페이지: {start_idx}개")
     
-    # 이미지 경로가 비어있으면 생성 (캐시에서 로드한 경우)
-    if not image_paths and save_images:
-        # 저장된 이미지 경로 확인
-        if os.path.exists(abs_image_dir):
-            for idx in range(len(page_jsons)):
-                img_path = os.path.join(abs_image_dir, f"page_{idx+1}.png")
-                if os.path.exists(img_path):
-                    image_paths.append(img_path)
-                else:
-                    image_paths.append(None)
-        else:
-            image_paths = [None] * len(page_jsons) if page_jsons else []
+    # 로컬 저장 비활성화로 image_paths는 항상 None 리스트
+    if not image_paths and page_jsons:
+        image_paths = [None] * len(page_jsons)
     
-    return page_jsons, image_paths
+    return page_jsons, image_paths, pil_images
 
