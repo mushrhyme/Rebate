@@ -13,7 +13,7 @@ import streamlit as st
 
 from modules.core.processor import PdfProcessor
 from utils.session_manager import SessionManager
-from src.gemini_extractor import GeminiVisionParser
+from src.gemini_extractor import GeminiVisionParser, GeminiTwoStageParser
 
 
 def process_pdf_with_progress(
@@ -117,31 +117,51 @@ def reparse_single_page(pdf_name: str, page_num: int, timeout: int = 120):
 
     try:
         with progress_placeholder.container():
-            st.info("🤖 Gemini APIで解析中... (최대 2분 소요)", icon="⏳")
+            st.info("🤖 Gemini APIで解析中... (2段階パイプライン使用)", icon="⏳")
         
-        # 파싱 시간 측정 시작 (업로드 탭과 동일한 방식)
+        # 파싱 시간 측정 시작
         parse_start_time = time.time()
-        parser = GeminiVisionParser()
-        new_page_json = parser.parse_image(page_image, timeout=timeout)  # 타임아웃 전달
+        parser = GeminiTwoStageParser()  # 2단계 파이프라인 사용
+        new_page_json = parser.parse_image_two_stage(page_image)  # 2단계 파이프라인 실행
         parse_end_time = time.time()
         parse_duration = parse_end_time - parse_start_time
         
-        # 디버깅용: Gemini API 호출 결과 콘솔 출력
-        import json
-        print(f"\n{'='*80}")
-        print(f"🔍 [디버깅] 페이지 {page_num} Gemini API 호출 결과")
-        print(f"{'='*80}")
-        print(json.dumps(new_page_json, ensure_ascii=False, indent=2))
-        print(f"{'='*80}\n")
-        
-        # 콘솔에 소요 시간 출력 (업로드 탭과 동일한 형식)
-        print(f"페이지 {page_num} 재파싱 완료 (소요 시간: {parse_duration:.2f}초)")
+        # 소요 시간만 출력
+        print(f"페이지 {page_num} 재파싱 완료: {parse_duration:.1f}초")
 
         with progress_placeholder.container():
             st.info("💾 結果を保存中...", icon="⏳")
         
         try:
+            # 파일 시스템에 저장
             SessionManager.save_ocr_result(pdf_name, page_num, new_page_json)
+            
+            # DB에도 저장 (items 업데이트)
+            try:
+                from database.registry import get_db
+                db_manager = get_db()
+                pdf_filename = f"{pdf_name}.pdf"
+                items = new_page_json.get('items', [])
+                
+                if items:
+                    # DB의 해당 페이지 items 업데이트
+                    success = db_manager.update_page_items(
+                        pdf_filename=pdf_filename,
+                        page_num=page_num,
+                        items=items,
+                        session_id=None,
+                        is_latest=True
+                    )
+                    if success:
+                        print(f"✅ DB 업데이트 완료: {len(items)}개 items 저장")
+                    else:
+                        print(f"⚠️ DB 업데이트 실패 (세션이 없을 수 있음)")
+                else:
+                    print(f"⚠️ items가 비어있어 DB 업데이트를 건너뜁니다")
+            except Exception as db_err:
+                # DB 업데이트 실패해도 파일 저장은 성공했으므로 계속 진행
+                print(f"⚠️ DB 업데이트 실패 (파일 저장은 완료): {db_err}")
+                
         except Exception as save_err:
             progress_placeholder.empty()
             st.error(f"セッションへの保存に失敗しました: {save_err}", icon="❌")
@@ -154,8 +174,8 @@ def reparse_single_page(pdf_name: str, page_num: int, timeout: int = 120):
         parse_end_time = time.time()
         parse_duration = parse_end_time - parse_start_time if 'parse_start_time' in locals() else 0.0
         
-        # 콘솔에 실패 시간 출력 (업로드 탭과 동일한 형식)
-        print(f"페이지 {page_num} 재파싱 실패 (소요 시간: {parse_duration:.2f}초) - {e}")
+        # 실패 시 소요 시간만 출력
+        print(f"페이지 {page_num} 재파싱 실패: {parse_duration:.1f}초 - {e}")
         
         progress_placeholder.empty()
         error_msg = str(e)
