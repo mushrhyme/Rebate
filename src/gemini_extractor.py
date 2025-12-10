@@ -295,165 +295,6 @@ class GeminiVisionParser:
             return {"text": result_text}
 
 
-def get_gemini_cache_path(pdf_path: str, history_dir: Optional[str] = None) -> str:
-    """
-    Gemini 결과 캐시 파일 경로 생성
-    
-    Args:
-        pdf_path: PDF 파일 경로
-        history_dir: 히스토리 디렉토리 (None이면 기본 경로 사용)
-        
-    Returns:
-        캐시 파일 경로 (예: "조건청구서②_gemini_cache.json" 또는 "history/20240101_120000/조건청구서②_gemini_cache.json")
-    """
-    pdf_name = Path(pdf_path).stem  # 확장자 제거
-    cache_filename = f"{pdf_name}_gemini_cache.json"
-    
-    if history_dir:
-        return os.path.join(history_dir, cache_filename)
-    return cache_filename
-
-
-def create_history_dir(base_dir: str, pdf_name: str) -> str:
-    """
-    히스토리 디렉토리 생성 (타임스탬프 기반)
-    
-    Args:
-        base_dir: 기본 디렉토리 (예: "raw_data" 또는 현재 디렉토리)
-        pdf_name: PDF 파일명 (확장자 제외)
-        
-    Returns:
-        생성된 히스토리 디렉토리 경로 (예: "raw_data/조건청구서②/history/20240101_120000")
-    """
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    history_base = os.path.join(base_dir, f"{pdf_name}_history")
-    history_dir = os.path.join(history_base, timestamp)
-    os.makedirs(history_dir, exist_ok=True)
-    return history_dir
-
-
-def migrate_existing_to_history(base_dir: str, pdf_name: str) -> Optional[str]:
-    """
-    기존 파싱 결과를 첫 번째 히스토리로 이동
-    
-    Args:
-        base_dir: 기본 디렉토리
-        pdf_name: PDF 파일명 (확장자 제외)
-        
-    Returns:
-        생성된 히스토리 디렉토리 경로 (이미지가 없으면 None)
-    """
-    import shutil
-    
-    # 기존 캐시 파일 찾기
-    cache_filename = f"{pdf_name}_gemini_cache.json"
-    possible_cache_paths = [
-        cache_filename,  # 현재 디렉토리
-        os.path.join(base_dir, cache_filename),  # base_dir
-        os.path.join("raw_data", cache_filename),  # raw_data
-    ]
-    
-    existing_cache_path = None
-    for cache_path in possible_cache_paths:
-        if os.path.exists(cache_path):
-            existing_cache_path = cache_path
-            break
-    
-    # 기존 이미지 디렉토리 찾기
-    image_dir_name = f"{pdf_name}_images"
-    possible_image_dirs = [
-        os.path.join(base_dir, image_dir_name),
-        os.path.join("raw_data", image_dir_name),
-        image_dir_name,
-    ]
-    
-    existing_image_dir = None
-    for img_dir in possible_image_dirs:
-        if os.path.exists(img_dir) and os.path.isdir(img_dir):
-            existing_image_dir = img_dir
-            break
-    
-    # 기존 파일이 없으면 None 반환
-    if not existing_cache_path and not existing_image_dir:
-        return None
-    
-    # 히스토리 디렉토리 생성 (오래된 타임스탬프로 - 첫 번째 히스토리)
-    # 파일 수정 시간을 사용하거나, 오래된 날짜로 설정
-    if existing_cache_path:
-        file_time = os.path.getmtime(existing_cache_path)
-        timestamp = datetime.fromtimestamp(file_time).strftime("%Y%m%d_%H%M%S")
-    elif existing_image_dir:
-        # 이미지 디렉토리의 첫 번째 파일 시간 사용
-        image_files = [f for f in os.listdir(existing_image_dir) if f.endswith('.png')]
-        if image_files:
-            first_image = os.path.join(existing_image_dir, sorted(image_files)[0])
-            file_time = os.path.getmtime(first_image)
-            timestamp = datetime.fromtimestamp(file_time).strftime("%Y%m%d_%H%M%S")
-        else:
-            timestamp = "19700101_000000"  # 기본값
-    else:
-        timestamp = "19700101_000000"  # 기본값
-    
-    history_base = os.path.join(base_dir, f"{pdf_name}_history")
-    history_dir = os.path.join(history_base, timestamp)
-    
-    # 이미 히스토리가 있으면 스킵
-    if os.path.exists(history_dir):
-        return history_dir
-    
-    os.makedirs(history_dir, exist_ok=True)
-    
-    # 캐시 파일 복사
-    if existing_cache_path:
-        dest_cache = os.path.join(history_dir, cache_filename)
-        if not os.path.exists(dest_cache):
-            shutil.copy2(existing_cache_path, dest_cache)
-            print(f"📦 기존 캐시를 히스토리로 복사: {existing_cache_path} → {dest_cache}")
-    
-    # 이미지 디렉토리 복사
-    if existing_image_dir:
-        dest_image_dir = os.path.join(history_dir, "images")
-        if not os.path.exists(dest_image_dir):
-            shutil.copytree(existing_image_dir, dest_image_dir)
-            print(f"📦 기존 이미지를 히스토리로 복사: {existing_image_dir} → {dest_image_dir}")
-    
-    return history_dir
-
-
-def list_history_dirs(base_dir: str, pdf_name: str) -> List[Dict[str, Any]]:
-    """
-    히스토리 디렉토리 목록 조회
-    
-    Args:
-        base_dir: 기본 디렉토리
-        pdf_name: PDF 파일명 (확장자 제외)
-        
-    Returns:
-        히스토리 정보 리스트 [{"timestamp": "...", "path": "...", "datetime": datetime}]
-    """
-    history_base = os.path.join(base_dir, f"{pdf_name}_history")
-    if not os.path.exists(history_base):
-        return []
-    
-    histories = []
-    for item in sorted(os.listdir(history_base), reverse=True):  # 최신순
-        item_path = os.path.join(history_base, item)
-        if os.path.isdir(item_path):
-            try:
-                # 타임스탬프 파싱
-                dt = datetime.strptime(item, "%Y%m%d_%H%M%S")
-                histories.append({
-                    "timestamp": item,
-                    "path": item_path,
-                    "datetime": dt,
-                    "display": dt.strftime("%Y-%m-%d %H:%M:%S")
-                })
-            except ValueError:
-                continue
-    
-    return histories
-
-
 def get_image_output_dir(pdf_path: str) -> str:
     """
     이미지 저장 디렉토리 경로 생성 (새 구조: img/{pdf_name}/)
@@ -471,154 +312,67 @@ def get_image_output_dir(pdf_path: str) -> str:
     return str(img_dir)
 
 
-def load_gemini_cache(cache_path: str) -> Optional[List[Dict[str, Any]]]:
-    """
-    Gemini 결과 캐시 파일 로드
-    
-    Args:
-        cache_path: 캐시 파일 경로
-        
-    Returns:
-        페이지 JSON 리스트 (파일이 없으면 None)
-    """
-    if os.path.exists(cache_path):
-        try:
-            with open(cache_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)  # JSON 로드
-                # 리스트인지 확인
-                if isinstance(data, list):
-                    return data
-                elif isinstance(data, dict) and "pages" in data:
-                    return data["pages"]
-                else:
-                    return [data] if data else None
-        except Exception as e:
-            print(f"캐시 파일 로드 실패: {e}")
-            return None
-    return None
-
-
-def save_gemini_cache(cache_path: str, page_jsons: List[Dict[str, Any]]):
-    """
-    Gemini 결과를 캐시 파일로 저장
-    
-    Args:
-        cache_path: 캐시 파일 경로 (상대 또는 절대 경로)
-        page_jsons: 페이지 JSON 리스트
-    """
-    try:
-        # 절대 경로로 변환
-        abs_cache_path = os.path.abspath(cache_path)
-        
-        # 디렉토리가 없으면 생성
-        cache_dir = os.path.dirname(abs_cache_path)
-        if cache_dir and not os.path.exists(cache_dir):
-            os.makedirs(cache_dir, exist_ok=True)
-            print(f"📂 캐시 디렉토리 생성: {cache_dir}")
-        
-        # 파일 저장
-        with open(abs_cache_path, 'w', encoding='utf-8') as f:
-            json.dump(page_jsons, f, ensure_ascii=False, indent=2)  # JSON 저장
-        
-        # 파일이 실제로 생성되었는지 확인
-        if os.path.exists(abs_cache_path):
-            file_size = os.path.getsize(abs_cache_path)
-            saved_pages = len(page_jsons)
-            print(f"💾 캐시 저장 완료: {saved_pages}개 페이지 ({file_size:,} bytes) → {abs_cache_path}")
-        else:
-            print(f"⚠️ 파일 저장 후 확인 실패: {abs_cache_path}")
-            
-    except Exception as e:
-        import traceback
-        print(f"⚠️ 캐시 파일 저장 실패: {e}")
-        print(f"   상세 에러: {traceback.format_exc()}")
-
-
 def extract_pages_with_gemini(
     pdf_path: str,
     gemini_api_key: Optional[str] = None,
     gemini_model: str = "gemini-3-pro-preview",
         dpi: int = 300,
-    use_gemini_cache: bool = True,
+    use_gemini_cache: bool = False,  # 캐시 비활성화 (DB 사용)
     gemini_cache_path: Optional[str] = None,
     save_images: bool = False,  # 로컬 저장 비활성화 (기본값: False)
     image_output_dir: Optional[str] = None,
-    use_history: bool = True,
+    use_history: bool = False,  # 히스토리 비활성화
     history_dir: Optional[str] = None
 ) -> tuple[List[Dict[str, Any]], List[str], Optional[List[Image.Image]]]:
     """
     PDF 파일을 Gemini로 분석하여 페이지별 JSON 결과 반환
     
-    Gemini 호출 및 결과 저장까지만 수행하는 함수입니다.
-    로컬 이미지 저장 기능은 비활성화되었습니다 (DB에만 저장).
+    DB를 우선 사용하며, DB에 데이터가 없을 때만 Gemini API를 호출합니다.
+    캐시 파일은 사용하지 않습니다.
     
     Args:
         pdf_path: PDF 파일 경로
         gemini_api_key: Gemini API 키 (None이면 환경변수 또는 기본값 사용)
         gemini_model: Gemini 모델 이름
         dpi: PDF 변환 해상도 (기본값: 300)
-        use_gemini_cache: Gemini 캐시 사용 여부 (기본값: True)
-        gemini_cache_path: Gemini 캐시 파일 경로 (None이면 자동 생성)
+        use_gemini_cache: Gemini 캐시 사용 여부 (기본값: False, 사용 안 함)
+        gemini_cache_path: Gemini 캐시 파일 경로 (사용 안 함)
         save_images: 이미지를 파일로 저장할지 여부 (기본값: False, 사용 안 함)
         image_output_dir: 이미지 저장 디렉토리 (사용 안 함)
-        use_history: 히스토리 관리 사용 여부 (기본값: True)
-        history_dir: 히스토리 디렉토리 (None이면 자동 생성)
+        use_history: 히스토리 관리 사용 여부 (기본값: False, 사용 안 함)
+        history_dir: 히스토리 디렉토리 (사용 안 함)
         
     Returns:
         (페이지별 Gemini 파싱 결과 JSON 리스트, 이미지 파일 경로 리스트, PIL Image 객체 리스트) 튜플
         이미지 파일 경로는 항상 None 리스트 (로컬 저장 비활성화)
-        PIL Image 객체 리스트는 새로 변환한 경우에만 반환 (캐시에서 로드한 경우 None)
+        PIL Image 객체 리스트는 새로 변환한 경우에만 반환
     """
     pdf_name = Path(pdf_path).stem
-    base_dir = os.path.dirname(os.path.abspath(pdf_path)) or os.getcwd()
-    if not base_dir:
-        base_dir = os.getcwd()
-    
-    # 히스토리 디렉토리 생성 (새 파싱인 경우)
-    if use_history and history_dir is None:
-        history_dir = create_history_dir(base_dir, pdf_name)
-        print(f"📚 히스토리 디렉토리 생성: {history_dir}")
-    
-    # 기존 캐시 파일을 히스토리로 마이그레이션 (첫 파싱인 경우)
-    if use_history and history_dir:
-        # 기존 캐시 파일이 프로젝트 루트에 있으면 히스토리로 이동
-        existing_cache_path = get_gemini_cache_path(pdf_path)  # 히스토리 없이 생성
-        if os.path.exists(existing_cache_path) and os.path.abspath(existing_cache_path) != os.path.abspath(get_gemini_cache_path(pdf_path, history_dir)):
-            # 기존 캐시를 히스토리로 복사 (첫 번째 히스토리로)
-            import shutil
-            history_cache_path = get_gemini_cache_path(pdf_path, history_dir)
-            if not os.path.exists(history_cache_path):
-                try:
-                    shutil.copy2(existing_cache_path, history_cache_path)
-                    print(f"📦 기존 캐시를 히스토리로 복사: {existing_cache_path} → {history_cache_path}")
-                except Exception as e:
-                    print(f"⚠️ 히스토리 복사 실패: {e}")
-    
-    # Gemini 캐시 경로 결정 (히스토리 디렉토리 우선 사용)
-    if use_history and history_dir:
-        # use_history=True이고 history_dir이 있으면 항상 히스토리 디렉토리 내부 경로 사용
-        gemini_cache_path = get_gemini_cache_path(pdf_path, history_dir)
-    elif gemini_cache_path is None:
-        # 히스토리를 사용하지 않거나 history_dir이 없으면 기본 경로 사용
-        gemini_cache_path = get_gemini_cache_path(pdf_path)
-    
-    # 절대 경로로 변환하여 출력
-    abs_cache_path = os.path.abspath(gemini_cache_path)
-    print(f"📁 캐시 파일 경로: {abs_cache_path}")
+    pdf_filename = f"{pdf_name}.pdf"
     
     # 이미지 경로 리스트 초기화 (로컬 저장 비활성화로 항상 None 리스트)
     image_paths = []
     pil_images = None  # PIL Image 객체 리스트 (새로 변환한 경우에만)
     
-    # 1. Gemini 결과 로드 또는 생성
+    # 1. DB에서 먼저 확인
     page_jsons = None
-    if use_gemini_cache:
-        page_jsons = load_gemini_cache(gemini_cache_path)  # 캐시에서 로드 시도
-        if page_jsons:
-            print(f"💾 기존 캐시 로드: {len(page_jsons)}개 페이지")
+    try:
+        from database.registry import get_db
+        db_manager = get_db()
+        page_jsons = db_manager.get_page_results(
+            pdf_filename=pdf_filename,
+            session_id=None,
+            is_latest=True
+        )
+        if page_jsons and len(page_jsons) > 0:
+            print(f"💾 DB에서 기존 파싱 결과 로드: {len(page_jsons)}개 페이지")
+            # DB에서 로드한 경우 이미지는 None (이미 DB에 저장되어 있음)
+            image_paths = [None] * len(page_jsons)
+            return page_jsons, image_paths, None
+    except Exception as db_error:
+        print(f"⚠️ DB 확인 실패: {db_error}. 새로 파싱합니다.")
     
-    # 캐시가 없으면 Gemini API 호출
-    if page_jsons is None:
+    # 2. DB에 데이터가 없으면 Gemini API 호출
         # PDF를 이미지로 변환
         pdf_processor = PDFProcessor(dpi=dpi)  # PDF 처리기 생성
         images = pdf_processor.convert_pdf_to_images(pdf_path)  # PDF → 이미지 변환
@@ -632,19 +386,8 @@ def extract_pages_with_gemini(
         gemini_parser = GeminiVisionParser(api_key=gemini_api_key, model_name=gemini_model)  # Gemini 파서 생성
         page_jsons = []
         
-        # 기존 캐시가 있으면 로드 (부분적으로 저장된 경우 재개)
-        existing_cache = None
-        if use_gemini_cache and os.path.exists(gemini_cache_path):
-            try:
-                existing_cache = load_gemini_cache(gemini_cache_path)
-                if existing_cache and len(existing_cache) > 0:
-                    print(f"기존 캐시 발견: {len(existing_cache)}개 페이지. 재개합니다...")
-                    page_jsons = existing_cache.copy()
-            except Exception as e:
-                print(f"기존 캐시 로드 실패: {e}. 처음부터 시작합니다.")
-        
-        # 각 페이지 파싱 (이미 파싱된 페이지는 스킵)
-        start_idx = len(page_jsons)
+        # 각 페이지 파싱 (처음부터 시작)
+        start_idx = 0
         total_parse_time = 0.0
         
         # 페이지 수가 충분히 많을 때만 멀티스레딩 사용 (오버헤드 고려)
@@ -652,7 +395,6 @@ def extract_pages_with_gemini(
         
         if use_parallel:
             # 멀티스레딩으로 병렬 파싱
-            cache_lock = Lock()  # 캐시 저장 시 동기화용
             completed_count = 0  # 완료된 페이지 수 추적
             results_lock = Lock()  # 결과 리스트 업데이트 시 동기화용
             
@@ -701,27 +443,6 @@ def extract_pages_with_gemini(
                         print(f"페이지 {idx+1}/{len(images)} 파싱 실패 (소요 시간: {parse_duration:.2f}초) - {error}")
                     else:
                         print(f"페이지 {idx+1}/{len(images)} 파싱 완료 (소요 시간: {parse_duration:.2f}초) [{completed_count}/{len(images) - start_idx}]")
-                    
-                    # 각 페이지 파싱 후 즉시 캐시에 저장 (동기화 필요)
-                    if use_gemini_cache:
-                        try:
-                            with results_lock:
-                                # 현재까지의 결과를 임시 리스트에 반영
-                                temp_page_jsons = list(page_jsons)  # 기존 데이터 복사
-                                for result_idx in sorted(parsed_results.keys()):
-                                    if result_idx < len(temp_page_jsons):
-                                        temp_page_jsons[result_idx] = parsed_results[result_idx]
-                                    else:
-                                        # 인덱스 순서를 맞추기 위해 None으로 채운 후 추가
-                                        while len(temp_page_jsons) < result_idx:
-                                            temp_page_jsons.append(None)
-                                        temp_page_jsons.append(parsed_results[result_idx])
-                            
-                            with cache_lock:  # 캐시 저장 동기화
-                                # None을 제거하지 않고 저장 (인덱스 순서 유지)
-                                save_gemini_cache(gemini_cache_path, temp_page_jsons)  # 즉시 저장
-                        except Exception as e:
-                            print(f"  ⚠️ 페이지 {idx+1} 캐시 저장 실패: {e}")
             
             # 최종 결과를 인덱스 순서대로 page_jsons에 반영
             for idx in range(start_idx, len(images)):
@@ -755,30 +476,14 @@ def extract_pages_with_gemini(
                     # 파싱 시간 출력
                     print(f" 완료 (소요 시간: {parse_duration:.2f}초)")
                     
-                    # 각 페이지 파싱 후 즉시 캐시에 저장 (중간에 실패해도 손실 방지)
-                    if use_gemini_cache:
-                        try:
-                            print(f"  💾 페이지 {idx+1} 캐시 저장 시도 중...", end="", flush=True)
-                            save_gemini_cache(gemini_cache_path, page_jsons)  # 즉시 저장
-                        except Exception as e:
-                            print(f"\n  ⚠️ 페이지 {idx+1} 캐시 저장 실패: {e}")
-                            import traceback
-                            traceback.print_exc()
-                    
                 except Exception as e:
                     parse_end_time = time.time()
                     parse_duration = parse_end_time - parse_start_time
                     total_parse_time += parse_duration
                     print(f" 실패 (소요 시간: {parse_duration:.2f}초) - {e}")
-                    # 실패한 페이지는 빈 결과로 추가 (나중에 재시도 가능)
+                    # 실패한 페이지는 빈 결과로 추가
                     if idx >= len(page_jsons):
                         page_jsons.append({"text": f"파싱 실패: {str(e)}", "error": True})
-                    # 실패해도 캐시는 저장 (부분 결과라도 보존)
-                    if use_gemini_cache:
-                        try:
-                            save_gemini_cache(gemini_cache_path, page_jsons)
-                        except:
-                            pass
                     # 에러가 발생해도 계속 진행
                     continue
         
@@ -790,8 +495,6 @@ def extract_pages_with_gemini(
             print(f"  - 새로 파싱한 페이지: {parsed_count}개")
             print(f"  - 총 소요 시간: {total_parse_time:.2f}초")
             print(f"  - 평균 페이지당 시간: {avg_time:.2f}초")
-            if start_idx > 0:
-                print(f"  - 캐시에서 로드한 페이지: {start_idx}개")
     
     # 로컬 저장 비활성화로 image_paths는 항상 None 리스트
     if not image_paths and page_jsons:

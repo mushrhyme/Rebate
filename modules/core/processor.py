@@ -59,14 +59,14 @@ class PdfProcessor:
             PdfRegistry.ensure(pdf_name, source="session")
             PdfRegistry.update(pdf_name, status="processing", pages=0, error=None)
             
-            # 3. PDF 파싱 (로컬 저장 없이 DB에만 저장)
+            # 3. PDF 파싱 (DB 우선 사용, 없으면 Gemini API 호출)
             from src.gemini_extractor import extract_pages_with_gemini
             page_results, image_paths, pil_images = extract_pages_with_gemini(
                 pdf_path=pdf_path,
                 dpi=dpi,
-                use_gemini_cache=True,  # Gemini 캐시 사용
+                use_gemini_cache=False,  # 캐시 비활성화 (DB 사용)
                 save_images=False,  # 로컬 저장 비활성화
-                use_history=False
+                use_history=False  # 히스토리 비활성화
             )
             
             if not page_results:
