@@ -298,7 +298,7 @@ def render_upload_tab():
                 
                 # 병렬 처리 여부 결정 (2개 이상일 때만)
                 use_parallel = total_files > 1
-                max_workers = min(2, total_files) if use_parallel else 1
+                max_workers = min(5, total_files) if use_parallel else 1
                 
                 if use_parallel:
                     st.info(f"**分析対象**: {total_files}個のファイル - {', '.join(file_names)}", icon="ℹ️")
