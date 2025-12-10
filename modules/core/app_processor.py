@@ -92,29 +92,56 @@ def process_single_pdf(uploaded_file, pdf_name: str, progress_container, file_in
     )
 
 
-def reparse_single_page(pdf_name: str, page_num: int):
-    """단일 페이지 재파싱"""
+def reparse_single_page(pdf_name: str, page_num: int, timeout: int = 120):
+    """
+    단일 페이지 재파싱
+    
+    Args:
+        pdf_name: PDF 파일명 (확장자 제외)
+        page_num: 페이지 번호 (1부터 시작)
+        timeout: API 호출 타임아웃 (초, 기본값: 120초 = 2분)
+    """
     from modules.ui.review_components import load_page_image as load_page_image_from_module
 
+    # 진행 상황 표시를 위한 placeholder
+    progress_placeholder = st.empty()
+    
+    with progress_placeholder.container():
+        st.info("🔄 画像を読み込み中...", icon="⏳")
+    
     page_image = load_page_image_from_module(pdf_name, page_num)
     if page_image is None:
+        progress_placeholder.empty()
         st.error("画像が見つかりません。")
         return
 
     try:
+        with progress_placeholder.container():
+            st.info("🤖 Gemini APIで解析中... (최대 2분 소요)", icon="⏳")
+        
         parser = GeminiVisionParser()
-        new_page_json = parser.parse_image(page_image)
+        new_page_json = parser.parse_image(page_image, timeout=timeout)  # 타임아웃 전달
 
+        with progress_placeholder.container():
+            st.info("💾 結果を保存中...", icon="⏳")
+        
         try:
             SessionManager.save_ocr_result(pdf_name, page_num, new_page_json)
         except Exception as save_err:
+            progress_placeholder.empty()
             st.error(f"セッションへの保存に失敗しました: {save_err}", icon="❌")
             return
 
+        progress_placeholder.empty()
         st.success(f"ページ {page_num} 再パース完了！", icon="✅")
         st.rerun()
     except Exception as e:
-        st.error(f"再パース失敗: {e}", icon="❌")
+        progress_placeholder.empty()
+        error_msg = str(e)
+        if "타임아웃" in error_msg or "timeout" in error_msg.lower():
+            st.error(f"再パースタイムアウト: {timeout}秒以内に完了しませんでした。", icon="⏱️")
+        else:
+            st.error(f"再パース失敗: {e}", icon="❌")
 
 
 def check_pdf_in_db(pdf_filename: str) -> Tuple[bool, int]:

@@ -125,8 +125,18 @@ def render_navigation(pdf_name: str, current_page: int, total_pages: int):
     
     with col5:
         if st.button("🔄 再パース", use_container_width=True, key=f"reparse_{pdf_name}_{current_page}", type="primary"):
-            with st.spinner("再パース中..."):
+            # 진행 상황 표시를 위한 placeholder
+            status_placeholder = st.empty()
+            with status_placeholder.container():
+                st.info("🔄 再パース中... (최대 2분 소요)", icon="⏳")
+            
+            try:
                 reparse_single_page(pdf_name, current_page)  # 기존 함수 활용
+                status_placeholder.empty()
+            except Exception as e:
+                status_placeholder.empty()
+                # 에러는 reparse_single_page 내부에서 처리되므로 여기서는 빈 처리
+                pass
     
     with col6:
         if 'review_data' not in st.session_state:
@@ -154,11 +164,31 @@ def render_page_image(pdf_name: str, page_num: int):
         page_num: 페이지 번호 (1부터 시작)
     """
     import streamlit as st
+    from io import BytesIO
     
     page_image = load_page_image(pdf_name, page_num)
     
     if page_image:
-        st.image(page_image, width='stretch')
+        try:
+            # PIL Image를 BytesIO로 변환하여 안전하게 전달
+            img_buffer = BytesIO()
+            page_image.save(img_buffer, format='PNG')
+            img_buffer.seek(0)
+            st.image(img_buffer, width='stretch')
+        except Exception as e:
+            # Streamlit 메모리 스토리지 에러 등 예외 발생 시 재시도
+            try:
+                # 이미지를 다시 로드하여 시도
+                page_image = load_page_image(pdf_name, page_num)
+                if page_image:
+                    img_buffer = BytesIO()
+                    page_image.save(img_buffer, format='PNG')
+                    img_buffer.seek(0)
+                    st.image(img_buffer, width='stretch')
+                else:
+                    st.warning("画像の読み込みに失敗しました。")
+            except Exception:
+                st.warning(f"画像の表示に失敗しました: {str(e)[:50]}")
     else:
         st.warning("画像が見つかりません。")
 
