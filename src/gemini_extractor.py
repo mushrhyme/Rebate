@@ -205,15 +205,17 @@ class GeminiVisionParser:
 """
         return prompt
     
-    def parse_image(self, image: Image.Image, max_size: int = 600) -> Dict[str, Any]:
+    def parse_image(self, image: Image.Image, max_size: int = 600, timeout: int = 120) -> Dict[str, Any]:
         """
         이미지를 Gemini Vision으로 파싱하여 JSON 반환
         
         Args:
             image: PIL Image 객체
-            max_size: Gemini API에 전달할 최대 이미지 크기 (픽셀, 기본값: 1024)
+            max_size: Gemini API에 전달할 최대 이미지 크기 (픽셀, 기본값: 600)
                       속도 개선을 위해 큰 이미지는 리사이즈됨
-                      더 작게 하려면 800, 600 등으로 조정 가능
+            timeout: API 호출 타임아웃 (초, 기본값: 120초 = 2분)
+                    주의: 현재는 test_single_image.py와 동일한 방식으로 직접 호출하므로
+                    실제 타임아웃은 Gemini API의 기본 타임아웃에 의존합니다.
             
         Returns:
             파싱 결과 JSON 딕셔너리
@@ -234,12 +236,14 @@ class GeminiVisionParser:
             print(f"  이미지 크기: {original_width}x{original_height}px", end="", flush=True)
         
         # Gemini API 호출: 재시도 로직 포함 (SAFETY 오류 대응)
+        # test_single_image.py와 동일한 방식으로 직접 호출 (ThreadPoolExecutor 제거)
         max_retries = 3  # 최대 재시도 횟수
         retry_delay = 2  # 재시도 전 대기 시간 (초)
+        response = None
         
         for attempt in range(max_retries):
             try:
-                # 이미지만 먼저 전달하는 방식으로 시도
+                # test_single_image.py와 동일한 방식으로 직접 호출
                 chat = self.model.start_chat(history=[])
                 # 1단계: 이미지만 먼저 전달 (프롬프트 없이)
                 _ = chat.send_message([api_image])
@@ -373,128 +377,128 @@ def extract_pages_with_gemini(
         print(f"⚠️ DB 확인 실패: {db_error}. 새로 파싱합니다.")
     
     # 2. DB에 데이터가 없으면 Gemini API 호출
-        # PDF를 이미지로 변환
-        pdf_processor = PDFProcessor(dpi=dpi)  # PDF 처리기 생성
-        images = pdf_processor.convert_pdf_to_images(pdf_path)  # PDF → 이미지 변환
-        pil_images = images  # PIL Image 객체 리스트 저장 (DB 저장용)
-        print(f"PDF 변환 완료: {len(images)}개 페이지")
+    # PDF를 이미지로 변환
+    pdf_processor = PDFProcessor(dpi=dpi)  # PDF 처리기 생성
+    images = pdf_processor.convert_pdf_to_images(pdf_path)  # PDF → 이미지 변환
+    pil_images = images  # PIL Image 객체 리스트 저장 (DB 저장용)
+    print(f"PDF 변환 완료: {len(images)}개 페이지")
+    
+    # 로컬 저장 비활성화 (DB에만 저장)
+    image_paths = [None] * len(images)  # 항상 None 리스트
+    
+    # Gemini Vision으로 각 페이지 파싱
+    gemini_parser = GeminiVisionParser(api_key=gemini_api_key, model_name=gemini_model)  # Gemini 파서 생성
+    page_jsons = []
+    
+    # 각 페이지 파싱 (처음부터 시작)
+    start_idx = 0
+    total_parse_time = 0.0
+    
+    # 페이지 수가 충분히 많을 때만 멀티스레딩 사용 (오버헤드 고려)
+    use_parallel = (len(images) - start_idx) > 1
+    
+    if use_parallel:
+        # 멀티스레딩으로 병렬 파싱
+        completed_count = 0  # 완료된 페이지 수 추적
+        results_lock = Lock()  # 결과 리스트 업데이트 시 동기화용
         
-        # 로컬 저장 비활성화 (DB에만 저장)
-        image_paths = [None] * len(images)  # 항상 None 리스트
+        def parse_single_page(idx: int) -> tuple[int, Dict[str, Any], float, Optional[str]]:
+            """단일 페이지 파싱 함수 (스레드에서 실행) - 각 스레드마다 별도의 파서 인스턴스 생성"""
+            parse_start_time = time.time()
+            try:
+                # 각 스레드마다 별도의 파서 인스턴스 생성 (thread-safe)
+                thread_parser = GeminiVisionParser(api_key=gemini_api_key, model_name=gemini_model)
+                page_json = thread_parser.parse_image(images[idx])  # 각 페이지 파싱
+                parse_end_time = time.time()
+                parse_duration = parse_end_time - parse_start_time
+                return (idx, page_json, parse_duration, None)
+            except Exception as e:
+                parse_end_time = time.time()
+                parse_duration = parse_end_time - parse_start_time
+                error_result = {"text": f"파싱 실패: {str(e)}", "error": True}
+                return (idx, error_result, parse_duration, str(e))
         
-        # Gemini Vision으로 각 페이지 파싱
-        gemini_parser = GeminiVisionParser(api_key=gemini_api_key, model_name=gemini_model)  # Gemini 파서 생성
-        page_jsons = []
+        # ThreadPoolExecutor로 병렬 처리 (최대 5개 스레드)
+        max_workers = min(5, len(images) - start_idx)  # 최대 5개 스레드 또는 남은 페이지 수 중 작은 값
+        print(f"🚀 멀티스레딩 파싱 시작 (최대 {max_workers}개 스레드)")
         
-        # 각 페이지 파싱 (처음부터 시작)
-        start_idx = 0
-        total_parse_time = 0.0
+        # 결과를 저장할 딕셔너리 (인덱스 순서 보장)
+        parsed_results = {}
         
-        # 페이지 수가 충분히 많을 때만 멀티스레딩 사용 (오버헤드 고려)
-        use_parallel = (len(images) - start_idx) > 1
-        
-        if use_parallel:
-            # 멀티스레딩으로 병렬 파싱
-            completed_count = 0  # 완료된 페이지 수 추적
-            results_lock = Lock()  # 결과 리스트 업데이트 시 동기화용
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # 모든 페이지에 대해 Future 제출
+            future_to_idx = {
+                executor.submit(parse_single_page, idx): idx 
+                for idx in range(start_idx, len(images))
+            }
             
-            def parse_single_page(idx: int) -> tuple[int, Dict[str, Any], float, Optional[str]]:
-                """단일 페이지 파싱 함수 (스레드에서 실행) - 각 스레드마다 별도의 파서 인스턴스 생성"""
-                parse_start_time = time.time()
-                try:
-                    # 각 스레드마다 별도의 파서 인스턴스 생성 (thread-safe)
-                    thread_parser = GeminiVisionParser(api_key=gemini_api_key, model_name=gemini_model)
-                    page_json = thread_parser.parse_image(images[idx])  # 각 페이지 파싱
-                    parse_end_time = time.time()
-                    parse_duration = parse_end_time - parse_start_time
-                    return (idx, page_json, parse_duration, None)
-                except Exception as e:
-                    parse_end_time = time.time()
-                    parse_duration = parse_end_time - parse_start_time
-                    error_result = {"text": f"파싱 실패: {str(e)}", "error": True}
-                    return (idx, error_result, parse_duration, str(e))
-            
-            # ThreadPoolExecutor로 병렬 처리 (최대 5개 스레드)
-            max_workers = min(5, len(images) - start_idx)  # 최대 5개 스레드 또는 남은 페이지 수 중 작은 값
-            print(f"🚀 멀티스레딩 파싱 시작 (최대 {max_workers}개 스레드)")
-            
-            # 결과를 저장할 딕셔너리 (인덱스 순서 보장)
-            parsed_results = {}
-            
-            with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                # 모든 페이지에 대해 Future 제출
-                future_to_idx = {
-                    executor.submit(parse_single_page, idx): idx 
-                    for idx in range(start_idx, len(images))
-                }
+            # 완료된 작업부터 처리
+            for future in as_completed(future_to_idx):
+                idx, page_json, parse_duration, error = future.result()
+                total_parse_time += parse_duration
                 
-                # 완료된 작업부터 처리
-                for future in as_completed(future_to_idx):
-                    idx, page_json, parse_duration, error = future.result()
-                    total_parse_time += parse_duration
-                    
-                    # 결과를 딕셔너리에 저장 (인덱스 순서 보장)
-                    with results_lock:
-                        parsed_results[idx] = page_json
-                        completed_count += 1
-                    
-                    # 진행 상황 출력
-                    if error:
-                        print(f"페이지 {idx+1}/{len(images)} 파싱 실패 (소요 시간: {parse_duration:.2f}초) - {error}")
-                    else:
-                        print(f"페이지 {idx+1}/{len(images)} 파싱 완료 (소요 시간: {parse_duration:.2f}초) [{completed_count}/{len(images) - start_idx}]")
-            
-            # 최종 결과를 인덱스 순서대로 page_jsons에 반영
-            for idx in range(start_idx, len(images)):
-                if idx in parsed_results:
-                    if idx < len(page_jsons):
-                        page_jsons[idx] = parsed_results[idx]  # 업데이트
-                    else:
-                        # 인덱스 순서를 맞추기 위해 None으로 채운 후 추가
-                        while len(page_jsons) < idx:
-                            page_jsons.append(None)
-                        page_jsons.append(parsed_results[idx])  # 추가
-            
-        else:
-            # 단일 페이지인 경우 순차 처리
-            for idx in range(start_idx, len(images)):
-                parse_start_time = time.time()  # 파싱 시간 측정 시작
-                try:
-                    print(f"페이지 {idx+1}/{len(images)} Gemini Vision 파싱 중...", end="", flush=True)
-                    
-                    page_json = gemini_parser.parse_image(images[idx])  # 각 페이지 파싱
-                    parse_end_time = time.time()
-                    parse_duration = parse_end_time - parse_start_time
-                    total_parse_time += parse_duration
-                    
-                    # 페이지 결과를 리스트에 추가/업데이트
-                    if idx < len(page_jsons):
-                        page_jsons[idx] = page_json  # 업데이트
-                    else:
-                        page_jsons.append(page_json)  # 추가
-                    
-                    # 파싱 시간 출력
-                    print(f" 완료 (소요 시간: {parse_duration:.2f}초)")
-                    
-                except Exception as e:
-                    parse_end_time = time.time()
-                    parse_duration = parse_end_time - parse_start_time
-                    total_parse_time += parse_duration
-                    print(f" 실패 (소요 시간: {parse_duration:.2f}초) - {e}")
-                    # 실패한 페이지는 빈 결과로 추가
-                    if idx >= len(page_jsons):
-                        page_jsons.append({"text": f"파싱 실패: {str(e)}", "error": True})
-                    # 에러가 발생해도 계속 진행
-                    continue
+                # 결과를 딕셔너리에 저장 (인덱스 순서 보장)
+                with results_lock:
+                    parsed_results[idx] = page_json
+                    completed_count += 1
+                
+                # 진행 상황 출력
+                if error:
+                    print(f"페이지 {idx+1}/{len(images)} 파싱 실패 (소요 시간: {parse_duration:.2f}초) - {error}")
+                else:
+                    print(f"페이지 {idx+1}/{len(images)} 파싱 완료 (소요 시간: {parse_duration:.2f}초) [{completed_count}/{len(images) - start_idx}]")
         
-        # 전체 파싱 시간 요약 출력
-        if start_idx < len(images):
-            parsed_count = len(images) - start_idx
-            avg_time = total_parse_time / parsed_count if parsed_count > 0 else 0
-            print(f"\n📊 파싱 통계:")
-            print(f"  - 새로 파싱한 페이지: {parsed_count}개")
-            print(f"  - 총 소요 시간: {total_parse_time:.2f}초")
-            print(f"  - 평균 페이지당 시간: {avg_time:.2f}초")
+        # 최종 결과를 인덱스 순서대로 page_jsons에 반영
+        for idx in range(start_idx, len(images)):
+            if idx in parsed_results:
+                if idx < len(page_jsons):
+                    page_jsons[idx] = parsed_results[idx]  # 업데이트
+                else:
+                    # 인덱스 순서를 맞추기 위해 None으로 채운 후 추가
+                    while len(page_jsons) < idx:
+                        page_jsons.append(None)
+                    page_jsons.append(parsed_results[idx])  # 추가
+    
+    else:
+        # 단일 페이지인 경우 순차 처리
+        for idx in range(start_idx, len(images)):
+            parse_start_time = time.time()  # 파싱 시간 측정 시작
+            try:
+                print(f"페이지 {idx+1}/{len(images)} Gemini Vision 파싱 중...", end="", flush=True)
+                
+                page_json = gemini_parser.parse_image(images[idx])  # 각 페이지 파싱
+                parse_end_time = time.time()
+                parse_duration = parse_end_time - parse_start_time
+                total_parse_time += parse_duration
+                
+                # 페이지 결과를 리스트에 추가/업데이트
+                if idx < len(page_jsons):
+                    page_jsons[idx] = page_json  # 업데이트
+                else:
+                    page_jsons.append(page_json)  # 추가
+                
+                # 파싱 시간 출력
+                print(f" 완료 (소요 시간: {parse_duration:.2f}초)")
+                
+            except Exception as e:
+                parse_end_time = time.time()
+                parse_duration = parse_end_time - parse_start_time
+                total_parse_time += parse_duration
+                print(f" 실패 (소요 시간: {parse_duration:.2f}초) - {e}")
+                # 실패한 페이지는 빈 결과로 추가
+                if idx >= len(page_jsons):
+                    page_jsons.append({"text": f"파싱 실패: {str(e)}", "error": True})
+                # 에러가 발생해도 계속 진행
+                continue
+        
+    # 전체 파싱 시간 요약 출력
+    if start_idx < len(images):
+        parsed_count = len(images) - start_idx
+        avg_time = total_parse_time / parsed_count if parsed_count > 0 else 0
+        print(f"\n📊 파싱 통계:")
+        print(f"  - 새로 파싱한 페이지: {parsed_count}개")
+        print(f"  - 총 소요 시간: {total_parse_time:.2f}초")
+        print(f"  - 평균 페이지당 시간: {avg_time:.2f}초")
     
     # 로컬 저장 비활성화로 image_paths는 항상 None 리스트
     if not image_paths and page_jsons:
