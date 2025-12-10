@@ -119,8 +119,23 @@ def reparse_single_page(pdf_name: str, page_num: int, timeout: int = 120):
         with progress_placeholder.container():
             st.info("🤖 Gemini APIで解析中... (최대 2분 소요)", icon="⏳")
         
+        # 파싱 시간 측정 시작 (업로드 탭과 동일한 방식)
+        parse_start_time = time.time()
         parser = GeminiVisionParser()
         new_page_json = parser.parse_image(page_image, timeout=timeout)  # 타임아웃 전달
+        parse_end_time = time.time()
+        parse_duration = parse_end_time - parse_start_time
+        
+        # 디버깅용: Gemini API 호출 결과 콘솔 출력
+        import json
+        print(f"\n{'='*80}")
+        print(f"🔍 [디버깅] 페이지 {page_num} Gemini API 호출 결과")
+        print(f"{'='*80}")
+        print(json.dumps(new_page_json, ensure_ascii=False, indent=2))
+        print(f"{'='*80}\n")
+        
+        # 콘솔에 소요 시간 출력 (업로드 탭과 동일한 형식)
+        print(f"페이지 {page_num} 재파싱 완료 (소요 시간: {parse_duration:.2f}초)")
 
         with progress_placeholder.container():
             st.info("💾 結果を保存中...", icon="⏳")
@@ -133,9 +148,15 @@ def reparse_single_page(pdf_name: str, page_num: int, timeout: int = 120):
             return
 
         progress_placeholder.empty()
-        st.success(f"ページ {page_num} 再パース完了！", icon="✅")
+        st.success(f"ページ {page_num} 再パース完了！ (소요 시간: {parse_duration:.2f}초)", icon="✅")
         st.rerun()
     except Exception as e:
+        parse_end_time = time.time()
+        parse_duration = parse_end_time - parse_start_time if 'parse_start_time' in locals() else 0.0
+        
+        # 콘솔에 실패 시간 출력 (업로드 탭과 동일한 형식)
+        print(f"페이지 {page_num} 재파싱 실패 (소요 시간: {parse_duration:.2f}초) - {e}")
+        
         progress_placeholder.empty()
         error_msg = str(e)
         if "타임아웃" in error_msg or "timeout" in error_msg.lower():

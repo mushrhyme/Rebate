@@ -157,7 +157,7 @@ def render_navigation(pdf_name: str, current_page: int, total_pages: int):
 
 def render_page_image(pdf_name: str, page_num: int):
     """
-    페이지 이미지 렌더링
+    페이지 이미지 렌더링 (스크롤 가능)
     
     Args:
         pdf_name: PDF 파일명 (확장자 제외)
@@ -165,6 +165,7 @@ def render_page_image(pdf_name: str, page_num: int):
     """
     import streamlit as st
     from io import BytesIO
+    import base64
     
     page_image = load_page_image(pdf_name, page_num)
     
@@ -174,7 +175,19 @@ def render_page_image(pdf_name: str, page_num: int):
             img_buffer = BytesIO()
             page_image.save(img_buffer, format='PNG')
             img_buffer.seek(0)
-            st.image(img_buffer, width='stretch')
+            
+            # 이미지를 base64로 인코딩
+            img_base64 = base64.b64encode(img_buffer.getvalue()).decode()
+            
+            # 스크롤 가능한 컨테이너로 이미지 표시
+            st.markdown(
+                f"""
+                <div style="max-height: 600px; overflow-y: auto; overflow-x: auto; border: 1px solid #ddd; border-radius: 4px; padding: 10px;">
+                    <img src="data:image/png;base64,{img_base64}" style="width: 100%; height: auto; display: block;" />
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
         except Exception as e:
             # Streamlit 메모리 스토리지 에러 등 예외 발생 시 재시도
             try:
@@ -184,11 +197,23 @@ def render_page_image(pdf_name: str, page_num: int):
                     img_buffer = BytesIO()
                     page_image.save(img_buffer, format='PNG')
                     img_buffer.seek(0)
-                    st.image(img_buffer, width='stretch')
+                    
+                    # 이미지를 base64로 인코딩
+                    img_base64 = base64.b64encode(img_buffer.getvalue()).decode()
+                    
+                    # 스크롤 가능한 컨테이너로 이미지 표시
+                    st.markdown(
+                        f"""
+                        <div style="max-height: 600px; overflow-y: auto; overflow-x: auto; border: 1px solid #ddd; border-radius: 4px; padding: 10px;">
+                            <img src="data:image/png;base64,{img_base64}" style="width: 100%; height: auto; display: block;" />
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
                 else:
                     st.warning("画像の読み込みに失敗しました。")
-            except Exception:
-                st.warning(f"画像の表示に失敗しました: {str(e)[:50]}")
+            except Exception as ex:
+                st.warning(f"画像の表示に失敗しました: {str(ex)[:50]}")
     else:
         st.warning("画像が見つかりません。")
 
@@ -216,6 +241,16 @@ def render_editable_table(pdf_name: str, page_num: int):
     if not items:
         st.info("このページには項目がありません。")
         return
+    
+    # 디버깅용: aggrid 표시 전 Gemini API 호출 결과 콘솔 출력
+    import json
+    print(f"\n{'='*80}")
+    print(f"🔍 [디버깅] {pdf_name} 페이지 {page_num} - AgGrid 표시 전 데이터")
+    print(f"{'='*80}")
+    print(f"전체 page_data:")
+    print(json.dumps(page_data, ensure_ascii=False, indent=2))
+    print(f"\n추출된 items 개수: {len(items)}")
+    print(f"{'='*80}\n")
     
     # AgGrid로 표시
     if AgGridUtils.is_available():
