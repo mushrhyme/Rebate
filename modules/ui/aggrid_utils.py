@@ -112,7 +112,8 @@ class AgGridUtils:
         
         # 행 선택 기능 비활성화 (체크박스 제거)
         # 인덱스 번호 표시
-        gb.configure_pagination(paginationAutoPageSize=True)
+        # 페이지네이션 비활성화 (스크롤 방식 사용)
+        gb.configure_pagination(enabled=False)
         
         # 관리번호별 색상 지정 (있는 경우)
         if mgmt_col:
@@ -170,6 +171,37 @@ class AgGridUtils:
             # grid_options에 getRowStyle 추가
             grid_options = gb.build()
             grid_options['getRowStyle'] = get_row_style_code
+            # 페이지네이션 완전히 비활성화 (스크롤 방식)
+            grid_options['pagination'] = False
+            # 컬럼 자동 너비 조정 (내용에 맞게) - onGridReady 콜백 사용
+            if JsCode:
+                auto_size_js = JsCode("""
+                function(params) {
+                    params.api.sizeColumnsToFit();
+                    // 모든 컬럼의 내용에 맞게 너비 자동 조정
+                    var allColumnIds = [];
+                    params.columnApi.getColumns().forEach(function(column) {
+                        if (column.colId) {
+                            allColumnIds.push(column.colId);
+                        }
+                    });
+                    params.columnApi.autoSizeColumns(allColumnIds);
+                }
+                """)
+            else:
+                auto_size_js = """
+                function(params) {
+                    params.api.sizeColumnsToFit();
+                    var allColumnIds = [];
+                    params.columnApi.getColumns().forEach(function(column) {
+                        if (column.colId) {
+                            allColumnIds.push(column.colId);
+                        }
+                    });
+                    params.columnApi.autoSizeColumns(allColumnIds);
+                }
+                """
+            grid_options['onGridReady'] = auto_size_js
             # 행 선택 기능 완전히 제거
             if 'rowSelection' in grid_options:
                 del grid_options['rowSelection']
@@ -179,6 +211,37 @@ class AgGridUtils:
                 del grid_options['rowMultiSelectWithClick']
         else:
             grid_options = gb.build()
+            # 페이지네이션 완전히 비활성화 (스크롤 방식)
+            grid_options['pagination'] = False
+            # 컬럼 자동 너비 조정 (내용에 맞게) - onGridReady 콜백 사용
+            if JsCode:
+                auto_size_js = JsCode("""
+                function(params) {
+                    params.api.sizeColumnsToFit();
+                    // 모든 컬럼의 내용에 맞게 너비 자동 조정
+                    var allColumnIds = [];
+                    params.columnApi.getColumns().forEach(function(column) {
+                        if (column.colId) {
+                            allColumnIds.push(column.colId);
+                        }
+                    });
+                    params.columnApi.autoSizeColumns(allColumnIds);
+                }
+                """)
+            else:
+                auto_size_js = """
+                function(params) {
+                    params.api.sizeColumnsToFit();
+                    var allColumnIds = [];
+                    params.columnApi.getColumns().forEach(function(column) {
+                        if (column.colId) {
+                            allColumnIds.push(column.colId);
+                        }
+                    });
+                    params.columnApi.autoSizeColumns(allColumnIds);
+                }
+                """
+            grid_options['onGridReady'] = auto_size_js
             # 행 선택 기능 완전히 제거
             if 'rowSelection' in grid_options:
                 del grid_options['rowSelection']
