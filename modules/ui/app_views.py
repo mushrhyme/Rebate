@@ -7,8 +7,9 @@ Streamlit UI 탭 및 메인 엔트리 (app.py에서 분리됨)
 import os
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple, Dict, Any
 from io import BytesIO
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import streamlit as st
 import pandas as pd
@@ -282,52 +283,148 @@ def render_upload_tab():
                         st.warning(f"⚠️ {pdf_name}.pdf ファイルが見つかりません。スキップします。", icon="⚠️")
 
             if files_to_analyze:
-                file_names = [f[0]['name'] for f in files_to_analyze]
-                st.info(f"**分析対象**: {len(files_to_analyze)}個のファイル - {', '.join(file_names)}", icon="ℹ️")
+                # 파일 데이터 준비 (스레드 안전성을 위해 bytes 데이터도 포함)
+                prepared_files = []
+                for file_info, uploaded_file, pdf_path in files_to_analyze:
+                    pdf_name = file_info["name"]
+                    file_bytes_data = None
+                    if uploaded_file is not None:
+                        # BytesIO 객체의 데이터를 미리 추출 (스레드 안전성)
+                        file_bytes_data = st.session_state.uploaded_file_objects.get(pdf_name)
+                    prepared_files.append((file_info, uploaded_file, pdf_path, file_bytes_data))
+                
+                file_names = [f[0]['name'] for f in prepared_files]
+                total_files = len(prepared_files)
+                
+                # 병렬 처리 여부 결정 (2개 이상일 때만)
+                use_parallel = total_files > 1
+                max_workers = min(2, total_files) if use_parallel else 1
+                
+                if use_parallel:
+                    st.info(f"**分析対象**: {total_files}個のファイル - {', '.join(file_names)}", icon="ℹ️")
+                    st.info(f"🚀 **병렬 처리 모드**: 최대 {max_workers}개 파일 동시 처리", icon="⚡")
+                else:
+                    st.info(f"**分析対象**: {total_files}個のファイル - {', '.join(file_names)}", icon="ℹ️")
+                
                 progress_placeholder = st.empty()
-                total_files = len(files_to_analyze)
+                start_time = time.time()
+                
+                def process_single_file_thread(file_data: Tuple) -> Dict[str, Any]:
+                    """단일 파일 처리 함수 (스레드에서 실행) - UI 없이 처리"""
+                    file_info, uploaded_file, pdf_path, file_bytes_data = file_data
+                    pdf_name = file_info["name"]
+                    file_display_name = file_info.get("original_name", f"{pdf_name}.pdf")
+                    
+                    try:
+                        # UI 없이 직접 처리 (progress_callback=None)
+                        if uploaded_file is not None or file_bytes_data is not None:
+                            # 스레드 안전성을 위해 새로운 BytesIO 객체 생성
+                            if file_bytes_data:
+                                thread_uploaded_file = BytesIO(file_bytes_data)
+                                thread_uploaded_file.name = file_display_name
+                            else:
+                                thread_uploaded_file = uploaded_file
+                            
+                            success, pages, error, elapsed_time = PdfProcessor.process_uploaded_pdf(
+                                uploaded_file=thread_uploaded_file,
+                                pdf_name=pdf_name,
+                                dpi=300,
+                                progress_callback=None  # 스레드에서는 UI 업데이트 안 함
+                            )
+                        else:
+                            success, pages, error, elapsed_time = PdfProcessor.process_pdf(
+                                pdf_name=pdf_name,
+                                pdf_path=pdf_path,
+                                dpi=300,
+                                progress_callback=None  # 스레드에서는 UI 업데이트 안 함
+                            )
+                        
+                        return {
+                            "pdf_name": pdf_name,
+                            "file_display_name": file_display_name,
+                            "success": success,
+                            "pages": pages,
+                            "error": error,
+                            "elapsed_time": elapsed_time,
+                            "exception": None
+                        }
+                    except Exception as e:
+                        return {
+                            "pdf_name": pdf_name,
+                            "file_display_name": file_display_name,
+                            "success": False,
+                            "pages": 0,
+                            "error": str(e),
+                            "elapsed_time": 0.0,
+                            "exception": str(e)
+                        }
+                
+                # 병렬 처리 또는 순차 처리
+                results = []
+                if use_parallel:
+                    # ThreadPoolExecutor로 병렬 처리
+                    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                        # 모든 파일에 대해 Future 제출
+                        future_to_file = {
+                            executor.submit(process_single_file_thread, file_data): file_data
+                            for file_data in prepared_files
+                        }
+                        
+                        # 완료된 작업부터 처리
+                        completed_count = 0
+                        for future in as_completed(future_to_file):
+                            result = future.result()
+                            results.append(result)
+                            completed_count += 1
+                            
+                            # 진행 상황 표시 (완료된 파일 수만 표시)
+                            with progress_placeholder.container():
+                                st.info(f"처리 중... ({completed_count}/{total_files}개 파일 완료)", icon="🔄")
+                else:
+                    # 순차 처리 (1개 파일)
+                    for file_data in prepared_files:
+                        result = process_single_file_thread(file_data)
+                        results.append(result)
+                        with progress_placeholder.container():
+                            st.info(f"처리 중... (1/1)", icon="🔄")
+                
+                # 결과 수집 및 UI 업데이트 (메인 스레드에서)
+                progress_placeholder.empty()
                 total_pages = 0
                 success_count = 0
-                start_time = time.time()
-                for file_idx, (file_info, uploaded_file, pdf_path) in enumerate(files_to_analyze):
-                    pdf_name = file_info["name"]
-                    # process_single_pdf/reprocess_pdf_from_storage 내부에서 진행 상황을 표시하므로
-                    # 여기서는 중복으로 표시하지 않음
-                    try:
-                        if uploaded_file is not None:
-                            success, pages, error, elapsed_time = process_single_pdf(
-                                uploaded_file, pdf_name, progress_placeholder, file_idx, total_files
-                            )
-                        else:
-                            success, pages, error, elapsed_time = reprocess_pdf_from_storage(
-                                pdf_name, progress_placeholder, file_idx, total_files
-                            )
-                        if success:
-                            total_pages += pages
-                            success_count += 1
-                            st.session_state.analysis_status[pdf_name] = {
-                                "status": "completed",
-                                "pages": pages,
-                                "error": None
-                            }
-                            file_info_idx = next(
-                                (idx for idx, info in enumerate(st.session_state.uploaded_files_info) 
-                                 if info["name"] == pdf_name),
-                                None
-                            )
-                            if file_info_idx is not None:
-                                st.session_state.uploaded_files_info[file_info_idx]["is_in_db"] = True
-                                st.session_state.uploaded_files_info[file_info_idx]["db_page_count"] = pages
-                            st.success(f"✅ **{pdf_name}.pdf** 解析完了 ({pages}ページ)", icon="✅")
-                        else:
-                            file_display_name = uploaded_file.name if uploaded_file else f"{pdf_name}.pdf"
-                            st.error(f"❌ **{file_display_name}** 解析失敗: {error}", icon="❌")
-                    except Exception as e:
-                        file_display_name = uploaded_file.name if uploaded_file else f"{pdf_name}.pdf"
-                        st.error(f"❌ **{file_display_name}** 解析中にエラーが発生しました: {str(e)}", icon="❌")
+                
+                for result in results:
+                    pdf_name = result["pdf_name"]
+                    file_display_name = result["file_display_name"]
+                    
+                    if result["success"]:
+                        total_pages += result["pages"]
+                        success_count += 1
+                        
+                        # 세션 상태 업데이트
+                        st.session_state.analysis_status[pdf_name] = {
+                            "status": "completed",
+                            "pages": result["pages"],
+                            "error": None
+                        }
+                        
+                        # 파일 정보 업데이트
+                        file_info_idx = next(
+                            (idx for idx, info in enumerate(st.session_state.uploaded_files_info) 
+                             if info["name"] == pdf_name),
+                            None
+                        )
+                        if file_info_idx is not None:
+                            st.session_state.uploaded_files_info[file_info_idx]["is_in_db"] = True
+                            st.session_state.uploaded_files_info[file_info_idx]["db_page_count"] = result["pages"]
+                        
+                        st.success(f"✅ **{file_display_name}** 解析完了 ({result['pages']}ページ)", icon="✅")
+                    else:
+                        error_msg = result.get("error") or result.get("exception") or "알 수 없는 오류"
+                        st.error(f"❌ **{file_display_name}** 解析失敗: {error_msg}", icon="❌")
                         PdfProcessor.get_processing_status(pdf_name)
-                        continue
-                progress_placeholder.empty()
+                
+                # 최종 결과 표시
                 if success_count > 0:
                     actual_elapsed_time = time.time() - start_time
                     minutes = int(actual_elapsed_time // 60)
@@ -336,7 +433,11 @@ def render_upload_tab():
                         time_str = f"{minutes}分{seconds}秒"
                     else:
                         time_str = f"{seconds}秒"
-                    st.success(f"🎉 **{success_count}個のファイル解析完了！** (総 {total_pages}ページ、所要時間: {time_str})", icon="✅")
+                    
+                    if use_parallel:
+                        st.success(f"🎉 **{success_count}個のファイル解析完了！** (総 {total_pages}ページ、所要時間: {time_str}, 병렬 처리)", icon="✅")
+                    else:
+                        st.success(f"🎉 **{success_count}個のファイル解析完了！** (総 {total_pages}ページ、所要時間: {time_str})", icon="✅")
                     st.rerun()
             else:
                 st.warning("分析対象のファイルがありません。", icon="⚠️")
