@@ -1,0 +1,23 @@
+# Streamlit
+streamlit>=1.28.0
+
+# 데이터 처리
+pandas>=2.0.0
+openpyxl>=3.1.0  # Excel 파일 생성용
+
+# 이미지 처리
+Pillow>=10.0.0
+pdf2image>=1.16.0
+
+# Gemini API
+google-generativeai>=0.3.0
+
+# 환경 변수 관리
+python-dotenv>=1.0.0
+
+# AG Grid (선택적 - 없으면 기본 data_editor 사용)
+streamlit-aggrid>=0.3.4
+
+# 데이터베이스 (PostgreSQL - 선택적)
+psycopg2-binary>=2.9.0
+
