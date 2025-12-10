@@ -242,16 +242,6 @@ def render_editable_table(pdf_name: str, page_num: int):
         st.info("このページには項目がありません。")
         return
     
-    # 디버깅용: aggrid 표시 전 Gemini API 호출 결과 콘솔 출력
-    import json
-    print(f"\n{'='*80}")
-    print(f"🔍 [디버깅] {pdf_name} 페이지 {page_num} - AgGrid 표시 전 데이터")
-    print(f"{'='*80}")
-    print(f"전체 page_data:")
-    print(json.dumps(page_data, ensure_ascii=False, indent=2))
-    print(f"\n추출된 items 개수: {len(items)}")
-    print(f"{'='*80}\n")
-    
     # AgGrid로 표시
     if AgGridUtils.is_available():
         AgGridUtils.render_items(items, pdf_name, page_num)
