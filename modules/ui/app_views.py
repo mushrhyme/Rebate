@@ -5,6 +5,7 @@ Streamlit UI 탭 및 메인 엔트리 (app.py에서 분리됨)
 """
 
 import os
+import time
 from pathlib import Path
 from typing import Optional
 from io import BytesIO
@@ -84,22 +85,32 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # 세션 상태 초기화
-if 'uploaded_files_info' not in st.session_state:
-    st.session_state.uploaded_files_info = []
-if 'uploaded_file_objects' not in st.session_state:
-    st.session_state.uploaded_file_objects = {}
-if 'analysis_status' not in st.session_state:
-    st.session_state.analysis_status = {}
-if 'selected_pdf' not in st.session_state:
-    st.session_state.selected_pdf = None
-if 'selected_page' not in st.session_state:
-    st.session_state.selected_page = 1
-if 'review_data' not in st.session_state:
-    st.session_state.review_data = {}
+def _ensure_session_state_defaults() -> None:
+    """Streamlit 세션 상태의 기본 키들을 안전하게 초기화합니다."""
+    defaults = {
+        "uploaded_files_info": [],
+        "uploaded_file_objects": {},
+        "analysis_status": {},
+        "selected_pdf": None,
+        "selected_page": 1,
+        "review_data": {}
+    }
+    for key, default_value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = default_value
+
+
+# 모듈 import 시에도 기본값을 시도 설정 (Streamlit 세션이 아직 준비되지 않더라도 안전하게 동작)
+try:
+    _ensure_session_state_defaults()
+except Exception:
+    # Streamlit 런타임에서만 동작하므로 예외는 무시하고 런타임 시점에 다시 초기화할 예정
+    pass
 
 
 def render_upload_tab():
     """업로드 & 분석 탭"""
+    _ensure_session_state_defaults()
     st.info(
         "**📌 使い方ガイド**:\n\n"
         "• 複数のファイルをアップロードした後、🔍 **解析実行**をクリックすると同時に分析できます\n\n"
@@ -345,6 +356,7 @@ def render_upload_tab():
 
 def render_review_tab():
     """검토 탭 - 단순화된 클린 버전"""
+    _ensure_session_state_defaults()
     uploaded_pdfs = [info["name"] for info in st.session_state.uploaded_files_info]
     if not uploaded_pdfs:
         st.warning("アップロードされたPDFファイルがありません。", icon="⚠️")
@@ -385,6 +397,7 @@ def render_review_tab():
 
 def render_download_tab():
     """다운로드 탭"""
+    _ensure_session_state_defaults()
     uploaded_pdfs = [info["name"] for info in st.session_state.uploaded_files_info]
     if not uploaded_pdfs:
         st.warning("アップロードされたPDFファイルがありません。", icon="⚠️")
@@ -483,6 +496,7 @@ def render_download_tab():
 
 def main():
     """메인 함수"""
+    _ensure_session_state_defaults()
     st.title("Nongshim 条件請求書分析システム")
     tab1, tab2, tab3 = st.tabs(["📤 アップロード & 解析", "📝 レビュー", "📥 ダウンロード"])
     with tab1:

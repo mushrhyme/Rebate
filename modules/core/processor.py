@@ -81,20 +81,14 @@ class PdfProcessor:
             
             # 5. DB에 저장
             try:
-                from database.db_manager import DatabaseManager
-                
-                # DB 연결 정보 (환경 변수에서 가져오거나 기본값 사용)
-                db_manager = DatabaseManager(
-                    host=os.getenv('DB_HOST', 'localhost'),
-                    port=int(os.getenv('DB_PORT', '5432')),
-                    database=os.getenv('DB_NAME', 'rebate_db'),
-                    user=os.getenv('DB_USER', 'postgres'),
-                    password=os.getenv('DB_PASSWORD', '')
-                )
-                
+                from database.registry import get_db
+
+                # 전역 DB 인스턴스 사용
+                db_manager = get_db()
+
                 # PDF 파일명 (확장자 포함)
                 pdf_filename = f"{pdf_name}.pdf"
-                
+
                 # DB에 저장 (이미지 경로도 함께 전달)
                 session_id = db_manager.save_from_page_results(
                     page_results=page_results,
@@ -103,9 +97,6 @@ class PdfProcessor:
                     notes=None,
                     image_paths=image_paths  # 이미지 경로 전달
                 )
-                
-                # DB 연결 종료
-                db_manager.close()
             except Exception as db_error:
                 # DB 저장 실패 시 에러 반환
                 raise RuntimeError(f"DB 저장 실패: {db_error}")

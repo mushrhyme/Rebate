@@ -37,22 +37,16 @@ def load_page_image(pdf_name: str, page_num: int) -> Optional[Image.Image]:
     """
     # 1. DB에서 로드 시도
     try:
-        from database.db_manager import DatabaseManager
+        from database.registry import get_db
         import os
         from io import BytesIO
-        
-        # DB 연결 정보 (환경 변수에서 가져오거나 기본값 사용)
-        db_manager = DatabaseManager(
-            host=os.getenv('DB_HOST', 'localhost'),
-            port=int(os.getenv('DB_PORT', '5432')),
-            database=os.getenv('DB_NAME', 'rebate_db'),
-            user=os.getenv('DB_USER', 'postgres'),
-            password=os.getenv('DB_PASSWORD', '')
-        )
-        
+
+        # 전역 DB 인스턴스 사용
+        db_manager = get_db()
+
         # PDF 파일명 (확장자 포함)
         pdf_filename = f"{pdf_name}.pdf"
-        
+
         # DB에서 이미지 로드
         image_data = db_manager.get_page_image(
             pdf_filename=pdf_filename,
@@ -60,10 +54,7 @@ def load_page_image(pdf_name: str, page_num: int) -> Optional[Image.Image]:
             session_id=None,
             is_latest=True
         )
-        
-        # DB 연결 종료
-        db_manager.close()
-        
+
         if image_data:
             # bytes를 PIL Image로 변환
             img = Image.open(BytesIO(image_data))
@@ -204,17 +195,11 @@ def render_editable_table(pdf_name: str, page_num: int):
             
             # DB에 저장 (JSON 파일 저장은 제거)
             try:
-                from database.db_manager import DatabaseManager
+                from database.registry import get_db
                 import os
-                
-                db_manager = DatabaseManager(
-                    host=os.getenv('DB_HOST', 'localhost'),
-                    port=int(os.getenv('DB_PORT', '5432')),
-                    database=os.getenv('DB_NAME', 'rebate_db'),
-                    user=os.getenv('DB_USER', 'postgres'),
-                    password=os.getenv('DB_PASSWORD', '')
-                )
-                
+
+                db_manager = get_db()
+
                 pdf_filename = f"{pdf_name}.pdf"
                 success = db_manager.update_page_items(
                     pdf_filename=pdf_filename,
@@ -223,9 +208,7 @@ def render_editable_table(pdf_name: str, page_num: int):
                     session_id=None,
                     is_latest=True
                 )
-                
-                db_manager.close()
-                
+
                 if success:
                     st.success("保存完了！")
                 else:

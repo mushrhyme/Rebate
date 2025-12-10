@@ -222,17 +222,11 @@ class AgGridUtils:
                 
                 if save_clicked:
                     try:
-                        from database.db_manager import DatabaseManager
+                        from database.registry import get_db
                         import os
-                        
-                        db_manager = DatabaseManager(
-                            host=os.getenv('DB_HOST', 'localhost'),
-                            port=int(os.getenv('DB_PORT', '5432')),
-                            database=os.getenv('DB_NAME', 'rebate_db'),
-                            user=os.getenv('DB_USER', 'postgres'),
-                            password=os.getenv('DB_PASSWORD', '')
-                        )
-                        
+
+                        db_manager = get_db()
+
                         pdf_filename = f"{pdf_name}.pdf"
                         success = db_manager.update_page_items(
                             pdf_filename=pdf_filename,
@@ -241,9 +235,7 @@ class AgGridUtils:
                             session_id=None,
                             is_latest=True
                         )
-                        
-                        db_manager.close()
-                        
+
                         if success:
                             st.success("保存完了！")
                             st.rerun()

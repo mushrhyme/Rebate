@@ -120,14 +120,8 @@ def reparse_single_page(pdf_name: str, page_num: int):
 def check_pdf_in_db(pdf_filename: str) -> Tuple[bool, int]:
     """DB에서 PDF 존재 여부 및 페이지 수 확인"""
     try:
-        from database.db_manager import DatabaseManager
-        db_manager = DatabaseManager(
-            host=os.getenv('DB_HOST', 'localhost'),
-            port=int(os.getenv('DB_PORT', '5432')),
-            database=os.getenv('DB_NAME', 'rebate_db'),
-            user=os.getenv('DB_USER', 'postgres'),
-            password=os.getenv('DB_PASSWORD', '')
-        )
+        from database.registry import get_db
+        db_manager = get_db()
 
         is_in_db = db_manager.has_pdf_in_db(pdf_filename, is_latest_only=True)
         page_count = 0
@@ -140,7 +134,6 @@ def check_pdf_in_db(pdf_filename: str) -> Tuple[bool, int]:
             )
             page_count = len(page_results) if page_results else 0
 
-        db_manager.close()
         return is_in_db, page_count
     except Exception:
         return False, 0

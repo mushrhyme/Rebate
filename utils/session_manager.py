@@ -190,22 +190,16 @@ class SessionManager:
         Returns:
             페이지 OCR 결과 JSON 또는 None
         """
-        # 1. DB에서 로드 시도
+        # 1. DB에서 로드 시도 (애플리케이션 전역 인스턴스 사용)
         try:
-            from database.db_manager import DatabaseManager
-            
-            # DB 연결 정보 (환경 변수에서 가져오거나 기본값 사용)
-            db_manager = DatabaseManager(
-                host=os.getenv('DB_HOST', 'localhost'),
-                port=int(os.getenv('DB_PORT', '5432')),
-                database=os.getenv('DB_NAME', 'rebate_db'),
-                user=os.getenv('DB_USER', 'postgres'),
-                password=os.getenv('DB_PASSWORD', '')
-            )
-            
+            from database.registry import get_db
+
+            # 전역 DB 인스턴스 사용
+            db_manager = get_db()
+
             # PDF 파일명 (확장자 포함)
             pdf_filename = f"{pdf_name}.pdf"
-            
+
             # DB에서 페이지 데이터 로드
             page_data = db_manager.get_page_result(
                 pdf_filename=pdf_filename,
@@ -213,10 +207,7 @@ class SessionManager:
                 session_id=None,
                 is_latest=True
             )
-            
-            # DB 연결 종료
-            db_manager.close()
-            
+
             if page_data:
                 return page_data
         except Exception as db_error:
@@ -291,46 +282,36 @@ class SessionManager:
             pass  # Streamlit이 없는 환경에서는 무시
         
         try:
-            from database.db_manager import DatabaseManager
-            
-            # DB 연결 정보 (환경 변수에서 가져오거나 기본값 사용)
-            db_manager = DatabaseManager(
-                host=os.getenv('DB_HOST', 'localhost'),
-                port=int(os.getenv('DB_PORT', '5432')),
-                database=os.getenv('DB_NAME', 'rebate_db'),
-                user=os.getenv('DB_USER', 'postgres'),
-                password=os.getenv('DB_PASSWORD', '')
-            )
-            
+            from database.registry import get_db
+
+            db_manager = get_db()
+
             # DB에서 모든 고유한 PDF 파일명 가져오기 (최신 세션만)
             pdf_filenames = db_manager.get_all_pdf_filenames(is_latest_only=True)
-            
+
             # 확장자 제거하여 PDF 이름만 추출
             valid_pdfs = []
             for pdf_filename in pdf_filenames:
                 # 확장자 제거
                 pdf_name = pdf_filename.replace('.pdf', '')
-                
+
                 # 페이지 데이터가 실제로 있는지 확인
                 page_results = db_manager.get_page_results(
                     pdf_filename=pdf_filename,
                     session_id=None,
                     is_latest=True
                 )
-                
+
                 page_count = len(page_results) if page_results else 0
-                
+
                 if page_count > 0:
                     valid_pdfs.append(pdf_name)
                     print(f"✅ PDF '{pdf_name}' 목록에 추가 (DB에 {page_count}페이지 존재)")
                 else:
                     print(f"⚠️ PDF '{pdf_name}'는 DB에 페이지 데이터가 없습니다. (목록에서 제외)")
-            
-            # DB 연결 종료
-            db_manager.close()
-            
+
             return sorted(valid_pdfs)
-            
+
         except Exception as db_error:
             # DB 조회 실패 시 빈 리스트 반환
             print(f"⚠️ DB 조회 실패: {db_error}")
@@ -348,47 +329,30 @@ class SessionManager:
             페이지 수
         """
         try:
-            from database.db_manager import DatabaseManager
-            
-            # DB 연결 정보 (환경 변수에서 가져오거나 기본값 사용)
-            db_manager = DatabaseManager(
-                host=os.getenv('DB_HOST', 'localhost'),
-                port=int(os.getenv('DB_PORT', '5432')),
-                database=os.getenv('DB_NAME', 'rebate_db'),
-                user=os.getenv('DB_USER', 'postgres'),
-                password=os.getenv('DB_PASSWORD', '')
-            )
-            
+            from database.registry import get_db
+
+            db_manager = get_db()
+
             # PDF 파일명 (확장자 포함)
             pdf_filename = f"{pdf_name}.pdf"
-            
+
             # DB에서 페이지 결과 조회
             page_results = db_manager.get_page_results(
                 pdf_filename=pdf_filename,
                 session_id=None,
                 is_latest=True
             )
-            
-            # DB 연결 종료
-            db_manager.close()
-            
+
             # 페이지 수 반환
             page_count = len(page_results) if page_results else 0
-            
+
             # 디버깅: 페이지 수가 0인 경우 상세 정보 출력
             if page_count == 0:
                 print(f"⚠️ DB 조회 결과: '{pdf_filename}'의 페이지 수가 0입니다.")
                 # 세션이 있는지 확인
                 try:
-                    db_manager2 = DatabaseManager(
-                        host=os.getenv('DB_HOST', 'localhost'),
-                        port=int(os.getenv('DB_PORT', '5432')),
-                        database=os.getenv('DB_NAME', 'rebate_db'),
-                        user=os.getenv('DB_USER', 'postgres'),
-                        password=os.getenv('DB_PASSWORD', '')
-                    )
+                    db_manager2 = get_db()
                     sessions = db_manager2.get_sessions(pdf_filename=pdf_filename)
-                    db_manager2.close()
                     if sessions:
                         print(f"   발견된 세션 수: {len(sessions)}")
                         for sess in sessions:
@@ -397,9 +361,9 @@ class SessionManager:
                         print(f"   ⚠️ '{pdf_filename}'에 대한 세션이 DB에 없습니다.")
                 except Exception as e:
                     print(f"   세션 확인 실패: {e}")
-            
+
             return page_count
-            
+
         except Exception as db_error:
             # DB 조회 실패 시 파일 시스템으로 폴백
             print(f"DB 페이지 수 조회 실패 (파일 시스템으로 폴백): {db_error}")
@@ -473,20 +437,13 @@ class SessionManager:
             페이지 번호 리스트 (1부터 시작)
         """
         try:
-            from database.db_manager import DatabaseManager
-            
-            # DB 연결 정보 (환경 변수에서 가져오거나 기본값 사용)
-            db_manager = DatabaseManager(
-                host=os.getenv('DB_HOST', 'localhost'),
-                port=int(os.getenv('DB_PORT', '5432')),
-                database=os.getenv('DB_NAME', 'rebate_db'),
-                user=os.getenv('DB_USER', 'postgres'),
-                password=os.getenv('DB_PASSWORD', '')
-            )
-            
+            from database.registry import get_db
+
+            db_manager = get_db()
+
             # PDF 파일명 (확장자 포함)
             pdf_filename = f"{pdf_name}.pdf"
-            
+
             # DB에서 페이지 번호 직접 조회
             with db_manager.get_connection() as conn:
                 cursor = conn.cursor()
@@ -498,12 +455,9 @@ class SessionManager:
                     ORDER BY i.page_number
                 """, (pdf_filename,))
                 page_numbers = [row[0] for row in cursor.fetchall()]
-            
-            # DB 연결 종료
-            db_manager.close()
-            
+
             return page_numbers
-            
+
         except Exception as db_error:
             # DB 조회 실패 시 파일 시스템으로 폴백
             print(f"DB 페이지 목록 조회 실패 (파일 시스템으로 폴백): {db_error}")
