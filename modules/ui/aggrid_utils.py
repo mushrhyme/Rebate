@@ -43,6 +43,9 @@ class AgGridUtils:
         # DataFrame으로 변환
         df = pd.DataFrame(items)
         
+        # 인덱스 번호 컬럼 추가 (1부터 시작)
+        df.insert(0, 'No', range(1, len(df) + 1))
+        
         # 관리번호 컬럼명 확인 (management_id 또는 管理番号)
         mgmt_col = None
         if 'management_id' in df.columns:
@@ -52,6 +55,7 @@ class AgGridUtils:
         
         # 컬럼 순서 정의 (원하는 순서대로)
         desired_order = [
+            'No',  # 번호 (가장 앞에)
             'management_id', '管理番号',  # 관리번호 (둘 중 하나)
             'customer', '取引先',  # 고객
             'product_name', '商品名',  # 상품명
@@ -82,6 +86,7 @@ class AgGridUtils:
         
         # 컬럼명 일본어 매핑 (영어 → 일본어)
         column_name_mapping = {
+            'No': 'No',  # 번호는 그대로
             'management_id': '管理番号',
             'customer': '取引先',
             'product_name': '商品名',
@@ -108,7 +113,11 @@ class AgGridUtils:
         # 각 컬럼의 헤더명을 일본어로 설정
         for col in df.columns:
             japanese_name = column_name_mapping.get(col, col)  # 매핑이 없으면 원래 이름 사용
-            gb.configure_column(col, header_name=japanese_name)
+            if col == 'No':
+                # 번호 컬럼은 편집 불가, 너비 고정
+                gb.configure_column(col, header_name=japanese_name, editable=False, width=60, pinned='left')
+            else:
+                gb.configure_column(col, header_name=japanese_name)
         
         # 행 선택 기능 비활성화 (체크박스 제거)
         # 인덱스 번호 표시
@@ -266,7 +275,13 @@ class AgGridUtils:
         
         # 수정된 데이터 저장
         if grid_response['data'] is not None:
-            updated_items = grid_response['data'].to_dict('records')
+            updated_df = grid_response['data']
+            
+            # 'No' 컬럼 제거 (표시용이므로 저장 시 제거)
+            if 'No' in updated_df.columns:
+                updated_df = updated_df.drop(columns=['No'])
+            
+            updated_items = updated_df.to_dict('records')
             
             # 페이지 데이터 업데이트
             page_data = SessionManager.load_ocr_result(pdf_name, page_num)
