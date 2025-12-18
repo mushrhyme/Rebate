@@ -21,18 +21,18 @@ from openai import OpenAI
 from modules.utils.config import load_env
 load_env()  # 명시적으로 .env 로드
 
-# 공통 PDFProcessor 모듈 import
-from src.pdf_processor import PDFProcessor
+# 공통 PdfImageConverter 모듈 import
+from src.pdf_processor import PdfImageConverter
 
 
 class OpenAITextParser:
     """OpenAI Chat API를 사용하여 텍스트를 구조화된 JSON으로 파싱"""
     
-    def __init__(self, api_key: Optional[str] = None, model_name: str = "gpt-4o-mini", prompt_version: str = "v2"):
+    def __init__(self, api_key: Optional[str] = None, model_name: str = "gpt-4o-2024-08-06", prompt_version: str = "v2"):
         """
         Args:
             api_key: OpenAI API 키 (None이면 환경변수에서 가져옴)
-            model_name: 사용할 OpenAI 모델 이름 (기본값: "gpt-4o-mini")
+            model_name: 사용할 OpenAI 모델 이름 (기본값: "gpt-4o-2024-08-06")
             prompt_version: 프롬프트 버전 (기본값: "v2", prompts/prompt_v2.txt 파일 사용)
         """
         if api_key is None:

@@ -167,27 +167,3 @@ class UpstageExtractor:
             f.write(text.encode("utf-8"))
         
         return output_path
-
-
-def extract_text_with_upstage(filename: str, api_key: Optional[str] = None) -> str:
-    """
-    Upstage API를 사용하여 이미지에서 텍스트 추출 (편의 함수)
-    
-    Args:
-        filename: 이미지 파일 경로
-        api_key: Upstage API 키 (None이면 환경변수에서 가져옴)
-    
-    Returns:
-        추출된 텍스트 문자열
-    """
-    extractor = UpstageExtractor(api_key=api_key)
-    return extractor.extract_text(filename)
-
-
-if __name__ == "__main__":
-    # 테스트 예제
-    filename = "img/日本アクセスＣＶＳ/page_3.jpg"  # JPEG 형식
-    
-    extractor = UpstageExtractor()
-    output_path = extractor.extract_and_save(filename)
-    print(f"텍스트 추출 완료: {output_path}")

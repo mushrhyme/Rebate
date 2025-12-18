@@ -78,8 +78,8 @@ def extract_pages_with_rag(
     if progress_callback:
         progress_callback(0, 0, "🔄 PDF를 이미지로 변환 중...")
     
-    from src.pdf_processor import PDFProcessor
-    pdf_processor = PDFProcessor(dpi=dpi)
+    from src.pdf_processor import PdfImageConverter
+    pdf_processor = PdfImageConverter(dpi=dpi)
     images = pdf_processor.convert_pdf_to_images(pdf_path)
     pil_images = images
     print(f"PDF 변환 완료: {len(images)}개 페이지")

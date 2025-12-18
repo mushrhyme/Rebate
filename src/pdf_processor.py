@@ -15,7 +15,7 @@ from modules.utils.config import load_env
 load_env()  # PIL 설정이 config.py에서 이미 적용됨
 
 
-class PDFProcessor:
+class PdfImageConverter:
     """PDF를 이미지로 변환하는 클래스"""
     
     def __init__(self, dpi: int = 300):

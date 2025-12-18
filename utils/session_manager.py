@@ -22,7 +22,7 @@ from modules.core.storage import PageStorage
 class SessionManager:
     """세션별 파일 관리 클래스"""
     
-    BASE_TMP_DIR = "/tmp"  # 임시 파일 저장 기본 디렉토리 (레거시, 사용 안 함)
+    BASE_TMP_DIR = "/tmp"  
     
     @staticmethod
     def get_project_root() -> str:

@@ -21,8 +21,8 @@ from PIL import Image
 from modules.utils.config import load_env
 load_env()  # 명시적으로 .env 로드
 
-# 공통 PDFProcessor 모듈 import
-from src.pdf_processor import PDFProcessor
+# 공통 PdfImageConverter 모듈 import
+from src.pdf_processor import PdfImageConverter
 
 
 class GeminiVisionParser:
@@ -184,24 +184,6 @@ class GeminiVisionParser:
             return {"text": result_text}
 
 
-def get_image_output_dir(pdf_path: str) -> str:
-    """
-    이미지 저장 디렉토리 경로 생성 (새 구조: img/{pdf_name}/)
-    
-    Args:
-        pdf_path: PDF 파일 경로 (또는 파일명만)
-        
-    Returns:
-        이미지 저장 디렉토리 경로 (img/{pdf_name}/)
-    """
-    from modules.utils.config import get_project_root
-    pdf_name = Path(pdf_path).stem  # 확장자 제거
-    # 프로젝트 루트 기준으로 img/{pdf_name}/ 디렉토리 경로 생성
-    project_root = get_project_root()
-    img_dir = project_root / "img" / pdf_name
-    return str(img_dir)
-
-
 def extract_pages_with_gemini(
     pdf_path: str,
     gemini_api_key: Optional[str] = None,
@@ -264,7 +246,7 @@ def extract_pages_with_gemini(
     
     # 2. DB에 데이터가 없으면 Gemini API 호출
     # PDF를 이미지로 변환
-    pdf_processor = PDFProcessor(dpi=dpi)  # PDF 처리기 생성
+    pdf_processor = PdfImageConverter(dpi=dpi)  # PDF 처리기 생성
     images = pdf_processor.convert_pdf_to_images(pdf_path)  # PDF → 이미지 변환
     pil_images = images  # PIL Image 객체 리스트 저장 (DB 저장용)
     print(f"PDF 변환 완료: {len(images)}개 페이지")
@@ -622,62 +604,4 @@ JSON 외 추가 설명은 출력하지 않습니다."""
         print(f"소요 시간: {total_duration:.1f}초 (Step 1: {step1_duration:.1f}초, Step 2: {step2_duration:.1f}초)", end="", flush=True)
         
         return json_result
-
-
-def extract_raw_text(image_path: str, api_key: Optional[str] = None, vision_model: str = "gemini-3-pro-preview") -> str:
-    """
-    Step 1만 실행: 이미지에서 raw text 추출
-    
-    Args:
-        image_path: 이미지 파일 경로
-        api_key: Gemini API 키 (None이면 환경변수에서 가져옴)
-        vision_model: Vision 모델 이름
-        
-    Returns:
-        raw_text: 추출된 raw text 문자열
-    """
-    parser = GeminiTwoStageParser(api_key=api_key, vision_model=vision_model)
-    image = Image.open(image_path)
-    return parser.extract_raw_text(image)
-
-
-def build_json_from_raw_text(raw_text: str, api_key: Optional[str] = None, text_model: str = "gemini-3-pro-preview") -> Dict[str, Any]:
-    """
-    Step 2만 실행: raw text를 JSON으로 구조화
-    
-    Args:
-        raw_text: Step 1에서 추출된 raw text 문자열
-        api_key: Gemini API 키 (None이면 환경변수에서 가져옴)
-        text_model: Text 모델 이름
-        
-    Returns:
-        json_result: 구조화된 JSON 딕셔너리
-    """
-    parser = GeminiTwoStageParser(api_key=api_key, text_model=text_model)
-    return parser.build_json_from_raw_text(raw_text)
-
-
-def parse_image_two_stage(
-    image_path: str,
-    api_key: Optional[str] = None,
-    vision_model: str = "gemini-3-pro-preview",
-    text_model: str = "gemini-3-pro-preview",
-    max_size: int = 1000
-) -> Dict[str, Any]:
-    """
-    2단계 파이프라인으로 이미지를 JSON으로 파싱 (편의 함수)
-    
-    Args:
-        image_path: 이미지 파일 경로
-        api_key: Gemini API 키 (None이면 환경변수에서 가져옴)
-        vision_model: Step 1에 사용할 Vision 모델 이름
-        text_model: Step 2에 사용할 Text 모델 이름
-        max_size: 최대 이미지 크기 (픽셀)
-        
-    Returns:
-        json_result: 구조화된 JSON 딕셔너리
-    """
-    parser = GeminiTwoStageParser(api_key=api_key, vision_model=vision_model, text_model=text_model)
-    image = Image.open(image_path)
-    return parser.parse_image_two_stage(image, max_size=max_size)
 
