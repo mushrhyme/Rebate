@@ -133,7 +133,7 @@ Rebate/
   - `page_images`: 페이지 이미지
 
 ### 이미지 처리
-- **pdf2image**: PDF → 이미지 변환
+- **PyMuPDF (fitz)**: PDF → 이미지 변환
 - **Pillow (PIL)**: 이미지 처리
 
 ### 데이터 처리

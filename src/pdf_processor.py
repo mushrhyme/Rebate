@@ -2,21 +2,23 @@
 PDF를 이미지로 변환하는 공통 모듈
 
 PDF 파일을 이미지로 변환하고 저장하는 기능을 제공합니다.
+PyMuPDF (fitz)를 사용하여 PDF를 이미지로 변환합니다.
 여러 extractor 모듈에서 공통으로 사용됩니다.
 """
 
 import os
 from typing import List
-from pdf2image import convert_from_path
+import fitz  # PyMuPDF
 from PIL import Image
+from io import BytesIO
 
-# 공통 설정 로드 (PIL 설정이 이미 적용됨)
+# 공통 설정 로드
 from modules.utils.config import load_env
-load_env()  # PIL 설정이 config.py에서 이미 적용됨
+load_env()
 
 
 class PdfImageConverter:
-    """PDF를 이미지로 변환하는 클래스"""
+    """PDF를 이미지로 변환하는 클래스 (PyMuPDF 사용)"""
     
     def __init__(self, dpi: int = 300):
         """
@@ -24,10 +26,13 @@ class PdfImageConverter:
             dpi: PDF 변환 시 해상도 (기본값: 300)
         """
         self.dpi = dpi
+        # PyMuPDF의 zoom factor 계산 (DPI를 기반으로)
+        # 72 DPI가 기본값이므로, 300 DPI는 300/72 = 약 4.17배
+        self.zoom = dpi / 72.0
     
     def convert_pdf_to_images(self, pdf_path: str) -> List[Image.Image]:
         """
-        PDF 파일을 이미지 리스트로 변환
+        PDF 파일을 이미지 리스트로 변환 (PyMuPDF 사용)
         
         Args:
             pdf_path: PDF 파일 경로
@@ -36,7 +41,33 @@ class PdfImageConverter:
             PIL Image 객체 리스트 (각 페이지당 하나)
             예: [<PIL.Image.Image object>, <PIL.Image.Image object>, ...]
         """
-        images = convert_from_path(pdf_path, dpi=self.dpi)  # PDF를 이미지로 변환
+        images = []
+        
+        # PyMuPDF로 PDF 열기
+        doc = fitz.open(pdf_path)
+        
+        try:
+            # 각 페이지를 이미지로 변환
+            for page_num in range(len(doc)):
+                page = doc[page_num]
+                
+                # 픽셀맵 생성 (zoom factor 적용)
+                mat = fitz.Matrix(self.zoom, self.zoom)
+                pix = page.get_pixmap(matrix=mat)
+                
+                # PIL Image로 변환
+                img_data = pix.tobytes("png")  # PNG 형식으로 변환
+                img = Image.open(BytesIO(img_data))
+                
+                # RGB 모드로 변환 (일관성 유지)
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                images.append(img)
+            
+        finally:
+            doc.close()
+        
         return images
     
     def save_images(self, images: List[Image.Image], output_dir: str, prefix: str = "page") -> List[str]:

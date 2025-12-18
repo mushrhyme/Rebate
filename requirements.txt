@@ -7,7 +7,9 @@ openpyxl>=3.1.0  # Excel 파일 생성용
 
 # 이미지 처리
 Pillow>=10.0.0
-pdf2image>=1.16.0
+
+# PDF 처리
+PyMuPDF>=1.23.0
 
 # Gemini API
 google-generativeai>=0.3.0
