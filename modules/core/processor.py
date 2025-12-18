@@ -76,8 +76,15 @@ class PdfProcessor:
                 progress_callback=progress_callback
             )
             
-            if not page_results:
+            # page_results가 None이거나 빈 리스트인지 확인
+            if page_results is None or len(page_results) == 0:
                 raise ValueError("파싱 결과가 없습니다")
+            
+            # 디버깅: 결과 확인
+            print(f"\n📋 processor.py에서 받은 결과: {len(page_results)}개 페이지")
+            for idx, result in enumerate(page_results[:3]):  # 처음 3개만 출력
+                items_count = len(result.get("items", [])) if isinstance(result, dict) else 0
+                print(f"  - 페이지 {idx+1}: {items_count}개 items")
             
             # 4. PIL Image 객체를 bytes로 변환하여 DB에 저장
             try:

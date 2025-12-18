@@ -302,127 +302,36 @@ def extract_pages_with_rag(
                 "page_role": "detail",
                 "error": "OCR 실패"
             }
-        """
-        단일 페이지 처리 함수 (스레드에서 실행)
-        
-        Args:
-            idx: 페이지 인덱스 (0부터 시작)
-        
-        Returns:
-            (페이지 인덱스, 페이지 JSON 결과, 에러 메시지) 튜플
-        """
-        page_num = idx + 1
-        total_pages = len(images)
-        page_detail = {"page_num": page_num, "status": "unknown", "items_count": 0, "error": None}
-        tmp_path = None
-        
-        try:
-            if progress_callback:
-                progress_callback(page_num, total_pages, f"📄 페이지 {page_num}/{total_pages} 처리 중...")
-            
-            print(f"페이지 {page_num}/{total_pages} RAG 파싱 중...", end="", flush=True)
-            
-            # 각 스레드마다 별도의 UpstageExtractor 인스턴스 생성 (thread-safe)
-            upstage_extractor = UpstageExtractor()
-            
-            # 임시 이미지 파일로 저장 (Upstage API 사용)
-            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
-                images[idx].save(tmp_file.name, "PNG")
-                tmp_path = tmp_file.name
-            
-            try:
-                # Upstage로 OCR 텍스트 추출
-                if progress_callback:
-                    progress_callback(page_num, total_pages, f"🔍 페이지 {page_num}/{total_pages}: Upstage OCR 작업 중...")
-                
-                # Rate limit 방지를 위한 딜레이 (병렬 처리 시)
-                if use_parallel and api_delay > 0:
-                    time.sleep(api_delay * idx)  # 페이지 인덱스에 비례한 딜레이
-                
-                ocr_text = upstage_extractor.extract_text(tmp_path)
-                if not ocr_text or len(ocr_text.strip()) == 0:
-                    raise Exception("OCR 텍스트가 비어있습니다")
-                
-                # RAG 기반 JSON 추출
-                if progress_callback:
-                    progress_callback(page_num, total_pages, f"🔎 페이지 {page_num}/{total_pages}: RAG 검색 중...")
-                
-                # RAG 추출용 progress_callback 래퍼
-                def rag_progress_wrapper(msg: str):
-                    if progress_callback:
-                        progress_callback(page_num, total_pages, f"🤖 페이지 {page_num}/{total_pages}: {msg}")
-                
-                page_json = extract_json_with_rag(
-                    ocr_text=ocr_text,
-                    question=question,
-                    model_name=openai_model,
-                    temperature=0.0,
-                    top_k=top_k,
-                    similarity_threshold=similarity_threshold,
-                    progress_callback=rag_progress_wrapper if progress_callback else None,
-                    debug_dir=str(debug_dir),
-                    page_num=page_num
-                )
-                
-                # items 개수 확인 (page_json이 딕셔너리인지 확인)
-                if not isinstance(page_json, dict):
-                    raise Exception(f"예상치 못한 응답 형식: {type(page_json)}. 딕셔너리가 아닙니다.")
-                
-                items = page_json.get("items", [])
-                items_count = len(items) if items else 0
-                page_detail["items_count"] = items_count
-                
-                if items_count > 0:
-                    page_detail["status"] = "success_with_items"
-                else:
-                    page_detail["status"] = "success_empty"
-                
-                if progress_callback:
-                    progress_callback(page_num, total_pages, f"✅ 페이지 {page_num}/{total_pages} 완료 ({items_count}개 items)")
-                
-                print(f" 완료 ({items_count}개 items)")
-                
-                return (idx, page_json, None)
-                
-            finally:
-                # 임시 파일 삭제
-                if tmp_path:
-                    try:
-                        os.unlink(tmp_path)
-                    except Exception:
-                        pass
-                        
-        except Exception as e:
-            error_msg = str(e)
-            print(f" 실패 - {error_msg}")
-            if progress_callback:
-                progress_callback(page_num, total_pages, f"❌ 페이지 {page_num}/{total_pages} 실패: {error_msg}")
-            
-            page_detail["status"] = "failed"
-            page_detail["error"] = error_msg
-            
-            # 실패한 페이지는 빈 결과로 반환
-            error_result = {
+    
+    # 모든 페이지 인덱스가 page_results에 있는지 확인 (누락된 경우 빈 결과로 추가)
+    for idx in range(len(images)):
+        if idx not in page_results:
+            page_results[idx] = {
                 "items": [],
                 "page_role": "detail",
-                "error": error_msg
+                "error": "처리되지 않음"
             }
-            return (idx, error_result, error_msg)
-        finally:
-            # 통계 업데이트 (스레드 안전)
-            with stats_lock:
-                analysis_stats["page_details"].append(page_detail)
-                if page_detail["status"] == "failed":
-                    analysis_stats["failed"] += 1
-                else:
-                    analysis_stats["success"] += 1
-                    if page_detail["items_count"] > 0:
-                        analysis_stats["with_items"] += 1
-                    else:
-                        analysis_stats["empty_items"] += 1
+    
+    # 모든 페이지 인덱스가 page_results에 있는지 확인 (누락된 경우 빈 결과로 추가)
+    for idx in range(len(images)):
+        if idx not in page_results:
+            print(f"⚠️ 페이지 {idx+1} 결과가 없어 빈 결과로 추가합니다.")
+            page_results[idx] = {
+                "items": [],
+                "page_role": "detail",
+                "error": "처리되지 않음"
+            }
     
     # 인덱스 순서대로 결과 리스트 생성
     page_jsons = [page_results[i] for i in range(len(images))]
+    
+    # 디버깅: 결과 확인
+    print(f"\n📋 최종 결과 확인: {len(page_jsons)}개 페이지 결과 생성됨")
+    for idx, result in enumerate(page_jsons):
+        items_count = len(result.get("items", []))
+        error = result.get("error")
+        status = f"{items_count}개 items" if items_count > 0 else (f"오류: {error}" if error else "빈 결과")
+        print(f"  - 페이지 {idx+1}: {status}")
     
     # 분석 통계 출력
     print(f"\n📊 RAG 분석 통계:")

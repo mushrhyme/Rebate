@@ -229,15 +229,14 @@ def render_upload_tab():
                 file_names = [f[0]['name'] for f in prepared_files]
                 total_files = len(prepared_files)
                 
-                # 병렬 처리 여부 결정 (2개 이상일 때만)
-                use_parallel = total_files > 1
-                max_workers = min(5, total_files) if use_parallel else 1
+                # Upstage API Rate limit 방지를 위해 파일 단위 병렬 처리 비활성화
+                # (각 파일 내부의 OCR은 순차 처리, RAG+LLM은 병렬 처리)
+                use_parallel = False  # 파일 단위 병렬 처리 비활성화
+                max_workers = 1
                 
-                if use_parallel:
-                    st.info(f"**分析対象**: {total_files}個のファイル - {', '.join(file_names)}", icon="ℹ️")
-                    st.info(f"🚀 **병렬 처리 모드**: 최대 {max_workers}개 파일 동시 처리", icon="⚡")
-                else:
-                    st.info(f"**分析対象**: {total_files}個のファイル - {', '.join(file_names)}", icon="ℹ️")
+                st.info(f"**分析対象**: {total_files}個のファイル - {', '.join(file_names)}", icon="ℹ️")
+                if total_files > 1:
+                    st.info(f"📝 **순차 처리 모드**: 파일을 하나씩 처리합니다 (Upstage API Rate limit 방지)", icon="📝")
                 
                 progress_placeholder = st.empty()
                 start_time = time.time()
