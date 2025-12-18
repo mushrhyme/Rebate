@@ -14,7 +14,6 @@ from utils.session_manager import SessionManager
 from modules.core.processor import PdfProcessor
 from modules.utils.pdf_utils import find_pdf_path
 from modules.core.app_processor import (
-    reprocess_pdf_from_storage,
     check_pdf_in_db
 )
 from modules.utils.session_utils import ensure_session_state_defaults
@@ -25,8 +24,7 @@ def render_upload_tab():
     ensure_session_state_defaults()
     st.info(
         "**📌 使い方ガイド**:\n\n"
-        "• 複数のファイルをアップロードした後、🔍 **解析実行**をクリックすると同時に分析できます\n\n"
-        "• 既に分析を完了したPDFファイルは、🔄 **再解析**をクリックして個別ファイルに対して分析を再実行できます",
+        "• 複数のファイルをアップロードした後、🔍 **解析実行**をクリックすると同時に分析できます",
         icon="ℹ️"
     )
 
@@ -103,9 +101,8 @@ def render_upload_tab():
 
     if st.session_state.uploaded_files_info:
         st.subheader("📋 アップロードされたファイル一覧")
-        files_to_reprocess = []
         for idx, file_info in enumerate(st.session_state.uploaded_files_info):
-            col1, col2, col3 = st.columns([4, 2, 1])
+            col1, col2 = st.columns([4, 2])
             pdf_name = file_info['name']
             status_info = st.session_state.analysis_status.get(pdf_name, {})
             status = status_info.get("status", "pending")
@@ -124,44 +121,6 @@ def render_upload_tab():
                     st.info(f"解析済み ({file_info['db_page_count']}p)", icon="💾")
                 else:
                     st.warning("待機中", icon="⏳")
-            with col3:
-                if (status == "completed" or 
-                    (file_info.get("is_in_db") and file_info.get("db_page_count", 0) > 0)):
-                    if st.button("🔄 再解析", key=f"reprocess_{pdf_name}"):
-                        files_to_reprocess.append(idx)
-
-        if files_to_reprocess:
-            progress_placeholder = st.empty()
-            total_files = len(files_to_reprocess)
-            total_pages = 0
-            success_count = 0
-            start_time = time.time()
-            for file_idx, original_idx in enumerate(files_to_reprocess):
-                file_info = st.session_state.uploaded_files_info[original_idx]
-                pdf_name = file_info["name"]
-                success, pages, error, elapsed_time = reprocess_pdf_from_storage(
-                    pdf_name, progress_placeholder, file_idx, total_files
-                )
-                if success:
-                    total_pages += pages
-                    success_count += 1
-                    st.session_state.analysis_status[pdf_name] = {
-                        "status": "completed",
-                        "pages": pages,
-                        "error": None
-                    }
-                    st.session_state.uploaded_files_info[original_idx]["is_in_db"] = True
-                    st.session_state.uploaded_files_info[original_idx]["db_page_count"] = pages
-                else:
-                    st.error(f"{pdf_name}.pdf 再解析失敗: {error}", icon="❌")
-            progress_placeholder.empty()
-            if success_count > 0:
-                actual_elapsed_time = time.time() - start_time
-                minutes = int(actual_elapsed_time // 60)
-                seconds = int(actual_elapsed_time % 60)
-                time_str = f"{minutes}分{seconds}秒" if minutes > 0 else f"{seconds}秒"
-                st.success(f"{success_count}個のファイル再解析完了！ (総 {total_pages}ページ、所要時間: {time_str})", icon="✅")
-                st.rerun()
 
         st.divider()
 
@@ -299,17 +258,23 @@ def render_upload_tab():
                             else:
                                 thread_uploaded_file = uploaded_file
                             
+                            from modules.utils.config import get_rag_config
+                            config = get_rag_config()
+                            
                             success, pages, error, elapsed_time = PdfProcessor.process_uploaded_pdf(
                                 uploaded_file=thread_uploaded_file,
                                 pdf_name=pdf_name,
-                                dpi=500,
+                                dpi=config.dpi,
                                 progress_callback=None  # 스레드에서는 UI 업데이트 안 함
                             )
                         else:
+                            from modules.utils.config import get_rag_config
+                            config = get_rag_config()
+                            
                             success, pages, error, elapsed_time = PdfProcessor.process_pdf(
                                 pdf_name=pdf_name,
                                 pdf_path=pdf_path,
-                                dpi=500,
+                                dpi=config.dpi,
                                 progress_callback=None  # 스레드에서는 UI 업데이트 안 함
                             )
                         
