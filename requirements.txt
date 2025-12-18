@@ -26,3 +26,7 @@ psycopg2-binary>=2.9.0
 # 벡터 DB (RAG용)
 chromadb>=0.4.0
 
+# RAG 검색 개선 (선택적)
+rank-bm25>=0.2.2  # BM25 하이브리드 검색용
+sentence-transformers>=2.2.0  # 임베딩 모델 및 Re-ranking용
+

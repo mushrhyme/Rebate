@@ -46,19 +46,39 @@ def extract_json_with_rag(
     # RAG Manager 가져오기
     rag_manager = get_rag_manager()
     
-    # 1. Retrieval: 유사한 예제 검색
-    if progress_callback:
-        progress_callback("벡터 DB에서 유사한 예제 검색 중...")
+    # 1. Retrieval: 유사한 예제 검색 (하이브리드 방식 사용)
+    # 설정에서 검색 방식 가져오기
+    from modules.utils.config import get_rag_config
+    config = get_rag_config()
+    search_method = getattr(config, 'search_method', 'hybrid')  # 기본값: hybrid
+    hybrid_alpha = getattr(config, 'hybrid_alpha', 0.5)  # 기본값: 0.5
     
-    similar_examples = rag_manager.search_similar(
+    if progress_callback:
+        if search_method == "hybrid":
+            progress_callback("벡터 DB에서 유사한 예제 검색 중 (하이브리드: BM25 + 벡터)...")
+        elif search_method == "rerank":
+            progress_callback("벡터 DB에서 유사한 예제 검색 중 (Re-ranking)...")
+        else:
+            progress_callback("벡터 DB에서 유사한 예제 검색 중...")
+    
+    # 하이브리드 검색 사용
+    similar_examples = rag_manager.search_similar_advanced(
         query_text=ocr_text,
         top_k=top_k,
-        similarity_threshold=similarity_threshold
+        similarity_threshold=similarity_threshold,
+        search_method=search_method,
+        hybrid_alpha=hybrid_alpha,
+        use_preprocessing=True
     )
     
     if progress_callback:
         if similar_examples:
-            progress_callback(f"유사한 예제 {len(similar_examples)}개 발견 (유사도: {similar_examples[0].get('similarity', 0):.2f})")
+            # 점수 키 확인 (hybrid_score, final_score, similarity 중 하나)
+            score_key = "hybrid_score" if "hybrid_score" in similar_examples[0] else \
+                       "final_score" if "final_score" in similar_examples[0] else \
+                       "similarity"
+            score_value = similar_examples[0].get(score_key, 0)
+            progress_callback(f"유사한 예제 {len(similar_examples)}개 발견 ({score_key}: {score_value:.2f})")
         else:
             progress_callback("유사한 예제 없음 (Zero-shot 모드로 진행)")
     
