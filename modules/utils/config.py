@@ -64,6 +64,9 @@ class RAGConfig:
     # 병렬 처리 설정
     max_parallel_workers: int = 1  # Upstage OCR 병렬 워커 수 (1 = 순차 처리, Rate limit 방지)
     rag_llm_parallel_workers: int = 3  # RAG+LLM 병렬 워커 수 (OpenAI는 병렬 처리 가능)
+    
+    # Upstage API Rate limit 방지 설정
+    ocr_request_delay: float = 2.0  # OCR 요청 간 딜레이 (초, Rate limit 방지용, 기본값: 2초)
 
 
 # 전역 설정 인스턴스 (이 값을 수정하면 전체 애플리케이션에 적용됨)

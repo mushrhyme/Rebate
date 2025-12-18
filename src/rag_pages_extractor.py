@@ -57,6 +57,7 @@ def extract_pages_with_rag(
     top_k = top_k if top_k is not None else config.top_k
     similarity_threshold = similarity_threshold if similarity_threshold is not None else config.similarity_threshold
     rag_llm_workers = config.rag_llm_parallel_workers  # RAG+LLM 병렬 워커 수
+    ocr_delay = config.ocr_request_delay  # OCR 요청 간 딜레이
     
     pdf_name = Path(pdf_path).stem
     pdf_filename = f"{pdf_name}.pdf"
@@ -113,13 +114,19 @@ def extract_pages_with_rag(
     }
     
     # 1단계: Upstage OCR 순차 처리 (Rate limit 방지)
-    print(f"📝 1단계: Upstage OCR 순차 처리 시작 ({len(images)}개 페이지)")
+    print(f"📝 1단계: Upstage OCR 순차 처리 시작 ({len(images)}개 페이지, 요청 간 딜레이: {ocr_delay}초)")
     upstage_extractor = UpstageExtractor()
     ocr_texts = []  # OCR 텍스트 저장
     
     for idx, image in enumerate(images):
         page_num = idx + 1
         total_pages = len(images)
+        
+        # 첫 번째 페이지가 아닌 경우 요청 간 딜레이 (Rate limit 방지)
+        if idx > 0 and ocr_delay > 0:
+            print(f"\n⏳ {ocr_delay}초 대기 중... (Rate limit 방지)", end="", flush=True)
+            time.sleep(ocr_delay)
+            print(" 완료")
         
         if progress_callback:
             progress_callback(page_num, total_pages, f"🔍 페이지 {page_num}/{total_pages}: Upstage OCR 작업 중...")
