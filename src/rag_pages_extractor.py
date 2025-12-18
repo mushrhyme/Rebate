@@ -78,7 +78,7 @@ def extract_pages_with_rag(
     if progress_callback:
         progress_callback(0, 0, "🔄 PDF를 이미지로 변환 중...")
     
-    from src.openai_extractor import PDFProcessor
+    from src.pdf_processor import PDFProcessor
     pdf_processor = PDFProcessor(dpi=dpi)
     images = pdf_processor.convert_pdf_to_images(pdf_path)
     pil_images = images

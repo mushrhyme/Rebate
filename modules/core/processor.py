@@ -59,33 +59,19 @@ class PdfProcessor:
             PdfRegistry.ensure(pdf_name, source="session")
             PdfRegistry.update(pdf_name, status="processing", pages=0, error=None)
             
-            # 3. PDF 파싱 (DB 우선 사용, 없으면 RAG 또는 OpenAI API 호출)
-            use_rag = os.getenv("USE_RAG", "false").lower() == "true"
-            
-            if use_rag:
-                # RAG 기반 파싱
-                from src.rag_pages_extractor import extract_pages_with_rag
-                page_results, image_paths, pil_images = extract_pages_with_rag(
-                    pdf_path=pdf_path,
-                    openai_model="gpt-4o-2024-08-06",
-                    dpi=dpi,
-                    save_images=False,
-                    question="이 청구서의 상품별 내역을 JSON으로 추출해라",
-                    top_k=1,
-                    similarity_threshold=0.7,
-                    progress_callback=progress_callback
-                )
-            else:
-                # 기존 OpenAI API 호출
-                from src.openai_extractor import extract_pages_with_openai
-                page_results, image_paths, pil_images = extract_pages_with_openai(
-                    openai_model="gpt-5-mini-2025-08-07",
-                    pdf_path=pdf_path,
-                    dpi=dpi,
-                    use_openai_cache=False,  # 캐시 비활성화 (DB 사용)
-                    save_images=False,  # 로컬 저장 비활성화
-                    use_history=False  # 히스토리 비활성화
-                )
+            # 3. PDF 파싱 (DB 우선 사용, 없으면 RAG 기반 분석)
+            # RAG 기반 파싱만 사용 (무조건 RAG 사용)
+            from src.rag_pages_extractor import extract_pages_with_rag
+            page_results, image_paths, pil_images = extract_pages_with_rag(
+                pdf_path=pdf_path,
+                openai_model="gpt-4o-2024-08-06",
+                dpi=dpi,
+                save_images=False,
+                question="이 청구서의 상품별 내역을 JSON으로 추출해라",
+                top_k=1,
+                similarity_threshold=0.7,
+                progress_callback=progress_callback
+            )
             
             if not page_results:
                 raise ValueError("파싱 결과가 없습니다")
@@ -138,13 +124,13 @@ class PdfProcessor:
                         print(f"  - 페이지 {idx}: items 없음{error_info} ⚠️")
                 
                 # DB에 저장 (이미지 데이터 직접 전달)
-                session_name = f"RAGパース {pdf_name}" if use_rag else f"自動パース {pdf_name}"
+                session_name = f"RAGパース {pdf_name}"
                 try:
                     session_id = db_manager.save_from_page_results(
                         page_results=page_results,
                         pdf_filename=pdf_filename,
                         session_name=session_name,
-                        notes=f"RAG 기반 분석" if use_rag else None,
+                        notes="RAG 기반 분석",
                         image_data_list=image_data_list  # 이미지 데이터(bytes) 직접 전달
                     )
                     print(f"\n✅ DB 저장 완료:")

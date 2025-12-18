@@ -191,76 +191,59 @@ def render_upload_tab():
         ]
 
         # 디버깅 정보 (개발용)
-        if st.session_state.uploaded_files_info and not processable_files:
-            with st.expander("🔍 디버깅 정보 (분석 버튼이 비활성화된 이유)", expanded=False):
-                st.write(f"**업로드된 파일 수**: {len(st.session_state.uploaded_files_info)}")
-                st.write(f"**pending_files**: {len(pending_files)}개 - {pending_files}")
-                st.write(f"**processable_files**: {len(processable_files)}개 - {processable_files}")
+        # if st.session_state.uploaded_files_info and not processable_files:
+        #     with st.expander("🔍 디버깅 정보 (분석 버튼이 비활성화된 이유)", expanded=False):
+        #         st.write(f"**업로드된 파일 수**: {len(st.session_state.uploaded_files_info)}")
+        #         st.write(f"**pending_files**: {len(pending_files)}개 - {pending_files}")
+        #         st.write(f"**processable_files**: {len(processable_files)}개 - {processable_files}")
                 
-                st.write("\n**각 파일 상태:**")
-                for info in st.session_state.uploaded_files_info:
-                    pdf_name = info["name"]
-                    status_info = st.session_state.analysis_status.get(pdf_name, {})
-                    status = status_info.get("status", "unknown")
-                    is_in_db = info.get("is_in_db", False)
-                    db_page_count = info.get("db_page_count", 0)
-                    can_process = PdfProcessor.can_process_pdf(pdf_name)
+        #         st.write("\n**각 파일 상태:**")
+        #         for info in st.session_state.uploaded_files_info:
+        #             pdf_name = info["name"]
+        #             status_info = st.session_state.analysis_status.get(pdf_name, {})
+        #             status = status_info.get("status", "unknown")
+        #             is_in_db = info.get("is_in_db", False)
+        #             db_page_count = info.get("db_page_count", 0)
+        #             can_process = PdfProcessor.can_process_pdf(pdf_name)
                     
-                    st.write(f"- **{pdf_name}**:")
-                    st.write(f"  - status: {status}")
-                    st.write(f"  - is_in_db: {is_in_db}, db_page_count: {db_page_count}")
-                    st.write(f"  - can_process: {can_process}")
-                    st.write(f"  - pending 조건: status=='pending'={status=='pending'}, not_in_db={not (is_in_db and db_page_count > 0)}")
+        #             st.write(f"- **{pdf_name}**:")
+        #             st.write(f"  - status: {status}")
+        #             st.write(f"  - is_in_db: {is_in_db}, db_page_count: {db_page_count}")
+        #             st.write(f"  - can_process: {can_process}")
+        #             st.write(f"  - pending 조건: status=='pending'={status=='pending'}, not_in_db={not (is_in_db and db_page_count > 0)}")
                     
-                    # PdfRegistry 상태 확인
-                    try:
-                        from modules.core.registry import PdfRegistry
-                        registry_metadata = PdfRegistry.get(pdf_name)
-                        if registry_metadata:
-                            st.write(f"  - PdfRegistry 상태: {registry_metadata.get('status', 'unknown')}")
-                            st.write(f"  - PdfRegistry 메타데이터: {registry_metadata}")
-                        else:
-                            st.write(f"  - PdfRegistry: 없음 (새 파일)")
-                    except Exception as e:
-                        st.write(f"  - PdfRegistry 확인 실패: {e}")
+        #             # PdfRegistry 상태 확인
+        #             try:
+        #                 from modules.core.registry import PdfRegistry
+        #                 registry_metadata = PdfRegistry.get(pdf_name)
+        #                 if registry_metadata:
+        #                     st.write(f"  - PdfRegistry 상태: {registry_metadata.get('status', 'unknown')}")
+        #                     st.write(f"  - PdfRegistry 메타데이터: {registry_metadata}")
+        #                 else:
+        #                     st.write(f"  - PdfRegistry: 없음 (새 파일)")
+        #             except Exception as e:
+        #                 st.write(f"  - PdfRegistry 확인 실패: {e}")
 
         if processable_files:
             st.info(f"{len(processable_files)}個のファイルが解析待機中です。", icon="💡")
         elif not pending_files and st.session_state.uploaded_files_info:
             st.success("すべてのファイルの解析が完了しました！", icon="✅")
 
-        # RAG 옵션 설정
+        # RAG 기반 분석 정보 표시 (무조건 RAG 사용)
         st.divider()
-        col_rag1, col_rag2 = st.columns([1, 3])
-        with col_rag1:
-            use_rag = st.checkbox(
-                "🔍 RAG 기반 분석 사용",
-                value=False,
-                key="use_rag_analysis",
-                help="벡터 DB에서 유사한 예제를 검색하여 더 정확한 분석을 수행합니다"
-            )
-        with col_rag2:
-            if use_rag:
-                try:
-                    from modules.core.rag_manager import get_rag_manager
-                    rag_manager = get_rag_manager()
-                    example_count = rag_manager.count_examples()
-                    if example_count > 0:
-                        st.success(f"✅ RAG 활성화 (벡터 DB 예제: {example_count}개)")
-                    else:
-                        st.warning("⚠️ 벡터 DB에 예제가 없습니다. 정답지 편집 탭에서 예제를 추가하세요.")
-                except Exception as e:
-                    st.error(f"❌ RAG Manager 초기화 실패: {e}")
+        try:
+            from modules.core.rag_manager import get_rag_manager
+            rag_manager = get_rag_manager()
+            example_count = rag_manager.count_examples()
+            if example_count > 0:
+                st.success(f"✅ RAG 기반 분석 활성화 (벡터 DB 예제: {example_count}개)")
             else:
-                st.caption("기본 OpenAI 분석을 사용합니다")
+                st.warning("⚠️ 벡터 DB에 예제가 없습니다. 정답지 편집 탭에서 예제를 추가하세요.")
+        except Exception as e:
+            st.error(f"❌ RAG Manager 초기화 실패: {e}")
 
         button_disabled = len(processable_files) == 0
         if st.button("🔍 解析実行", type="primary", width='stretch', disabled=button_disabled):
-            # RAG 옵션을 환경변수로 설정 (processor에서 사용)
-            if use_rag:
-                os.environ["USE_RAG"] = "true"
-            else:
-                os.environ["USE_RAG"] = "false"
             files_to_analyze = []
             for pdf_name in processable_files:
                 file_info = next(
