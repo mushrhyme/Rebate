@@ -13,7 +13,6 @@ import streamlit as st
 
 from modules.core.processor import PdfProcessor
 from utils.session_manager import SessionManager
-from src.gemini_extractor import GeminiTwoStageParser  # 리뷰 탭에서 단일 페이지 재파싱에 사용
 
 
 def process_pdf_with_progress(
@@ -94,7 +93,7 @@ def process_single_pdf(uploaded_file, pdf_name: str, progress_container, file_in
 
 def reparse_single_page(pdf_name: str, page_num: int, timeout: int = 120):
     """
-    단일 페이지 재파싱
+    단일 페이지 재파싱 (RAG 기반)
     
     Args:
         pdf_name: PDF 파일명 (확장자 제외)
@@ -102,6 +101,9 @@ def reparse_single_page(pdf_name: str, page_num: int, timeout: int = 120):
         timeout: API 호출 타임아웃 (초, 기본값: 120초 = 2분)
     """
     from modules.ui.review_components import load_page_image as load_page_image_from_module
+    from src.upstage_extractor import UpstageExtractor
+    from src.rag_extractor import extract_json_with_rag
+    import tempfile
 
     # 진행 상황 표시를 위한 placeholder
     progress_placeholder = st.empty()
@@ -116,23 +118,58 @@ def reparse_single_page(pdf_name: str, page_num: int, timeout: int = 120):
         return
 
     try:
-        with progress_placeholder.container():
-            st.info("🤖 Gemini APIで解析中... (2段階パイプライン使用)", icon="⏳")
-        
         # 파싱 시간 측정 시작
         parse_start_time = time.time()
-        parser = GeminiTwoStageParser()  # 2단계 파이프라인 사용
-        new_page_json = parser.parse_image_two_stage(page_image)  # 2단계 파이프라인 실행
-        parse_end_time = time.time()
-        parse_duration = parse_end_time - parse_start_time
         
-        # 소요 시간만 출력
-        print(f"페이지 {page_num} 재파싱 완료: {parse_duration:.1f}초")
-
+        # 임시 이미지 파일로 저장 (Upstage API 사용)
         with progress_placeholder.container():
-            st.info("💾 結果を保存中...", icon="⏳")
+            st.info("🔍 Upstage OCRでテキスト抽出中...", icon="⏳")
+        
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
+            page_image.save(tmp_file.name, "PNG")
+            tmp_path = tmp_file.name
         
         try:
+            # Upstage로 OCR 텍스트 추출
+            upstage_extractor = UpstageExtractor()
+            ocr_text = upstage_extractor.extract_text(tmp_path)
+            
+            if not ocr_text or len(ocr_text.strip()) == 0:
+                raise Exception("OCR 텍스트가 비어있습니다")
+            
+            # RAG 기반 JSON 추출
+            with progress_placeholder.container():
+                st.info("🔎 RAG検索中...", icon="⏳")
+            
+            def rag_progress_wrapper(msg: str):
+                with progress_placeholder.container():
+                    st.info(f"🤖 {msg}", icon="⏳")
+            
+            new_page_json = extract_json_with_rag(
+                ocr_text=ocr_text,
+                question="이 청구서의 상품별 내역을 JSON으로 추출해라",
+                model_name="gpt-4o-2024-08-06",
+                temperature=0.0,
+                top_k=1,
+                similarity_threshold=0.7,
+                progress_callback=rag_progress_wrapper
+            )
+            
+            # items 개수 확인
+            if not isinstance(new_page_json, dict):
+                raise Exception(f"예상치 못한 응답 형식: {type(new_page_json)}. 딕셔너리가 아닙니다.")
+            
+            items = new_page_json.get("items", [])
+            items_count = len(items) if items else 0
+            
+            parse_end_time = time.time()
+            parse_duration = parse_end_time - parse_start_time
+            
+            print(f"페이지 {page_num} 재파싱 완료: {parse_duration:.1f}초 ({items_count}개 items)")
+
+            with progress_placeholder.container():
+                st.info("💾 結果を保存中...", icon="⏳")
+            
             # 파일 시스템에 저장
             SessionManager.save_ocr_result(pdf_name, page_num, new_page_json)
             
@@ -141,7 +178,6 @@ def reparse_single_page(pdf_name: str, page_num: int, timeout: int = 120):
                 from database.registry import get_db
                 db_manager = get_db()
                 pdf_filename = f"{pdf_name}.pdf"
-                items = new_page_json.get('items', [])
                 
                 if items:
                     # DB의 해당 페이지 items 업데이트
@@ -162,13 +198,15 @@ def reparse_single_page(pdf_name: str, page_num: int, timeout: int = 120):
                 # DB 업데이트 실패해도 파일 저장은 성공했으므로 계속 진행
                 print(f"⚠️ DB 업데이트 실패 (파일 저장은 완료): {db_err}")
                 
-        except Exception as save_err:
-            progress_placeholder.empty()
-            st.error(f"セッションへの保存に失敗しました: {save_err}", icon="❌")
-            return
+        finally:
+            # 임시 파일 삭제
+            try:
+                os.unlink(tmp_path)
+            except Exception:
+                pass
 
         progress_placeholder.empty()
-        st.success(f"ページ {page_num} 再パース完了！ (소요 시간: {parse_duration:.2f}초)", icon="✅")
+        st.success(f"ページ {page_num} 再パース完了！ (소요 시간: {parse_duration:.2f}초, {items_count}개 items)", icon="✅")
         st.rerun()
     except Exception as e:
         parse_end_time = time.time()

@@ -109,19 +109,6 @@ class SessionManager:
         return results_dir
     
     @staticmethod
-    def get_review_dir() -> str:
-        """
-        세션별 검토 데이터 저장 디렉토리
-        
-        Returns:
-            /tmp/{session_id}/review/ 경로
-        """
-        session_dir = SessionManager.get_session_dir()
-        review_dir = os.path.join(session_dir, "review")
-        os.makedirs(review_dir, exist_ok=True)
-        return review_dir
-    
-    @staticmethod
     def save_pdf_file(uploaded_file, pdf_name: str) -> str:
         """
         업로드된 PDF 파일을 세션 디렉토리에 저장
@@ -219,49 +206,6 @@ class SessionManager:
         
         # 2. 파일 시스템에서 로드 (하위 호환성)
         return PageStorage.load_page(pdf_name, page_num)
-    
-    @staticmethod
-    def save_review_data(pdf_name: str, review_data: Dict[str, Any]) -> str:
-        """
-        검토 데이터 저장 (수정 내용, 코멘트 등) - 비활성화됨
-        
-        Args:
-            pdf_name: PDF 파일명 (확장자 제외)
-            review_data: 검토 데이터 딕셔너리
-            
-        Returns:
-            저장된 경로 (더미 값)
-        
-        Note:
-            로컬 파일 저장을 최소화하기 위해 비활성화됨.
-            검토 데이터는 DB에 저장되어야 합니다.
-        """
-        # 로컬 파일 저장 비활성화 (DB 사용 예정)
-        # TODO: DB에 review_data 테이블 추가 후 저장
-        return ""
-    
-    @staticmethod
-    def load_review_data(pdf_name: str) -> Optional[Dict[str, Any]]:
-        """
-        저장된 검토 데이터 로드
-        
-        Args:
-            pdf_name: PDF 파일명 (확장자 제외)
-            
-        Returns:
-            검토 데이터 딕셔너리 또는 None
-        """
-        review_dir = SessionManager.get_review_dir()
-        review_path = os.path.join(review_dir, f"{pdf_name}_review.json")
-        
-        if not os.path.exists(review_path):
-            return None
-        
-        try:
-            with open(review_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception:
-            return None
     
     @staticmethod
     def get_pdf_list() -> List[str]:
