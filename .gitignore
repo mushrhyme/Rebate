@@ -46,12 +46,16 @@ ENV/
 *.tmp
 *.log
 *.bak
+notepad.txt
 
 # 데이터 파일
 raw_data/
 result/
 img/
 status/
+test_img/
+chroma_db/
+debug/
 
 # PDF Registry 및 상태 파일
 pdf_registry.json

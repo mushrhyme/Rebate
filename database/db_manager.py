@@ -272,10 +272,25 @@ class DatabaseManager:
         items_data = []
         item_order = 0
         
+        # 디버깅: 페이지별 저장 상태 추적
+        page_save_stats = []
+        
         for page_idx, page_json in enumerate(page_results):
             page_number = page_idx + 1  # 1부터 시작
             page_index = page_idx  # 0부터 시작
             page_role = page_json.get('page_role', 'main')
+            
+            page_items = page_json.get('items', [])
+            items_count = len(page_items) if page_items else 0
+            page_error = page_json.get('error')
+            
+            page_stat = {
+                "page_number": page_number,
+                "items_count": items_count,
+                "has_error": bool(page_error),
+                "error": page_error,
+                "items_saved": 0
+            }
             
             # 페이지 레벨 거래처 (항목별 거래처가 없을 때 사용)
             page_customer = page_json.get('customer')
@@ -289,7 +304,7 @@ class DatabaseManager:
                 billing_period = page_json.get('billing_period')
             
             # 각 항목에 대해 items 데이터 생성
-            for item in page_json.get('items', []):
+            for item in page_items:
                 item_order += 1
                 
                 # 항목별 거래처가 있으면 사용, 없으면 페이지 레벨 거래처 사용
@@ -324,24 +339,45 @@ class DatabaseManager:
                     page_index,
                     item_order
                 ))
+                page_stat["items_saved"] += 1
+            
+            page_save_stats.append(page_stat)
+        
+        # 디버깅: items 저장 전 상태 출력
+        print(f"\n💾 DB items 저장 시작:")
+        print(f"  - 전체 페이지 수: {len(page_results)}개")
+        print(f"  - 저장할 items 총 개수: {len(items_data)}개")
+        for stat in page_save_stats:
+            status_icon = "✅" if stat["items_saved"] > 0 else ("⚠️" if stat["has_error"] else "⚪")
+            error_info = f" (오류: {stat['error']})" if stat.get("error") else ""
+            print(f"  {status_icon} 페이지 {stat['page_number']}: {stat['items_saved']}개 items 저장 예정{error_info}")
         
         # 4. items 일괄 삽입
         if items_data:
-            with self.get_connection() as conn:
-                cursor = conn.cursor()
-                execute_values(
-                    cursor,
-                    """
-                    INSERT INTO items (
-                        session_id, management_id, customer, product_name,
-                        quantity, case_count, bara_count, units_per_case, amount,
-                        page_number, page_role,
-                        issuer, issue_date, billing_period, total_amount_document,
-                        pdf_filename, page_index, item_order
-                    ) VALUES %s
-                    """,
-                    items_data
-                )
+            try:
+                with self.get_connection() as conn:
+                    cursor = conn.cursor()
+                    execute_values(
+                        cursor,
+                        """
+                        INSERT INTO items (
+                            session_id, management_id, customer, product_name,
+                            quantity, case_count, bara_count, units_per_case, amount,
+                            page_number, page_role,
+                            issuer, issue_date, billing_period, total_amount_document,
+                            pdf_filename, page_index, item_order
+                        ) VALUES %s
+                        """,
+                        items_data
+                    )
+                print(f"  ✅ items 저장 완료: {len(items_data)}개")
+            except Exception as items_error:
+                print(f"  ❌ items 저장 실패: {items_error}")
+                import traceback
+                print(f"  상세:\n{traceback.format_exc()}")
+                raise
+        else:
+            print(f"  ⚠️ 저장할 items가 없습니다 (모든 페이지의 items가 비어있음)")
         
         # 5. 이미지 저장 (이미지 데이터 또는 이미지 경로가 제공된 경우)
         images_to_save = []
@@ -368,7 +404,27 @@ class DatabaseManager:
         
         # 이미지 저장
         if images_to_save:
-            self.save_page_images(session_id, images_to_save)
+            print(f"\n🖼️ DB 이미지 저장 시작:")
+            print(f"  - 저장할 이미지 수: {len(images_to_save)}개")
+            try:
+                self.save_page_images(session_id, images_to_save)
+                print(f"  ✅ 이미지 저장 완료: {len(images_to_save)}개")
+            except Exception as img_error:
+                print(f"  ❌ 이미지 저장 실패: {img_error}")
+                import traceback
+                print(f"  상세:\n{traceback.format_exc()}")
+                raise
+        else:
+            print(f"  ⚠️ 저장할 이미지가 없습니다")
+        
+        # 최종 저장 통계
+        print(f"\n📊 DB 저장 최종 통계:")
+        print(f"  - session_id: {session_id}")
+        print(f"  - 전체 페이지 수: {len(page_results)}개")
+        print(f"  - items 저장된 페이지: {sum(1 for s in page_save_stats if s['items_saved'] > 0)}개")
+        print(f"  - items 없는 페이지: {sum(1 for s in page_save_stats if s['items_saved'] == 0)}개")
+        print(f"  - 오류 있는 페이지: {sum(1 for s in page_save_stats if s['has_error'])}개")
+        print(f"  - 이미지 저장된 페이지: {len(images_to_save)}개")
         
         return session_id
     
@@ -570,34 +626,35 @@ class DatabaseManager:
                     return []
                 session_id = result[0]
         
-        # 페이지별 데이터 조회
+        # 페이지별 데이터 조회 (page_images와 LEFT JOIN하여 items가 없는 페이지도 포함)
         with self.get_connection() as conn:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cursor.execute("""
                 SELECT 
-                    page_number,
-                    page_index,
-                    page_role,
-                    issuer,
-                    issue_date,
-                    billing_period,
-                    pdf_filename,
+                    pi.page_number,
+                    MAX(i.page_index) as page_index,
+                    COALESCE(MAX(i.page_role), 'detail') as page_role,
+                    MAX(i.issuer) as issuer,
+                    MAX(i.issue_date) as issue_date,
+                    MAX(i.billing_period) as billing_period,
+                    MAX(i.pdf_filename) as pdf_filename,
                     JSON_AGG(
                         JSON_BUILD_OBJECT(
-                            'management_id', management_id,
-                            'product_name', product_name,
-                            'quantity', quantity,
-                            'case_count', case_count,
-                            'bara_count', bara_count,
-                            'units_per_case', units_per_case,
-                            'amount', amount,
-                            'customer', customer
-                        ) ORDER BY item_order
-                    ) FILTER (WHERE management_id IS NOT NULL) AS items
-                FROM items
-                WHERE session_id = %s
-                GROUP BY page_number, page_index, page_role, issuer, issue_date, billing_period, pdf_filename
-                ORDER BY page_number
+                            'management_id', i.management_id,
+                            'product_name', i.product_name,
+                            'quantity', i.quantity,
+                            'case_count', i.case_count,
+                            'bara_count', i.bara_count,
+                            'units_per_case', i.units_per_case,
+                            'amount', i.amount,
+                            'customer', i.customer
+                        ) ORDER BY i.item_order
+                    ) FILTER (WHERE i.management_id IS NOT NULL) AS items
+                FROM page_images pi
+                LEFT JOIN items i ON pi.session_id = i.session_id AND pi.page_number = i.page_number
+                WHERE pi.session_id = %s
+                GROUP BY pi.page_number
+                ORDER BY pi.page_number
             """, (session_id,))
             
             results = []
@@ -617,7 +674,7 @@ class DatabaseManager:
                 
                 # 페이지별 JSON 구조 생성 (기존 형식과 호환)
                 page_json = {
-                    'page_role': row_dict.get('page_role', 'main'),
+                    'page_role': row_dict.get('page_role', 'detail'),
                     'issuer': row_dict.get('issuer'),
                     'issue_date': row_dict.get('issue_date'),
                     'billing_period': row_dict.get('billing_period'),
@@ -944,7 +1001,7 @@ class DatabaseManager:
         session_id: int,
         page_number: int,
         image_data: bytes,
-        image_format: str = 'PNG'
+        image_format: str = 'JPEG'  # JPEG 형식으로 기본값 변경
     ) -> bool:
         """
         페이지 이미지를 데이터베이스에 저장
@@ -1041,7 +1098,7 @@ class DatabaseManager:
         self,
         session_id: int,
         images: List[tuple[int, bytes]],
-        image_format: str = 'PNG'
+        image_format: str = 'JPEG'  # JPEG 형식으로 기본값 변경
     ) -> int:
         """
         여러 페이지 이미지를 일괄 저장

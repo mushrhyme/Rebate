@@ -158,8 +158,11 @@ class SessionManager:
         pdf_images_dir = os.path.join(images_dir, pdf_name)
         os.makedirs(pdf_images_dir, exist_ok=True)
         
-        image_path = os.path.join(pdf_images_dir, f"page_{page_num}.png")
-        image.save(image_path, 'PNG')
+        image_path = os.path.join(pdf_images_dir, f"page_{page_num}.jpg")  # JPEG 형식
+        # RGB 모드로 변환 (JPEG는 RGB만 지원)
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+        image.save(image_path, 'JPEG', quality=95)
         
         return image_path
     
@@ -401,8 +404,11 @@ class SessionManager:
         pdf_thumbnails_dir = os.path.join(thumbnails_dir, pdf_name)
         os.makedirs(pdf_thumbnails_dir, exist_ok=True)
         
-        thumbnail_path = os.path.join(pdf_thumbnails_dir, f"page_{page_num}_thumb.png")
-        thumbnail_image.save(thumbnail_path, 'PNG')
+        thumbnail_path = os.path.join(pdf_thumbnails_dir, f"page_{page_num}_thumb.jpg")  # JPEG 형식
+        # RGB 모드로 변환 (JPEG는 RGB만 지원)
+        if thumbnail_image.mode != 'RGB':
+            thumbnail_image = thumbnail_image.convert('RGB')
+        thumbnail_image.save(thumbnail_path, 'JPEG', quality=95)
         
         return thumbnail_path
     
@@ -419,7 +425,7 @@ class SessionManager:
             썸네일 파일 경로 또는 None
         """
         thumbnails_dir = SessionManager.get_thumbnails_dir()
-        thumbnail_path = os.path.join(thumbnails_dir, pdf_name, f"page_{page_num}_thumb.png")
+        thumbnail_path = os.path.join(thumbnails_dir, pdf_name, f"page_{page_num}_thumb.jpg")  # JPEG 형식
         
         if os.path.exists(thumbnail_path):
             return thumbnail_path

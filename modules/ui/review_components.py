@@ -66,7 +66,7 @@ def load_page_image(pdf_name: str, page_num: int) -> Optional[Image.Image]:
     
     # 2. 파일 시스템에서 로드 (하위 호환성)
     images_dir = SessionManager.get_images_dir()
-    image_path = os.path.join(images_dir, pdf_name, f"page_{page_num}.png")
+    image_path = os.path.join(images_dir, pdf_name, f"page_{page_num}.jpg")  # JPEG 형식
     
     if os.path.exists(image_path):
         try:
@@ -108,23 +108,23 @@ def render_navigation(pdf_name: str, current_page: int, total_pages: int):
     col1, col2, col3, col4, col5, col6 = st.columns(6)  # 재파싱 버튼을 위해 컬럼 추가
     
     with col1:
-        if st.button("◀", disabled=current_page <= 1, use_container_width=True, key="nav_prev", type="primary"):
+        if st.button("◀", disabled=current_page <= 1, width='stretch', key="nav_prev", type="primary"):
             st.session_state.selected_page = current_page - 1
             st.rerun()
     
     with col2:
-        if st.button("▶", disabled=current_page >= total_pages, use_container_width=True, key="nav_next", type="primary"):
+        if st.button("▶", disabled=current_page >= total_pages, width='stretch', key="nav_next", type="primary"):
             st.session_state.selected_page = current_page + 1
             st.rerun()
     
     with col3:
-        st.button(f"ページ: {current_page} / {total_pages}", use_container_width=True, help=f"PDF: {pdf_name}", key="nav_page", type="secondary")
+        st.button(f"ページ: {current_page} / {total_pages}", width='stretch', help=f"PDF: {pdf_name}", key="nav_page", type="secondary")
     
     with col4:
-        st.button(f"ページ役割: {role_label}", use_container_width=True, key="nav_role", type="secondary")
+        st.button(f"ページ役割: {role_label}", width='stretch', key="nav_role", type="secondary")
     
     with col5:
-        if st.button("🔄 再パース", use_container_width=True, key=f"reparse_{pdf_name}_{current_page}", type="primary"):
+        if st.button("🔄 再パース", width='stretch', key=f"reparse_{pdf_name}_{current_page}", type="primary"):
             # 진행 상황 표시를 위한 placeholder
             status_placeholder = st.empty()
             with status_placeholder.container():
@@ -173,7 +173,10 @@ def render_page_image(pdf_name: str, page_num: int):
         try:
             # PIL Image를 BytesIO로 변환하여 안전하게 전달
             img_buffer = BytesIO()
-            page_image.save(img_buffer, format='PNG')
+            # RGB 모드로 변환 (JPEG는 RGB만 지원)
+            if page_image.mode != 'RGB':
+                page_image = page_image.convert('RGB')
+            page_image.save(img_buffer, format='JPEG', quality=95)
             img_buffer.seek(0)
             
             # 이미지를 base64로 인코딩
@@ -183,7 +186,7 @@ def render_page_image(pdf_name: str, page_num: int):
             st.markdown(
                 f"""
                 <div style="max-height: 600px; overflow-y: auto; overflow-x: auto; border: 1px solid #ddd; border-radius: 4px; padding: 10px;">
-                    <img src="data:image/png;base64,{img_base64}" style="width: 100%; height: auto; display: block;" />
+                    <img src="data:image/jpeg;base64,{img_base64}" style="width: 100%; height: auto; display: block;" />
                 </div>
                 """,
                 unsafe_allow_html=True
@@ -195,7 +198,10 @@ def render_page_image(pdf_name: str, page_num: int):
                 page_image = load_page_image(pdf_name, page_num)
                 if page_image:
                     img_buffer = BytesIO()
-                    page_image.save(img_buffer, format='PNG')
+                    # RGB 모드로 변환 (JPEG는 RGB만 지원)
+                    if page_image.mode != 'RGB':
+                        page_image = page_image.convert('RGB')
+                    page_image.save(img_buffer, format='JPEG', quality=95)
                     img_buffer.seek(0)
                     
                     # 이미지를 base64로 인코딩
@@ -205,7 +211,7 @@ def render_page_image(pdf_name: str, page_num: int):
                     st.markdown(
                         f"""
                         <div style="max-height: 600px; overflow-y: auto; overflow-x: auto; border: 1px solid #ddd; border-radius: 4px; padding: 10px;">
-                            <img src="data:image/png;base64,{img_base64}" style="width: 100%; height: auto; display: block;" />
+                            <img src="data:image/jpeg;base64,{img_base64}" style="width: 100%; height: auto; display: block;" />
                         </div>
                         """,
                         unsafe_allow_html=True

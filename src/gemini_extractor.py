@@ -69,14 +69,16 @@ class PDFProcessor:
         saved_paths = []
         
         for idx, img in enumerate(images):
-            filename = f"{prefix}_{idx+1}.png"
+            filename = f"{prefix}_{idx+1}.jpg"  # JPEG 형식으로 저장
             filepath = os.path.join(output_dir, filename)
             try:
                 # 이미지가 로드되지 않은 경우 강제로 로드
                 img.load()
-                # PNG로 저장 (최고 품질, 압축 없음)
-                # optimize=False로 최적화 비활성화하여 원본 품질 유지
-                img.save(filepath, "PNG", optimize=False)
+                # JPEG로 저장 (품질 95로 고품질 유지)
+                # RGB 모드로 변환 (JPEG는 RGB만 지원)
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                img.save(filepath, "JPEG", quality=95, optimize=True)
                 # 저장된 파일이 제대로 생성되었는지 확인
                 if os.path.exists(filepath) and os.path.getsize(filepath) > 0:
                     saved_paths.append(filepath)
@@ -165,7 +167,7 @@ class GeminiVisionParser:
             max_size: Gemini API에 전달할 최대 이미지 크기 (픽셀, 기본값: 600)
                       속도 개선을 위해 큰 이미지는 리사이즈됨
             timeout: API 호출 타임아웃 (초, 기본값: 120초 = 2분)
-                    주의: 현재는 test_single_image.py와 동일한 방식으로 직접 호출하므로
+                    주의: 직접 호출하므로
                     실제 타임아웃은 Gemini API의 기본 타임아웃에 의존합니다.
             
         Returns:
@@ -187,14 +189,14 @@ class GeminiVisionParser:
             print(f"  이미지 크기: {original_width}x{original_height}px", end="", flush=True)
         
         # Gemini API 호출: 재시도 로직 포함 (SAFETY 오류 대응)
-        # test_single_image.py와 동일한 방식으로 직접 호출 (ThreadPoolExecutor 제거)
+        # 직접 호출 (ThreadPoolExecutor 제거)
         max_retries = 3  # 최대 재시도 횟수
         retry_delay = 2  # 재시도 전 대기 시간 (초)
         response = None
         
         for attempt in range(max_retries):
             try:
-                # test_single_image.py와 동일한 방식으로 직접 호출
+                # 직접 호출
                 chat = self.model.start_chat(history=[])
                 # 1단계: 이미지만 먼저 전달 (프롬프트 없이)
                 _ = chat.send_message([api_image])
@@ -583,13 +585,6 @@ class GeminiTwoStageParser:
 아래 구조로 JSON만 출력하세요:
 
 {{
-  "text": "...",
-  "document_number": "...",
-  "customer": "...",
-  "issuer": "...",
-  "issue_date": "...",
-  "billing_period": "...",
-  "total_amount": "...",
   "items": [
     {{
       "management_id": "...",
