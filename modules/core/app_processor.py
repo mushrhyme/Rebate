@@ -43,18 +43,21 @@ def process_pdf_with_progress(
         progress_bar = st.progress(0)
         status_text = st.empty()
 
+    from modules.utils.config import get_rag_config
+    config = get_rag_config()
+    
     if uploaded_file is not None:
         success, pages, error, elapsed_time = PdfProcessor.process_uploaded_pdf(
             uploaded_file=uploaded_file,
             pdf_name=pdf_name,
-            dpi=300,
+            dpi=config.dpi,
             progress_callback=progress_callback
         )
     else:
         success, pages, error, elapsed_time = PdfProcessor.process_pdf(
             pdf_name=pdf_name,
             pdf_path=pdf_path,
-            dpi=300,
+            dpi=config.dpi,
             progress_callback=progress_callback
         )
 
@@ -145,13 +148,16 @@ def reparse_single_page(pdf_name: str, page_num: int, timeout: int = 120):
                 with progress_placeholder.container():
                     st.info(f"🤖 {msg}", icon="⏳")
             
+            from modules.utils.config import get_rag_config
+            config = get_rag_config()
+            
             new_page_json = extract_json_with_rag(
                 ocr_text=ocr_text,
-                question="이 청구서의 상품별 내역을 JSON으로 추출해라",
-                model_name="gpt-4o-2024-08-06",
+                question=config.question,
+                model_name=config.openai_model,
                 temperature=0.0,
-                top_k=1,
-                similarity_threshold=0.7,
+                top_k=config.top_k,
+                similarity_threshold=config.similarity_threshold,
                 progress_callback=rag_progress_wrapper
             )
             

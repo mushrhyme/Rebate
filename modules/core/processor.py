@@ -62,14 +62,17 @@ class PdfProcessor:
             # 3. PDF 파싱 (DB 우선 사용, 없으면 RAG 기반 분석)
             # RAG 기반 파싱만 사용 (무조건 RAG 사용)
             from src.rag_pages_extractor import extract_pages_with_rag
+            from modules.utils.config import get_rag_config
+            
+            config = get_rag_config()
             page_results, image_paths, pil_images = extract_pages_with_rag(
                 pdf_path=pdf_path,
-                openai_model="gpt-4o-2024-08-06",
-                dpi=dpi,
+                openai_model=config.openai_model,
+                dpi=dpi if dpi else config.dpi,
                 save_images=False,
-                question="이 청구서의 상품별 내역을 JSON으로 추출해라",
-                top_k=1,
-                similarity_threshold=0.7,
+                question=config.question,
+                top_k=config.top_k,
+                similarity_threshold=config.similarity_threshold,
                 progress_callback=progress_callback
             )
             
