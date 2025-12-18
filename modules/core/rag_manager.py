@@ -539,14 +539,11 @@ class RAGManager:
                 if hybrid_score < similarity_threshold:
                     continue
                 
-                # 메타데이터 추출
-                metadatas = vector_results.get("metadatas", [[]])
-                metadata = metadatas[0][i] if metadatas and len(metadatas[0]) > i else {}
-                
-                answer_json = json.loads(metadata.get("answer_json", "{}"))
+                # 메타데이터 추출 (공통 헬퍼 사용)
+                ocr_text, answer_json, _ = self._extract_metadata_from_result(vector_results, i)
                 
                 hybrid_results.append({
-                    "ocr_text": metadata.get("ocr_text", ""),
+                    "ocr_text": ocr_text,
                     "answer_json": answer_json,
                     "similarity": vector_similarity,
                     "bm25_score": normalized_bm25,
@@ -706,6 +703,37 @@ class RAGManager:
     # 내부 헬퍼 함수
     # ============================================
     
+    def _extract_metadata_from_result(
+        self,
+        results: Dict[str, Any],
+        index: int
+    ) -> Tuple[str, Dict[str, Any], str]:
+        """
+        검색 결과에서 메타데이터 추출 (공통 로직)
+        
+        Args:
+            results: ChromaDB 검색 결과
+            index: 결과 인덱스
+            
+        Returns:
+            (ocr_text, answer_json, doc_id) 튜플
+        """
+        metadatas = results.get("metadatas", [[]])
+        metadata = metadatas[0][index] if metadatas and len(metadatas[0]) > index else {}
+        
+        ocr_text = metadata.get("ocr_text", "")
+        answer_json_str = metadata.get("answer_json", "{}")
+        
+        try:
+            answer_json = json.loads(answer_json_str)
+        except json.JSONDecodeError:
+            answer_json = {}
+        
+        ids = results.get("ids", [[]])
+        doc_id = ids[0][index] if ids and len(ids[0]) > index else ""
+        
+        return ocr_text, answer_json, doc_id
+    
     def _parse_search_results(
         self,
         results: Dict[str, Any],
@@ -736,17 +764,8 @@ class RAGManager:
                 if similarity < similarity_threshold:
                     continue
                 
-                # 메타데이터 추출
-                metadatas = results.get("metadatas", [[]])
-                metadata = metadatas[0][i] if metadatas and len(metadatas[0]) > i else {}
-                
-                ocr_text = metadata.get("ocr_text", "")
-                answer_json_str = metadata.get("answer_json", "{}")
-                
-                try:
-                    answer_json = json.loads(answer_json_str)
-                except json.JSONDecodeError:
-                    answer_json = {}
+                # 메타데이터 추출 (공통 헬퍼 사용)
+                ocr_text, answer_json, doc_id = self._extract_metadata_from_result(results, i)
                 
                 similar_examples.append({
                     "ocr_text": ocr_text,
