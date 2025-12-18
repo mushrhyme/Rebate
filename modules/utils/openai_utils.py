@@ -48,26 +48,29 @@ def ask_openai_with_reference(
     if not api_key:
         raise ValueError("OPENAI_API_KEY가 필요합니다. .env 파일에 설정하세요.")
     
-    # 프롬프트 구성
+    # 프롬프트 구성 (prompting.py 형식)
+    # ocr_text: 참조용 OCR 텍스트 (GIVEN_TEXT)
+    # answer_json: 참조용 정답 JSON (GIVEN_ANSWER)
+    # question: 추출할 대상 OCR 텍스트 (QUESTION)
     given_answer_str = json.dumps(answer_json, ensure_ascii=False, indent=2)
-    prompt = f"""
-    OCR 추출 결과:
-    {ocr_text}
-    
-    정답:
-    {given_answer_str}
-    
-    **중요**
-    - ocr_text를 보고 question에 대한 답을 추출
-    - 답 출력 시에는 불필요한 설명 없이 given_answer_str와 같이 json 형식으로 출력
-    - 누락되는 값 없이 모든 제품을 추출
-    - 추출할 항목이 없는 것은 지어내지 않고 None으로 출력(예: 케이스 개수가 없는 경우에는 None)
-    
-    질문:
-    {question}
-    
-    답:
-    """
+    prompt = f"""GIVEN_TEXT:
+{ocr_text}
+
+위 글이 주어지면 아래의 내용이 정답이야! 
+{given_answer_str}
+
+MISSION:
+1.너는 위 GIVEN_TEXT를 보고 아래에 주어지는 QUESTION에 대한 답을 찾아내야 해
+2.답을 찾을때는 해당 값의 누락이 없어야 해
+3.임의로 글을 수정하거나 추가하지 말고 QUESTION의 단어 안에서 답을 찾아내야 해
+4.QUESTION 안에 항목이 없는 것은 None으로 출력해야 해
+5.출력형식은 **json** 형태여야 해
+
+QUESTION:
+{question}
+
+ANSWER:
+"""
     
     # OpenAI API 호출
     try:

@@ -96,26 +96,29 @@ def extract_json_with_rag(
     if similar_examples:
         # 예제가 있는 경우: Example-augmented RAG
         example = similar_examples[0]  # 가장 유사한 예제 사용
-        example_ocr = example["ocr_text"]
-        example_answer = example["answer_json"]
+        example_ocr = example["ocr_text"]  # RAG 예제의 OCR 텍스트 (given_text)
+        example_answer = example["answer_json"]  # RAG 예제의 정답 JSON (given_answer)
         example_answer_str = json.dumps(example_answer, ensure_ascii=False, indent=2)
         
-        prompt = f"""OCR 추출 결과:
-{ocr_text}
+        # prompting.py 형식: given_text(예제 OCR)와 given_answer(예제 정답)를 보여주고,
+        # question(현재 페이지 OCR)에서 같은 형식으로 추출하도록 지시
+        prompt = f"""GIVEN_TEXT:
+{example_ocr}
 
-정답:
+위 글이 주어지면 아래의 내용이 정답이야! 
 {example_answer_str}
 
-**중요**
-- ocr_text를 보고 question에 대한 답을 추출
-- 답 출력 시에는 불필요한 설명 없이 정답과 같은 JSON 형식으로 출력
-- 누락되는 값 없이 모든 제품을 추출
-- 추출할 항목이 없는 것은 지어내지 않고 None으로 출력(예: 케이스 개수가 없는 경우에는 None)
+MISSION:
+1.너는 위 GIVEN_TEXT를 보고 아래에 주어지는 QUESTION에 대한 답을 찾아내야 해
+2.답을 찾을때는 해당 값의 누락이 없어야 해
+3.임의로 글을 수정하거나 추가하지 말고 QUESTION의 단어 안에서 답을 찾아내야 해
+4.QUESTION 안에 항목이 없는 것은 None으로 출력해야 해
+5.출력형식은 **json** 형태여야 해
 
-질문:
-{question}
+QUESTION:
+{ocr_text}
 
-답:
+ANSWER:
 """
     else:
         # 예제가 없는 경우: Zero-shot
