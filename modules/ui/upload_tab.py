@@ -319,12 +319,35 @@ def render_upload_tab():
                             with progress_placeholder.container():
                                 st.info(f"처리 중... ({completed_count}/{total_files}개 파일 완료)", icon="🔄")
                 else:
-                    # 순차 처리 (1개 파일)
-                    for file_data in prepared_files:
+                    # 순차 처리 (여러 파일을 하나씩 처리)
+                    for file_idx, file_data in enumerate(prepared_files):
+                        file_info = file_data[0]
+                        pdf_name = file_info["name"]
+                        file_display_name = file_info.get("original_name", f"{pdf_name}.pdf")
+                        
+                        with progress_placeholder.container():
+                            st.info(f"처리 중... ({file_idx + 1}/{total_files}) - {file_display_name}", icon="🔄")
+                        
+                        print(f"\n{'='*60}")
+                        print(f"📄 파일 {file_idx + 1}/{total_files} 처리 시작: {file_display_name}")
+                        print(f"{'='*60}")
+                        
                         result = process_single_file_thread(file_data)
                         results.append(result)
+                        
+                        # 각 파일 처리 결과 즉시 확인
+                        if result["success"]:
+                            print(f"✅ 파일 {file_idx + 1}/{total_files} 처리 완료: {file_display_name} ({result['pages']}페이지)")
+                        else:
+                            error_msg = result.get("error") or result.get("exception") or "알 수 없는 오류"
+                            print(f"❌ 파일 {file_idx + 1}/{total_files} 처리 실패: {file_display_name}")
+                            print(f"   오류: {error_msg}")
+                        
                         with progress_placeholder.container():
-                            st.info(f"처리 중... (1/1)", icon="🔄")
+                            if result["success"]:
+                                st.success(f"✅ {file_display_name} 완료 ({result['pages']}페이지)", icon="✅")
+                            else:
+                                st.error(f"❌ {file_display_name} 실패: {result.get('error', '알 수 없는 오류')}", icon="❌")
                 
                 # 결과 수집 및 UI 업데이트 (메인 스레드에서)
                 progress_placeholder.empty()

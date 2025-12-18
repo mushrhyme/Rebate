@@ -333,24 +333,39 @@ def extract_pages_with_rag(
     page_jsons = [page_results[i] for i in range(len(images))]
     
     # 디버깅: 결과 확인
-    print(f"\n📋 최종 결과 확인: {len(page_jsons)}개 페이지 결과 생성됨")
-    for idx, result in enumerate(page_jsons):
-        items_count = len(result.get("items", []))
-        error = result.get("error")
-        status = f"{items_count}개 items" if items_count > 0 else (f"오류: {error}" if error else "빈 결과")
-        print(f"  - 페이지 {idx+1}: {status}")
+    try:
+        print(f"\n📋 최종 결과 확인: {len(page_jsons)}개 페이지 결과 생성됨")
+        for idx, result in enumerate(page_jsons):
+            items_count = len(result.get("items", []))
+            error = result.get("error")
+            status = f"{items_count}개 items" if items_count > 0 else (f"오류: {error}" if error else "빈 결과")
+            print(f"  - 페이지 {idx+1}: {status}")
+        
+        # 분석 통계 출력
+        print(f"\n📊 RAG 분석 통계:")
+        print(f"  - 전체 페이지: {analysis_stats['total']}개")
+        print(f"  - 분석 성공: {analysis_stats['success']}개 (items 있음: {analysis_stats['with_items']}개, items 없음: {analysis_stats['empty_items']}개)")
+        print(f"  - 분석 실패: {analysis_stats['failed']}개")
+        print(f"\n📋 페이지별 상세:")
+        for detail in analysis_stats.get("page_details", []):
+            status_icon = "✅" if detail["status"].startswith("success") else "❌"
+            items_info = f", {detail['items_count']}개 items" if detail["items_count"] > 0 else ""
+            error_info = f", 오류: {detail['error']}" if detail.get("error") else ""
+            print(f"  {status_icon} 페이지 {detail['page_num']}: {detail['status']}{items_info}{error_info}")
+    except Exception as stats_error:
+        print(f"\n⚠️ 통계 출력 중 오류 발생 (결과는 정상 반환): {stats_error}")
+        import traceback
+        print(f"  - 상세:\n{traceback.format_exc()}")
     
-    # 분석 통계 출력
-    print(f"\n📊 RAG 분석 통계:")
-    print(f"  - 전체 페이지: {analysis_stats['total']}개")
-    print(f"  - 분석 성공: {analysis_stats['success']}개 (items 있음: {analysis_stats['with_items']}개, items 없음: {analysis_stats['empty_items']}개)")
-    print(f"  - 분석 실패: {analysis_stats['failed']}개")
-    print(f"\n📋 페이지별 상세:")
-    for detail in analysis_stats["page_details"]:
-        status_icon = "✅" if detail["status"].startswith("success") else "❌"
-        items_info = f", {detail['items_count']}개 items" if detail["items_count"] > 0 else ""
-        error_info = f", 오류: {detail['error']}" if detail.get("error") else ""
-        print(f"  {status_icon} 페이지 {detail['page_num']}: {detail['status']}{items_info}{error_info}")
+    # 반환값 검증
+    if page_jsons is None:
+        raise ValueError("page_jsons가 None입니다")
+    if not isinstance(page_jsons, list):
+        raise ValueError(f"page_jsons가 리스트가 아닙니다: {type(page_jsons)}")
+    if len(page_jsons) == 0:
+        raise ValueError("page_jsons가 비어있습니다")
+    
+    print(f"\n✅ extract_pages_with_rag 반환 준비 완료: {len(page_jsons)}개 페이지, {len(image_paths) if image_paths else 0}개 이미지 경로, {len(pil_images) if pil_images else 0}개 PIL 이미지")
     
     return page_jsons, image_paths, pil_images
 

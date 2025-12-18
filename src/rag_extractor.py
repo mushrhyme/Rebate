@@ -129,8 +129,9 @@ MISSION:
 1.너는 위 GIVEN_TEXT를 보고 아래에 주어지는 QUESTION에 대한 답을 찾아내야 해
 2.답을 찾을때는 해당 값의 누락이 없어야 해
 3.임의로 글을 수정하거나 추가하지 말고 QUESTION의 단어 안에서 답을 찾아내야 해
-4.QUESTION 안에 항목이 없는 것은 None으로 출력해야 해
-5.출력형식은 **json** 형태여야 해
+4.출력형식은 **json** 형태여야 해
+5.**중요**: items는 항상 배열([])이어야 합니다. 항목이 없으면 빈 배열 []을 반환하세요. null을 반환하지 마세요.
+6.**중요**: page_role은 항상 문자열이어야 합니다. "cover", "detail", "summary", "main" 중 하나를 반환하세요. null을 반환하지 마세요.
 
 QUESTION:
 {ocr_text}
@@ -151,7 +152,8 @@ OCR 추출 결과:
 **중요**
 - 답 출력 시에는 불필요한 설명 없이 JSON 형식으로만 출력
 - 누락되는 값 없이 모든 제품을 추출
-- 추출할 항목이 없는 것은 지어내지 않고 None으로 출력
+- **items는 항상 배열([])이어야 합니다. 항목이 없으면 빈 배열 []을 반환하세요. null을 반환하지 마세요.**
+- **page_role은 항상 문자열이어야 합니다. "cover", "detail", "summary", "main" 중 하나를 반환하세요. null을 반환하지 마세요.**
 
 답:
 """
@@ -235,7 +237,50 @@ OCR 추출 결과:
         
         # JSON 파싱 시도
         try:
+            # NaN 문자열을 null로 변환 (JSON 표준에 맞게)
+            import math
+            result_text = re.sub(r':\s*NaN\s*([,}])', r': null\1', result_text, flags=re.IGNORECASE)
+            result_text = re.sub(r':\s*"NaN"\s*([,}])', r': null\1', result_text, flags=re.IGNORECASE)
+            
             result_json = json.loads(result_text)
+            
+            # NaN 값 정규화 함수 (재귀적으로 딕셔너리와 리스트를 순회)
+            def normalize_nan(obj):
+                import math
+                if isinstance(obj, dict):
+                    return {k: normalize_nan(v) for k, v in obj.items()}
+                elif isinstance(obj, list):
+                    return [normalize_nan(item) for item in obj]
+                elif isinstance(obj, float) and (math.isnan(obj) or math.isinf(obj)):
+                    return None
+                else:
+                    return obj
+            
+            # NaN 값 정규화
+            result_json = normalize_nan(result_json)
+            
+            # null 값 정규화: items가 null이면 빈 리스트로, page_role이 null이면 기본값으로
+            if result_json.get("items") is None:
+                result_json["items"] = []
+                print(f"  ⚠️ items가 null이어서 빈 리스트로 변환했습니다.")
+            
+            if result_json.get("page_role") is None:
+                result_json["page_role"] = "detail"  # 기본값
+                print(f"  ⚠️ page_role이 null이어서 'detail'로 변환했습니다.")
+            
+            # items가 리스트가 아닌 경우 빈 리스트로 변환
+            if not isinstance(result_json.get("items"), list):
+                print(f"  ⚠️ items가 리스트가 아닙니다 ({type(result_json.get('items'))}). 빈 리스트로 변환합니다.")
+                result_json["items"] = []
+            
+            # items 내부의 각 항목에서 NaN 값 정규화
+            if isinstance(result_json.get("items"), list):
+                for item in result_json["items"]:
+                    if isinstance(item, dict):
+                        for key in ['quantity', 'case_count', 'bara_count', 'units_per_case', 'amount']:
+                            if key in item and isinstance(item[key], float) and (math.isnan(item[key]) or math.isinf(item[key])):
+                                item[key] = None
+                                print(f"  ⚠️ {key}가 NaN이어서 null로 변환했습니다.")
             
             # 디버깅: 파싱된 JSON 저장
             if debug_dir and page_num:

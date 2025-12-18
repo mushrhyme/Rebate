@@ -65,16 +65,25 @@ class PdfProcessor:
             from modules.utils.config import get_rag_config
             
             config = get_rag_config()
-            page_results, image_paths, pil_images = extract_pages_with_rag(
-                pdf_path=pdf_path,
-                openai_model=config.openai_model,
-                dpi=dpi if dpi else config.dpi,
-                save_images=False,
-                question=config.question,
-                top_k=config.top_k,
-                similarity_threshold=config.similarity_threshold,
-                progress_callback=progress_callback
-            )
+            print(f"\n🔄 PDF 파싱 시작: {pdf_name}")
+            try:
+                page_results, image_paths, pil_images = extract_pages_with_rag(
+                    pdf_path=pdf_path,
+                    openai_model=config.openai_model,
+                    dpi=dpi if dpi else config.dpi,
+                    save_images=False,
+                    question=config.question,
+                    top_k=config.top_k,
+                    similarity_threshold=config.similarity_threshold,
+                    progress_callback=progress_callback
+                )
+                print(f"✅ PDF 파싱 완료: {pdf_name} (결과: {len(page_results) if page_results else 0}개 페이지)")
+            except Exception as parse_error:
+                print(f"\n❌ PDF 파싱 실패: {pdf_name}")
+                print(f"  - 오류: {parse_error}")
+                import traceback
+                print(f"  - 상세:\n{traceback.format_exc()}")
+                raise RuntimeError(f"PDF 파싱 실패: {parse_error}") from parse_error
             
             # page_results가 None이거나 빈 리스트인지 확인
             if page_results is None or len(page_results) == 0:

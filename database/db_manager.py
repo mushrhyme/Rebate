@@ -825,18 +825,36 @@ class DatabaseManager:
         Returns:
             변환된 정수 (변환 실패 시 None)
         """
+        import math
+        
         if value is None or value == "":
             return None
         
+        # NaN 체크 (문자열 "NaN", "nan", "null" 등)
+        if isinstance(value, str):
+            cleaned = value.strip().lower()
+            if cleaned in ['nan', 'null', 'none', '']:
+                return None
+        
         if isinstance(value, (int, float)):
+            # float NaN 체크
+            if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+                return None
             return int(round(value))
         
         if isinstance(value, str):
             cleaned = value.replace(',', '').strip()
+            # NaN 문자열 체크
+            if cleaned.lower() in ['nan', 'null', 'none', '']:
+                return None
             try:
                 if cleaned:
-                    return int(round(float(cleaned)))
-            except ValueError:
+                    float_value = float(cleaned)
+                    # 변환 후 NaN 체크
+                    if math.isnan(float_value) or math.isinf(float_value):
+                        return None
+                    return int(round(float_value))
+            except (ValueError, OverflowError):
                 return None
         
         return None
