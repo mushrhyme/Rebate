@@ -140,6 +140,15 @@ def extract_pages_with_rag(
                 image.save(tmp_file.name, "PNG")
                 tmp_path = tmp_file.name
             
+            # 디버깅: 원본 이미지 저장
+            try:
+                os.makedirs(debug_dir, exist_ok=True)
+                debug_image_path = os.path.join(debug_dir, f"page_{page_num}_original_image.png")
+                image.save(debug_image_path, "PNG")
+                print(f"  💾 디버깅: 원본 이미지 저장 완료 - {debug_image_path}")
+            except Exception as debug_error:
+                print(f"  ⚠️ 원본 이미지 저장 실패: {debug_error}")
+            
             try:
                 ocr_text = upstage_extractor.extract_text(tmp_path)
                 if not ocr_text or len(ocr_text.strip()) == 0:
