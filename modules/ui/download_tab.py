@@ -8,7 +8,7 @@ import streamlit as st
 import pandas as pd
 
 from utils.session_manager import SessionManager
-from parser.merge_utils import MergeUtils
+from modules.utils.merge_utils import MergeUtils
 from modules.utils.session_utils import ensure_session_state_defaults
 
 

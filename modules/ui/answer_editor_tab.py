@@ -11,7 +11,8 @@ from PIL import Image
 import io
 
 from src.upstage_extractor import UpstageExtractor
-from modules.utils.openai_utils import extract_json_from_text, ask_openai_with_reference
+from modules.utils.openai_utils import ask_openai_with_reference
+from src.openai_extractor import OpenAITextParser
 from modules.ui.aggrid_utils import AgGridUtils
 import pandas as pd
 from modules.core.rag_manager import get_rag_manager
@@ -686,10 +687,13 @@ def render_answer_editor_tab():
                                 continue
 
                             status_text.text(f"페이지 {page_num}/{total_pages} 처리 중... ({idx + 1}/{len(pages_with_upstage)})")
-                            result_json = extract_json_from_text(
-                                text=page_info["upstage_text"],
+                            parser = OpenAITextParser(
+                                api_key=None,
                                 model_name="gpt-5-mini-2025-08-07",
-                                prompt_version="v2",
+                                prompt_version="v2"
+                            )
+                            result_json = parser.parse_text(
+                                text=page_info["upstage_text"],
                                 reference_json=reference_json
                             )
                             with open(page_info["answer_json_path"], "w", encoding="utf-8") as f:

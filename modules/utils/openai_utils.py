@@ -112,30 +112,3 @@ def ask_openai_with_reference(
         raise Exception(f"OpenAI API 호출 실패: {e}")
 
 
-def extract_json_from_text(
-    text: str,
-    api_key: Optional[str] = None,
-    model_name: str = "gpt-4o-mini",
-    prompt_version: str = "v2",
-    reference_json: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
-    """
-    텍스트를 OpenAI API로 분석하여 JSON 결과 반환
-    
-    정답지 편집 탭 등에서 사용하는 편의 함수입니다.
-    
-    Args:
-        text: Upstage 등에서 추출한 텍스트
-        api_key: OpenAI API 키 (None이면 환경변수에서 가져옴)
-        model_name: OpenAI 모델 이름 (기본값: "gpt-4o-mini")
-        prompt_version: 프롬프트 버전 (기본값: "v2")
-        reference_json: 기준 페이지의 JSON 정보 (다른 페이지 추출 시 참조용, 기본값: None)
-        
-    Returns:
-        파싱 결과 JSON 딕셔너리
-    """
-    # src.openai_extractor의 OpenAITextParser를 사용
-    from src.openai_extractor import OpenAITextParser
-    parser = OpenAITextParser(api_key=api_key, model_name=model_name, prompt_version=prompt_version)
-    return parser.parse_text(text, reference_json=reference_json)
-
