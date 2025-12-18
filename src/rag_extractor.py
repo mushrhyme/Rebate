@@ -43,13 +43,10 @@ def extract_json_with_rag(
     if not api_key:
         raise ValueError("OPENAI_API_KEY가 필요합니다. .env 파일에 설정하세요.")
     
-    # RAG Manager 가져오기
+    # RAG Manager 및 설정 가져오기 (한 번만 호출)
     rag_manager = get_rag_manager()
-    
-    # 1. Retrieval: 유사한 예제 검색 (하이브리드 방식 사용)
-    # 설정에서 검색 방식 가져오기
     from modules.utils.config import get_rag_config
-    config = get_rag_config()
+    config = get_rag_config()  # 설정 한 번만 로드
     search_method = getattr(config, 'search_method', 'hybrid')  # 기본값: hybrid
     hybrid_alpha = getattr(config, 'hybrid_alpha', 0.5)  # 기본값: 0.5
     

@@ -244,67 +244,6 @@ class RAGManager:
                     # 다른 종류의 오류는 즉시 재발생
                     raise
     
-    def search_similar(
-        self,
-        query_text: str,
-        top_k: int = 2,
-        similarity_threshold: float = 0.7
-    ) -> List[Dict[str, Any]]:
-        """
-        유사한 예제 검색
-        
-        Args:
-            query_text: 검색 쿼리 텍스트 (OCR 텍스트)
-            top_k: 반환할 최대 결과 수
-            similarity_threshold: 최소 유사도 임계값 (0.0 ~ 1.0)
-            
-        Returns:
-            검색 결과 리스트 (각 항목은 {"ocr_text": ..., "answer_json": ..., "distance": ...} 형태)
-        """
-        # 벡터 DB에서 검색
-        results = self.collection.query(
-            query_texts=[query_text],
-            n_results=top_k
-        )
-        
-        # 결과 파싱
-        similar_examples = []
-        
-        if results["ids"] and len(results["ids"][0]) > 0:
-            for i, doc_id in enumerate(results["ids"][0]):
-                # 거리 계산 (ChromaDB는 distance를 반환, 0에 가까울수록 유사)
-                distances = results.get("distances", [[]])
-                distance = distances[0][i] if distances and len(distances[0]) > i else 1.0
-                
-                # 유사도 계산 (distance를 similarity로 변환: 1 - distance)
-                similarity = 1.0 - distance
-                
-                # 임계값 체크
-                if similarity < similarity_threshold:
-                    continue
-                
-                # 메타데이터에서 OCR 텍스트와 정답 JSON 추출
-                metadatas = results.get("metadatas", [[]])
-                metadata = metadatas[0][i] if metadatas and len(metadatas[0]) > i else {}
-                
-                ocr_text = metadata.get("ocr_text", "")
-                answer_json_str = metadata.get("answer_json", "{}")
-                
-                try:
-                    answer_json = json.loads(answer_json_str)
-                except json.JSONDecodeError:
-                    answer_json = {}
-                
-                similar_examples.append({
-                    "ocr_text": ocr_text,
-                    "answer_json": answer_json,
-                    "similarity": similarity,
-                    "distance": distance,
-                    "id": doc_id
-                })
-        
-        return similar_examples
-    
     def get_all_examples(self) -> List[Dict[str, Any]]:
         """
         모든 예제 조회

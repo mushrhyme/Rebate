@@ -106,7 +106,11 @@ def reparse_single_page(pdf_name: str, page_num: int, timeout: int = 120):
     from modules.ui.review_components import load_page_image as load_page_image_from_module
     from src.upstage_extractor import UpstageExtractor
     from src.rag_extractor import extract_json_with_rag
+    from modules.utils.config import get_rag_config
     import tempfile
+
+    # 설정 로드 (한 번만 호출)
+    config = get_rag_config()
 
     # 진행 상황 표시를 위한 placeholder
     progress_placeholder = st.empty()
@@ -147,9 +151,6 @@ def reparse_single_page(pdf_name: str, page_num: int, timeout: int = 120):
             def rag_progress_wrapper(msg: str):
                 with progress_placeholder.container():
                     st.info(f"🤖 {msg}", icon="⏳")
-            
-            from modules.utils.config import get_rag_config
-            config = get_rag_config()
             
             new_page_json = extract_json_with_rag(
                 ocr_text=ocr_text,
