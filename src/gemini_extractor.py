@@ -14,19 +14,12 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
-
-from PIL import Image, ImageFile
 import google.generativeai as genai
+from PIL import Image
 
-# DecompressionBombWarning 방지: 이미지 크기 제한 증가
-Image.MAX_IMAGE_PIXELS = None  # 제한 없음 (또는 충분히 큰 값으로 설정)
-ImageFile.LOAD_TRUNCATED_IMAGES = True  # 손상된 이미지도 로드 시도
-
-# .env 파일 로드
-from dotenv import load_dotenv
-# 프로젝트 루트의 .env 파일을 명시적으로 로드
-env_path = Path(__file__).parent.parent / '.env'
-load_dotenv(env_path)  # .env 파일에서 환경 변수 로드
+# 공통 설정 로드 (PIL 설정, .env 로드 등)
+from modules.utils.config import load_env
+load_env()  # 명시적으로 .env 로드
 
 # 공통 PDFProcessor 모듈 import
 from src.pdf_processor import PDFProcessor
@@ -201,9 +194,10 @@ def get_image_output_dir(pdf_path: str) -> str:
     Returns:
         이미지 저장 디렉토리 경로 (img/{pdf_name}/)
     """
+    from modules.utils.config import get_project_root
     pdf_name = Path(pdf_path).stem  # 확장자 제거
     # 프로젝트 루트 기준으로 img/{pdf_name}/ 디렉토리 경로 생성
-    project_root = Path(__file__).parent.parent
+    project_root = get_project_root()
     img_dir = project_root / "img" / pdf_name
     return str(img_dir)
 

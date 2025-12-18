@@ -7,7 +7,6 @@ import requests
 from pathlib import Path
 from typing import Optional
 from io import BytesIO
-from dotenv import load_dotenv
 
 try:
     from PIL import Image
@@ -15,9 +14,9 @@ try:
 except ImportError:
     PIL_AVAILABLE = False
 
-# .env 파일 로드
-env_path = Path(__file__).parent.parent / '.env'
-load_dotenv(env_path)
+# 공통 설정 로드 (.env 로드)
+from modules.utils.config import load_env
+load_env()
 
 
 class UpstageExtractor:

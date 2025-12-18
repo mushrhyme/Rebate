@@ -27,7 +27,8 @@ class RAGManager:
             persist_directory: 벡터 DB 저장 디렉토리 (None이면 프로젝트 루트/chroma_db)
         """
         if persist_directory is None:
-            project_root = Path(__file__).parent.parent.parent
+            from modules.utils.config import get_project_root
+            project_root = get_project_root()
             persist_directory = str(project_root / "chroma_db")
         
         # 디렉토리 생성 및 권한 설정

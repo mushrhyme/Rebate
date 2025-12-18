@@ -13,7 +13,7 @@ import streamlit as st
 
 from modules.core.processor import PdfProcessor
 from utils.session_manager import SessionManager
-from src.gemini_extractor import GeminiTwoStageParser
+from src.gemini_extractor import GeminiTwoStageParser  # 리뷰 탭에서 단일 페이지 재파싱에 사용
 
 
 def process_pdf_with_progress(

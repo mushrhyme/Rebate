@@ -17,26 +17,12 @@ from modules.core.app_processor import (
     reprocess_pdf_from_storage,
     check_pdf_in_db
 )
-
-
-def _ensure_session_state_defaults() -> None:
-    """Streamlit 세션 상태의 기본 키들을 안전하게 초기화합니다."""
-    defaults = {
-        "uploaded_files_info": [],
-        "uploaded_file_objects": {},
-        "analysis_status": {},
-        "selected_pdf": None,
-        "selected_page": 1,
-        "review_data": {}
-    }
-    for key, default_value in defaults.items():
-        if key not in st.session_state:
-            st.session_state[key] = default_value
+from modules.utils.session_utils import ensure_session_state_defaults
 
 
 def render_upload_tab():
     """업로드 & 분석 탭"""
-    _ensure_session_state_defaults()
+    ensure_session_state_defaults()
     st.info(
         "**📌 使い方ガイド**:\n\n"
         "• 複数のファイルをアップロードした後、🔍 **解析実行**をクリックすると同時に分析できます\n\n"

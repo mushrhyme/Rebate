@@ -65,8 +65,8 @@ def extract_pages_with_rag(
     
     # 2. DB에 데이터가 없으면 RAG 기반 파싱
     # 디버깅 폴더 설정 (실제 분석을 수행할 때만 생성)
-    # src/rag_pages_extractor.py -> src -> 프로젝트 루트
-    project_root = Path(__file__).parent.parent
+    from modules.utils.config import get_project_root
+    project_root = get_project_root()
     debug_base_dir = project_root / "debug"
     debug_dir = debug_base_dir / pdf_name
     if debug_dir.exists():

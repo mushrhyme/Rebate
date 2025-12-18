@@ -8,11 +8,11 @@ PDF 파일을 이미지로 변환하고 저장하는 기능을 제공합니다.
 import os
 from typing import List
 from pdf2image import convert_from_path
-from PIL import Image, ImageFile
+from PIL import Image
 
-# DecompressionBombWarning 방지: 이미지 크기 제한 증가
-Image.MAX_IMAGE_PIXELS = None  # 제한 없음 (또는 충분히 큰 값으로 설정)
-ImageFile.LOAD_TRUNCATED_IMAGES = True  # 손상된 이미지도 로드 시도
+# 공통 설정 로드 (PIL 설정이 이미 적용됨)
+from modules.utils.config import load_env
+load_env()  # PIL 설정이 config.py에서 이미 적용됨
 
 
 class PDFProcessor:

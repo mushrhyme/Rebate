@@ -15,18 +15,11 @@ from typing import List, Dict, Any, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
 
-from PIL import Image, ImageFile
 from openai import OpenAI
 
-# DecompressionBombWarning 방지: 이미지 크기 제한 증가
-Image.MAX_IMAGE_PIXELS = None  # 제한 없음 (또는 충분히 큰 값으로 설정)
-ImageFile.LOAD_TRUNCATED_IMAGES = True  # 손상된 이미지도 로드 시도
-
-# .env 파일 로드
-from dotenv import load_dotenv
-# 프로젝트 루트의 .env 파일을 명시적으로 로드
-env_path = Path(__file__).parent.parent / '.env'
-load_dotenv(env_path)  # .env 파일에서 환경 변수 로드
+# 공통 설정 로드 (PIL 설정, .env 로드 등)
+from modules.utils.config import load_env
+load_env()  # 명시적으로 .env 로드
 
 # 공통 PDFProcessor 모듈 import
 from src.pdf_processor import PDFProcessor

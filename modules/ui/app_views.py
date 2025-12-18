@@ -5,20 +5,11 @@ Streamlit UI 메인 엔트리 포인트
 각 탭의 실제 구현은 별도 파일로 분리되어 있습니다.
 """
 
-from pathlib import Path
-
 import streamlit as st
 
-from dotenv import load_dotenv
-
-# 이미지 로드 설정
-from PIL import Image, ImageFile
-Image.MAX_IMAGE_PIXELS = None
-ImageFile.LOAD_TRUNCATED_IMAGES = True
-
-# .env 로드 (프로젝트 루트의 .env)
-env_path = Path(__file__).parent.parent.parent / '.env'
-load_dotenv(env_path)
+# 공통 설정 로드 (PIL 설정, .env 로드 등)
+from modules.utils.config import load_env
+load_env()  # 명시적으로 .env 로드
 
 # 탭 모듈 import
 from modules.ui.upload_tab import render_upload_tab

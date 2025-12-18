@@ -15,6 +15,8 @@ from modules.utils.openai_utils import extract_json_from_text, ask_openai_with_r
 from modules.ui.aggrid_utils import AgGridUtils
 import pandas as pd
 from modules.core.rag_manager import get_rag_manager
+from modules.utils.config import get_project_root
+from modules.utils.session_utils import ensure_session_state_defaults
 
 # 컬럼명 일본어 매핑 (공통 상수)
 COLUMN_NAME_MAPPING = {
@@ -254,25 +256,9 @@ def render_comparison_grid(comparison_df, current_page):
     st.caption("**일치율 색상 범례**: 🟢 초록색 (100% 일치) | 🟡 노란색 (80% 이상) | 🟠 주황색 (50% 이상) | 🔴 빨간색 (50% 미만)")
 
 
-
-def _ensure_session_state_defaults() -> None:
-    """Streamlit 세션 상태의 기본 키들을 안전하게 초기화합니다."""
-    defaults = {
-        "uploaded_files_info": [],
-        "uploaded_file_objects": {},
-        "analysis_status": {},
-        "selected_pdf": None,
-        "selected_page": 1,
-        "review_data": {}
-    }
-    for key, default_value in defaults.items():
-        if key not in st.session_state:
-            st.session_state[key] = default_value
-
-
 def render_answer_editor_tab():
     """정답지 편집 탭"""
-    _ensure_session_state_defaults()
+    ensure_session_state_defaults()
 
     # 세션 상태 초기화
     if "answer_editor_pdfs" not in st.session_state:
@@ -291,7 +277,7 @@ def render_answer_editor_tab():
     )
 
     # 기존 처리된 PDF 목록 확인
-    project_root = Path(__file__).parent.parent.parent
+    project_root = get_project_root()
     img_dir = project_root / "img"
     existing_pdfs = []
     if img_dir.exists():
@@ -529,7 +515,7 @@ def render_answer_editor_tab():
                 with st.spinner("PDF를 처리하는 중... (fitz 기반 이미지 추출)"):
                     try:
                         # 저장 경로 준비
-                        project_root = Path(__file__).parent.parent.parent
+                        project_root = get_project_root()
                         img_dir = project_root / "img" / pdf_name
                         img_dir.mkdir(parents=True, exist_ok=True)
                         temp_pdf_path = img_dir / f"{pdf_name}.pdf"

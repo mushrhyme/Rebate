@@ -33,11 +33,8 @@ class PageStorage:
         Returns:
             프로젝트 루트 디렉토리 경로
         """
-        # 현재 파일의 위치에서 프로젝트 루트 찾기
-        current_file = Path(__file__).resolve()
-        # modules/core/storage.py -> modules/core -> modules -> 프로젝트 루트
-        project_root = current_file.parent.parent.parent
-        return str(project_root)
+        from modules.utils.config import get_project_root
+        return str(get_project_root())
     
     @staticmethod
     def _get_result_dir(pdf_name: str) -> str:

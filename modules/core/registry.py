@@ -30,9 +30,8 @@ class PdfRegistry:
         Returns:
             pdf_registry.json 파일 경로
         """
-        # 프로젝트 루트 찾기
-        current_file = Path(__file__).resolve()
-        project_root = current_file.parent.parent.parent
+        from modules.utils.config import get_project_root
+        project_root = get_project_root()
         return project_root / PdfRegistry.REGISTRY_FILE
     
     @staticmethod
