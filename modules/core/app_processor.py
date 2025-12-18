@@ -13,7 +13,7 @@ import streamlit as st
 
 from modules.core.processor import PdfProcessor
 from utils.session_manager import SessionManager
-from src.gemini_extractor import GeminiVisionParser, GeminiTwoStageParser
+from src.gemini_extractor import GeminiTwoStageParser
 
 
 def process_pdf_with_progress(
