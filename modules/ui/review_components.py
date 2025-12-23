@@ -89,7 +89,6 @@ def render_navigation(pdf_name: str, current_page: int, total_pages: int):
         total_pages: 전체 페이지 수
     """
     import streamlit as st
-    from modules.core.app_processor import reparse_single_page
     
     # 페이지 데이터 로드하여 page_role 정보 가져오기
     page_data = load_page_data(pdf_name, current_page)
@@ -105,7 +104,7 @@ def render_navigation(pdf_name: str, current_page: int, total_pages: int):
     role_label = role_labels.get(page_role, page_role)
     
     
-    col1, col2, col3, col4, col5, col6 = st.columns(6)  # 재파싱 버튼을 위해 컬럼 추가
+    col1, col2, col3, col4, col5 = st.columns(5)
     
     with col1:
         if st.button("◀", disabled=current_page <= 1, width='stretch', key="nav_prev", type="primary"):
@@ -124,21 +123,6 @@ def render_navigation(pdf_name: str, current_page: int, total_pages: int):
         st.button(f"ページ役割: {role_label}", width='stretch', key="nav_role", type="secondary")
     
     with col5:
-        if st.button("🔄 再パース", width='stretch', key=f"reparse_{pdf_name}_{current_page}", type="primary"):
-            # 진행 상황 표시를 위한 placeholder
-            status_placeholder = st.empty()
-            with status_placeholder.container():
-                st.info("🔄 再パース中... (최대 2분 소요)", icon="⏳")
-            
-            try:
-                reparse_single_page(pdf_name, current_page)  # 기존 함수 활용
-                status_placeholder.empty()
-            except Exception as e:
-                status_placeholder.empty()
-                # 에러는 reparse_single_page 내부에서 처리되므로 여기서는 빈 처리
-                pass
-    
-    with col6:
         if 'review_data' not in st.session_state:
             st.session_state.review_data = {}
         if pdf_name not in st.session_state.review_data:

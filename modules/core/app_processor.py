@@ -96,18 +96,18 @@ def process_single_pdf(uploaded_file, pdf_name: str, progress_container, file_in
 
 def reparse_single_page(pdf_name: str, page_num: int, timeout: int = 120):
     """
-    단일 페이지 재파싱 (RAG 기반)
+    단일 페이지 재파싱 (PyMuPDF + RAG 기반)
     
     Args:
         pdf_name: PDF 파일명 (확장자 제외)
         page_num: 페이지 번호 (1부터 시작)
         timeout: API 호출 타임아웃 (초, 기본값: 120초 = 2분)
     """
-    from modules.ui.review_components import load_page_image as load_page_image_from_module
-    from src.upstage_extractor import UpstageExtractor
+    from pathlib import Path
+    import fitz  # PyMuPDF
     from src.rag_extractor import extract_json_with_rag
     from modules.utils.config import get_rag_config
-    import tempfile
+    from modules.utils.pdf_utils import find_pdf_path
 
     # 설정 로드 (한 번만 호출)
     config = get_rag_config()
@@ -116,101 +116,103 @@ def reparse_single_page(pdf_name: str, page_num: int, timeout: int = 120):
     progress_placeholder = st.empty()
     
     with progress_placeholder.container():
-        st.info("🔄 画像を読み込み中...", icon="⏳")
+        st.info("🔄 PDFファイルを検索中...", icon="⏳")
     
-    page_image = load_page_image_from_module(pdf_name, page_num)
-    if page_image is None:
+    # PDF 파일 경로 찾기
+    pdf_path = find_pdf_path(pdf_name)
+    if not pdf_path:
         progress_placeholder.empty()
-        st.error("画像が見つかりません。")
+        st.error("PDFファイルが見つかりません。")
+        return
+    
+    pdf_path = Path(pdf_path)
+    if not pdf_path.exists():
+        progress_placeholder.empty()
+        st.error("PDFファイルが見つかりません。")
         return
 
     try:
         # 파싱 시간 측정 시작
         parse_start_time = time.time()
         
-        # 임시 이미지 파일로 저장 (Upstage API 사용)
+        # PyMuPDF로 텍스트 추출
         with progress_placeholder.container():
-            st.info("🔍 Upstage OCRでテキスト抽出中...", icon="⏳")
+            st.info("🔍 PyMuPDFでテキスト抽出中...", icon="⏳")
         
-        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
-            page_image.save(tmp_file.name, "PNG")
-            tmp_path = tmp_file.name
+        # PyMuPDF로 PDF에서 텍스트 추출
+        doc = fitz.open(pdf_path)
+        if page_num < 1 or page_num > doc.page_count:
+            doc.close()
+            raise Exception(f"페이지 번호가 범위를 벗어났습니다 (1-{doc.page_count})")
         
-        try:
-            # Upstage로 OCR 텍스트 추출
-            upstage_extractor = UpstageExtractor()
-            ocr_text = upstage_extractor.extract_text(tmp_path)
-            
-            if not ocr_text or len(ocr_text.strip()) == 0:
-                raise Exception("OCR 텍스트가 비어있습니다")
-            
-            # RAG 기반 JSON 추출
+        page = doc.load_page(page_num - 1)  # fitz는 0부터 시작
+        ocr_text = page.get_text()
+        doc.close()
+        
+        if not ocr_text or len(ocr_text.strip()) == 0:
+            raise Exception("PDF에서 텍스트를 추출할 수 없습니다")
+        
+        # RAG 기반 JSON 추출
+        with progress_placeholder.container():
+            st.info("🔎 RAG検索中...", icon="⏳")
+        
+        def rag_progress_wrapper(msg: str):
             with progress_placeholder.container():
-                st.info("🔎 RAG検索中...", icon="⏳")
-            
-            def rag_progress_wrapper(msg: str):
-                with progress_placeholder.container():
-                    st.info(f"🤖 {msg}", icon="⏳")
-            
-            new_page_json = extract_json_with_rag(
-                ocr_text=ocr_text,
-                question=config.question,
-                model_name=config.openai_model,
-                temperature=0.0,
-                top_k=config.top_k,
-                similarity_threshold=config.similarity_threshold,
-                progress_callback=rag_progress_wrapper
-            )
-            
-            # items 개수 확인
-            if not isinstance(new_page_json, dict):
-                raise Exception(f"예상치 못한 응답 형식: {type(new_page_json)}. 딕셔너리가 아닙니다.")
-            
-            items = new_page_json.get("items", [])
-            items_count = len(items) if items else 0
-            
-            parse_end_time = time.time()
-            parse_duration = parse_end_time - parse_start_time
-            
-            print(f"페이지 {page_num} 재파싱 완료: {parse_duration:.1f}초 ({items_count}개 items)")
+                st.info(f"🤖 {msg}", icon="⏳")
+        
+        new_page_json = extract_json_with_rag(
+            ocr_text=ocr_text,
+            question=config.question,
+            model_name=config.openai_model,
+            temperature=0.0,
+            top_k=config.top_k,
+            similarity_threshold=config.similarity_threshold,
+            progress_callback=rag_progress_wrapper,
+            page_num=page_num
+        )
+        
+        # items 개수 확인
+        if not isinstance(new_page_json, dict):
+            raise Exception(f"예상치 못한 응답 형식: {type(new_page_json)}. 딕셔너리가 아닙니다.")
+        
+        items = new_page_json.get("items", [])
+        items_count = len(items) if items else 0
+        
+        parse_end_time = time.time()
+        parse_duration = parse_end_time - parse_start_time
+        
+        print(f"페이지 {page_num} 재파싱 완료: {parse_duration:.1f}초 ({items_count}개 items)")
 
-            with progress_placeholder.container():
-                st.info("💾 結果を保存中...", icon="⏳")
+        with progress_placeholder.container():
+            st.info("💾 結果を保存中...", icon="⏳")
+        
+        # 파일 시스템에 저장
+        SessionManager.save_ocr_result(pdf_name, page_num, new_page_json)
+        
+        # DB에도 저장 (items 업데이트)
+        try:
+            from database.registry import get_db
+            db_manager = get_db()
+            pdf_filename = f"{pdf_name}.pdf"
             
-            # 파일 시스템에 저장
-            SessionManager.save_ocr_result(pdf_name, page_num, new_page_json)
-            
-            # DB에도 저장 (items 업데이트)
-            try:
-                from database.registry import get_db
-                db_manager = get_db()
-                pdf_filename = f"{pdf_name}.pdf"
-                
-                if items:
-                    # DB의 해당 페이지 items 업데이트
-                    success = db_manager.update_page_items(
-                        pdf_filename=pdf_filename,
-                        page_num=page_num,
-                        items=items,
-                        session_id=None,
-                        is_latest=True
-                    )
-                    if success:
-                        print(f"✅ DB 업데이트 완료: {len(items)}개 items 저장")
-                    else:
-                        print(f"⚠️ DB 업데이트 실패 (세션이 없을 수 있음)")
+            if items:
+                # DB의 해당 페이지 items 업데이트
+                success = db_manager.update_page_items(
+                    pdf_filename=pdf_filename,
+                    page_num=page_num,
+                    items=items,
+                    session_id=None,
+                    is_latest=True
+                )
+                if success:
+                    print(f"✅ DB 업데이트 완료: {len(items)}개 items 저장")
                 else:
-                    print(f"⚠️ items가 비어있어 DB 업데이트를 건너뜁니다")
-            except Exception as db_err:
-                # DB 업데이트 실패해도 파일 저장은 성공했으므로 계속 진행
-                print(f"⚠️ DB 업데이트 실패 (파일 저장은 완료): {db_err}")
-                
-        finally:
-            # 임시 파일 삭제
-            try:
-                os.unlink(tmp_path)
-            except Exception:
-                pass
+                    print(f"⚠️ DB 업데이트 실패 (세션이 없을 수 있음)")
+            else:
+                print(f"⚠️ items가 비어있어 DB 업데이트를 건너뜁니다")
+        except Exception as db_err:
+            # DB 업데이트 실패해도 파일 저장은 성공했으므로 계속 진행
+            print(f"⚠️ DB 업데이트 실패 (파일 저장은 완료): {db_err}")
 
         progress_placeholder.empty()
         st.success(f"ページ {page_num} 再パース完了！ (소요 시간: {parse_duration:.2f}초, {items_count}개 items)", icon="✅")
