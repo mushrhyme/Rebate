@@ -177,11 +177,25 @@ def render_upload_tab():
         # RAG 기반 분석 정보 표시 (무조건 RAG 사용)
         st.divider()
         try:
-            from modules.core.rag_manager import get_rag_manager
-            rag_manager = get_rag_manager()
-            example_count = rag_manager.count_examples()
-            if example_count > 0:
-                st.success(f"✅ RAG 기반 분석 활성화 (벡터 DB 예제: {example_count}개)")
+            import json
+            from modules.utils.config import get_project_root
+            
+            # 벡터 DB의 실제 파일에서 직접 개수 확인 (캐시 문제 방지)
+            project_root = get_project_root()
+            metadata_path = project_root / "faiss_db" / "metadata.json"
+            
+            if metadata_path.exists():
+                with open(metadata_path, 'r', encoding='utf-8') as f:
+                    metadata_data = json.load(f)
+                actual_count = len(metadata_data.get('metadata', {}))
+            else:
+                # 파일이 없으면 RAG Manager에서 확인
+                from modules.core.rag_manager import get_rag_manager
+                rag_manager = get_rag_manager()
+                actual_count = rag_manager.count_examples()
+            
+            if actual_count > 0:
+                st.success(f"✅ RAG 기반 분석 활성화 (벡터 DB 예제: {actual_count}개)")
             else:
                 st.warning("⚠️ 벡터 DB에 예제가 없습니다. 정답지 편집 탭에서 예제를 추가하세요.")
         except Exception as e:

@@ -2,7 +2,7 @@
 img 폴더의 PDF 데이터를 FAISS 벡터 DB로 변환하는 스크립트
 
 img 폴더의 모든 하위 폴더에서:
-- PDF 파일 (fitz로 텍스트 추출)
+- PDF 파일 (PyMuPDF로 텍스트 추출)
 - Page*_answer.json (정답 JSON)
 
 파일을 찾아서 RAG Manager에 추가합니다.
@@ -11,7 +11,7 @@ img 폴더의 모든 하위 폴더에서:
 import os
 import json
 from pathlib import Path
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Optional
 import fitz  # PyMuPDF
 
 from modules.core.rag_manager import get_rag_manager
@@ -20,7 +20,7 @@ from modules.utils.config import get_project_root
 
 def find_pdf_pages(img_dir: Path) -> List[Dict[str, Any]]:
     """
-    img 폴더에서 모든 PDF 페이지 데이터를 찾습니다.
+    img 폴더의 하위 폴더에서 모든 PDF 페이지 데이터를 찾습니다.
     
     Args:
         img_dir: img 폴더 경로
@@ -28,10 +28,10 @@ def find_pdf_pages(img_dir: Path) -> List[Dict[str, Any]]:
     Returns:
         [page_data, ...] 리스트
         page_data = {
-            'pdf_name': str,
-            'page_num': int,
-            'pdf_path': Path,
-            'answer_json_path': Path
+            'pdf_name': str,           # PDF 파일명 (확장자 제외)
+            'page_num': int,            # 페이지 번호 (1부터 시작)
+            'pdf_path': Path,           # PDF 파일 경로
+            'answer_json_path': Optional[Path]  # answer.json 경로 (있으면)
         }
     """
     pages = []
@@ -56,16 +56,35 @@ def find_pdf_pages(img_dir: Path) -> List[Dict[str, Any]]:
         # 해당 폴더의 모든 answer.json 파일 찾기
         answer_files = sorted(pdf_folder.glob("Page*_answer.json"))
         
+        if not answer_files:
+            print(f"⚠️ {pdf_name}: answer.json 파일이 없습니다")
+            continue
+        
+        # PDF 파일 열어서 페이지 수 확인
+        try:
+            doc = fitz.open(pdf_file)
+            page_count = len(doc)
+            doc.close()
+        except Exception as e:
+            print(f"⚠️ PDF 파일 열기 실패 ({pdf_name}): {e}")
+            continue
+        
+        print(f"  - {pdf_name}: {len(answer_files)}개 answer.json 파일, {page_count}페이지")
+        
         for answer_file in answer_files:
             try:
                 # 페이지 번호 추출 (예: "Page1_answer.json" -> 1)
                 page_num_str = answer_file.stem.replace("Page", "").replace("_answer", "")
                 page_num = int(page_num_str)
                 
+                # 페이지 번호가 유효한지 확인
+                if page_num < 1 or page_num > page_count:
+                    print(f"  ⚠️ 페이지 번호 범위 초과: {pdf_name} Page{page_num} (최대: {page_count})")
+                    continue
+                
                 pages.append({
                     'pdf_name': pdf_name,
                     'page_num': page_num,
-                    'pdf_folder': pdf_folder,
                     'pdf_path': pdf_file,
                     'answer_json_path': answer_file
                 })
@@ -107,16 +126,19 @@ def extract_text_from_pdf_page(pdf_path: Path, page_num: int) -> str:
         return ""
 
 
-def load_answer_json(answer_path: Path) -> Dict[str, Any]:
+def load_answer_json(answer_path: Optional[Path]) -> Dict[str, Any]:
     """
     정답 JSON 파일을 읽습니다.
     
     Args:
-        answer_path: 정답 JSON 파일 경로
+        answer_path: 정답 JSON 파일 경로 (None이면 빈 딕셔너리 반환)
         
     Returns:
         정답 JSON 딕셔너리 (없으면 빈 딕셔너리)
     """
+    if answer_path is None or not answer_path.exists():
+        return {}
+    
     try:
         with open(answer_path, 'r', encoding='utf-8') as f:
             return json.load(f)
@@ -173,7 +195,7 @@ def build_faiss_db(img_dir: Path = None) -> None:
         pdf_name = page_data['pdf_name']
         page_num = page_data['page_num']
         pdf_path = page_data['pdf_path']
-        answer_path = page_data['answer_json_path']
+        answer_path = page_data.get('answer_json_path')
         
         print(f"[{i}/{len(pages)}] 처리 중: {pdf_name} - Page{page_num}")
         
@@ -184,12 +206,14 @@ def build_faiss_db(img_dir: Path = None) -> None:
             skip_count += 1
             continue
         
-        # 정답 JSON 읽기
+        # 정답 JSON 읽기 (필수)
         answer_json = load_answer_json(answer_path)
         if not answer_json:
             print(f"  ⚠️ 정답 JSON이 비어있어 건너뜁니다.")
             skip_count += 1
             continue
+        
+        print(f"  📄 answer.json 사용: {answer_path.name}")
         
         # 메타데이터 구성
         metadata = {
@@ -198,15 +222,20 @@ def build_faiss_db(img_dir: Path = None) -> None:
             'source': 'img_folder'
         }
         
-        # 벡터 DB에 추가
+        # 벡터 DB에 추가 (중복 체크 활성화)
         try:
             doc_id = rag_manager.add_example(
                 ocr_text=ocr_text,
                 answer_json=answer_json,
-                metadata=metadata
+                metadata=metadata,
+                skip_duplicate=True  # 중복 체크 활성화
             )
-            print(f"  ✅ 추가 완료 (ID: {doc_id[:8]}...)")
-            success_count += 1
+            if doc_id is None:
+                print(f"  ⚠️ 이미 존재하는 예제입니다 (건너뜀)")
+                skip_count += 1
+            else:
+                print(f"  ✅ 추가 완료 (ID: {doc_id[:8]}...)")
+                success_count += 1
         except Exception as e:
             print(f"  ❌ 추가 실패: {e}")
             error_count += 1
