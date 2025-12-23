@@ -52,16 +52,16 @@ class RAGConfig:
     dpi: int = 300  # PDF를 이미지로 변환할 때의 DPI
     
     # RAG 검색 설정
-    top_k: int = 3  # 벡터 DB에서 검색할 예제 수
+    top_k: int = 3 # 벡터 DB에서 검색할 예제 수
     similarity_threshold: float = 0.7  # 최소 유사도 임계값 (0.0 ~ 1.0)
     search_method: str = "hybrid"  # 검색 방식: "vector", "hybrid", "rerank"
     hybrid_alpha: float = 0.5  # 하이브리드 검색 가중치 (0.0~1.0, 0.5 = 벡터와 BM25 동일 가중치)
     
     # OpenAI 모델 설정
-    openai_model: str = "gpt-4o-2024-08-06"  # 사용할 OpenAI 모델명
+    openai_model: str = "gpt-4o-2024-11-20"  # 사용할 OpenAI 모델명
     
-    # RAG 질문 텍스트
-    question: str = "이 청구서의 상품별 내역을 JSON으로 추출해라"
+    # RAG 질문 텍스트 (notepad 예제와 동일)
+    question: str = "이 페이지의 상품명, 수량, 금액 등 항목 정보를 모두 추출해줘"
     
     # 병렬 처리 설정
     max_parallel_workers: int = 1  # Upstage OCR 병렬 워커 수 (1 = 순차 처리, Rate limit 방지)

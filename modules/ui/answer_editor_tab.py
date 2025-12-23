@@ -19,6 +19,36 @@ from modules.core.rag_manager import get_rag_manager
 from modules.utils.config import get_project_root
 from modules.utils.session_utils import ensure_session_state_defaults
 
+
+def extract_text_from_pdf_page(pdf_path: Path, page_num: int) -> str:
+    """
+    fitz를 사용하여 PDF에서 특정 페이지의 텍스트를 추출합니다.
+    
+    Args:
+        pdf_path: PDF 파일 경로
+        page_num: 페이지 번호 (1부터 시작)
+        
+    Returns:
+        추출된 텍스트 (없으면 빈 문자열)
+    """
+    try:
+        if not pdf_path.exists():
+            return ""
+        
+        doc = fitz.open(pdf_path)
+        if page_num < 1 or page_num > doc.page_count:
+            doc.close()
+            return ""
+        
+        page = doc.load_page(page_num - 1)  # fitz는 0부터 시작
+        text = page.get_text()
+        doc.close()
+        
+        return text.strip() if text else ""
+    except Exception as e:
+        print(f"⚠️ PDF 텍스트 추출 실패 ({pdf_path}, 페이지 {page_num}): {e}")
+        return ""
+
 # 컬럼명 일본어 매핑 (공통 상수)
 COLUMN_NAME_MAPPING = {
     'No': 'No',
@@ -353,16 +383,21 @@ def render_answer_editor_tab():
                                     except ValueError:
                                         continue
                                     
-                                    # OCR 텍스트 파일 경로
-                                    ocr_text_path = pdf_img_dir / f"Page{page_num}_upstage.txt"
-                                    if not ocr_text_path.exists():
-                                        pdf_skipped += 1
-                                        total_skipped += 1
-                                        continue
+                                    # PDF 경로 찾기
+                                    pdf_path = pdf_img_dir / f"{pdf_name}.pdf"
+                                    if not pdf_path.exists():
+                                        # 세션 디렉토리에서도 찾기
+                                        from modules.utils.pdf_utils import find_pdf_path
+                                        session_pdf_path = find_pdf_path(pdf_name)
+                                        if session_pdf_path:
+                                            pdf_path = Path(session_pdf_path)
+                                        else:
+                                            pdf_skipped += 1
+                                            total_skipped += 1
+                                            continue
                                     
-                                    # OCR 텍스트 읽기
-                                    with open(ocr_text_path, "r", encoding="utf-8") as f:
-                                        ocr_text = f.read()
+                                    # fitz를 사용하여 PDF에서 텍스트 추출
+                                    ocr_text = extract_text_from_pdf_page(pdf_path, page_num)
                                     
                                     if not ocr_text.strip():
                                         pdf_skipped += 1
@@ -470,16 +505,23 @@ def render_answer_editor_tab():
                     image_path = pdf_img_dir / f"Page{page_num}.png"
                     if not image_path.exists():
                         break
-                    upstage_text_path = pdf_img_dir / f"Page{page_num}_upstage.txt"
                     answer_json_path = pdf_img_dir / f"Page{page_num}_answer.json"
+                    # fitz를 사용하여 PDF에서 텍스트 추출
+                    pdf_path = pdf_img_dir / f"{pdf_name}.pdf"
+                    if not pdf_path.exists():
+                        # 세션 디렉토리에서도 찾기
+                        from modules.utils.pdf_utils import find_pdf_path
+                        session_pdf_path = find_pdf_path(pdf_name)
+                        if session_pdf_path:
+                            pdf_path = Path(session_pdf_path)
+                    
                     upstage_text = ""
-                    if upstage_text_path.exists():
-                        with open(upstage_text_path, "r", encoding="utf-8") as f:
-                            upstage_text = f.read()
+                    if pdf_path.exists():
+                        upstage_text = extract_text_from_pdf_page(pdf_path, page_num)
                     page_info_list.append({
                         "page_num": page_num,
                         "image_path": str(image_path),
-                        "upstage_text_path": str(upstage_text_path),
+                        "upstage_text_path": "",  # fitz 사용으로 더 이상 필요 없음
                         "answer_json_path": str(answer_json_path),
                         "upstage_text": upstage_text
                     })
@@ -722,12 +764,27 @@ def render_answer_editor_tab():
                             skipped_count = 0
                             
                             with st.spinner("벡터 DB에 저장 중..."):
+                                # PDF 경로 찾기
+                                pdf_path = img_dir / selected_pdf / f"{selected_pdf}.pdf"
+                                if not pdf_path.exists():
+                                    # 세션 디렉토리에서도 찾기
+                                    from modules.utils.pdf_utils import find_pdf_path
+                                    session_pdf_path = find_pdf_path(selected_pdf)
+                                    if session_pdf_path:
+                                        pdf_path = Path(session_pdf_path)
+                                
                                 for page_info in pdf_info["pages"]:
                                     page_num = page_info["page_num"]
-                                    ocr_text = page_info.get("upstage_text", "")
                                     answer_json_path = page_info.get("answer_json_path", "")
                                     
-                                    if not ocr_text or not os.path.exists(answer_json_path):
+                                    if not os.path.exists(answer_json_path):
+                                        skipped_count += 1
+                                        continue
+                                    
+                                    # fitz를 사용하여 PDF에서 텍스트 추출
+                                    ocr_text = extract_text_from_pdf_page(pdf_path, page_num) if pdf_path.exists() else ""
+                                    
+                                    if not ocr_text.strip():
                                         skipped_count += 1
                                         continue
                                     

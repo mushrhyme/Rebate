@@ -1,22 +1,23 @@
 """
 RAG (Retrieval-Augmented Generation) 관리 모듈
 
-벡터 DB를 사용하여 OCR 텍스트와 정답 JSON 쌍을 저장하고 검색합니다.
+FAISS를 사용하여 OCR 텍스트와 정답 JSON 쌍을 저장하고 검색합니다.
 """
 
 import os
 import json
+import pickle
+import numpy as np
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
-import chromadb
-from chromadb.config import Settings
+import faiss
 
 
 class RAGManager:
     """
     RAG 벡터 DB 관리 클래스
     
-    ChromaDB를 사용하여 OCR 텍스트를 임베딩하고 검색합니다.
+    FAISS를 사용하여 OCR 텍스트를 임베딩하고 검색합니다.
     """
     
     def __init__(self, persist_directory: Optional[str] = None):
@@ -24,75 +25,111 @@ class RAGManager:
         RAG Manager 초기화
         
         Args:
-            persist_directory: 벡터 DB 저장 디렉토리 (None이면 프로젝트 루트/chroma_db)
+            persist_directory: 벡터 DB 저장 디렉토리 (None이면 프로젝트 루트/faiss_db)
         """
         if persist_directory is None:
             from modules.utils.config import get_project_root
             project_root = get_project_root()
-            persist_directory = str(project_root / "chroma_db")
+            persist_directory = str(project_root / "faiss_db")
+        
+        self.persist_directory = persist_directory
         
         # 디렉토리 생성 및 권한 설정
         os.makedirs(persist_directory, exist_ok=True, mode=0o755)
         
-        # 디렉토리 쓰기 권한 확인
-        if not os.access(persist_directory, os.W_OK):
-            raise PermissionError(
-                f"벡터 DB 디렉토리에 쓰기 권한이 없습니다: {persist_directory}\n"
-                f"다음 명령어로 권한을 수정하세요: chmod -R 755 {persist_directory}"
-            )
+        # 파일 경로
+        self.index_path = os.path.join(persist_directory, "faiss.index")
+        self.metadata_path = os.path.join(persist_directory, "metadata.json")
         
-        # ChromaDB 내부 디렉토리 및 파일 권한 확인
-        # ChromaDB는 내부적으로 SQLite를 사용하므로 데이터베이스 파일에 쓰기 권한이 필요
-        chromadb_data_dir = Path(persist_directory)
-        if chromadb_data_dir.exists():
-            # 디렉토리 내부 파일들의 쓰기 권한 확인
-            try:
-                test_file = chromadb_data_dir / ".write_test"
-                try:
-                    test_file.touch()
-                    test_file.unlink()
-                except (PermissionError, OSError):
-                    raise PermissionError(
-                        f"벡터 DB 디렉토리 내부 파일에 쓰기 권한이 없습니다: {persist_directory}\n"
-                        f"다음 명령어로 권한을 수정하세요: chmod -R 755 {persist_directory}"
-                    )
-            except Exception:
-                pass  # 테스트 파일 생성 실패는 무시
+        # 임베딩 모델 초기화 (지연 로딩)
+        self._embedding_model = None
         
-        # ChromaDB 클라이언트 초기화
-        self.client = chromadb.PersistentClient(
-            path=persist_directory,
-            settings=Settings(anonymized_telemetry=False)
-        )
-        
-        # 컬렉션 이름
-        self.collection_name = "ocr_examples"
-        
-        # 컬렉션 가져오기 또는 생성
-        try:
-            self.collection = self.client.get_collection(name=self.collection_name)
-        except Exception as e:
-            # 컬렉션이 없으면 생성
-            try:
-                self.collection = self.client.create_collection(
-                    name=self.collection_name,
-                    metadata={"description": "OCR 텍스트와 정답 JSON 예제 저장소"}
-                )
-            except Exception as create_error:
-                # 생성 실패 시 권한 문제일 수 있음
-                error_msg = str(create_error)
-                if "readonly" in error_msg.lower() or "permission" in error_msg.lower():
-                    raise PermissionError(
-                        f"벡터 DB 컬렉션 생성 실패 (권한 문제): {error_msg}\n"
-                        f"디렉토리 경로: {persist_directory}\n"
-                        f"해결 방법: 터미널에서 `chmod -R 755 {persist_directory}` 실행"
-                    )
-                raise
+        # FAISS 인덱스 및 메타데이터 로드
+        self.index = None
+        self.metadata = {}  # {doc_id: {ocr_text, answer_json, metadata}}
+        self.id_to_index = {}  # {doc_id: faiss_index}
+        self.index_to_id = {}  # {faiss_index: doc_id}
+        self._load_index()
         
         # BM25 인덱스 초기화 (지연 로딩)
         self._bm25_index = None
         self._bm25_texts = None
-        self._bm25_example_map = None  # doc_id -> example 인덱스 매핑
+        self._bm25_example_map = None
+    
+    def _get_embedding_model(self):
+        """임베딩 모델 가져오기 (지연 로딩)"""
+        if self._embedding_model is None:
+            try:
+                from sentence_transformers import SentenceTransformer
+                # 다국어 모델 사용 (일본어/한국어/영어 지원)
+                self._embedding_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+            except ImportError:
+                raise ImportError(
+                    "sentence-transformers가 설치되지 않았습니다.\n"
+                    "다음 명령어로 설치하세요: pip install sentence-transformers"
+                )
+        return self._embedding_model
+    
+    def _get_embedding_dim(self) -> int:
+        """임베딩 차원 반환"""
+        model = self._get_embedding_model()
+        # 테스트 임베딩으로 차원 확인
+        test_embedding = model.encode(["test"], convert_to_numpy=True)
+        return test_embedding.shape[1]
+    
+    def _load_index(self):
+        """FAISS 인덱스 및 메타데이터 로드"""
+        embedding_dim = self._get_embedding_dim()
+        
+        # FAISS 인덱스 로드
+        if os.path.exists(self.index_path):
+            try:
+                self.index = faiss.read_index(self.index_path)
+            except Exception as e:
+                print(f"⚠️ FAISS 인덱스 로드 실패, 새로 생성: {e}")
+                self.index = faiss.IndexFlatL2(embedding_dim)
+        else:
+            self.index = faiss.IndexFlatL2(embedding_dim)
+        
+        # 메타데이터 로드
+        if os.path.exists(self.metadata_path):
+            try:
+                with open(self.metadata_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    self.metadata = data.get("metadata", {})
+                    self.id_to_index = data.get("id_to_index", {})
+                    index_to_id_raw = data.get("index_to_id", {})
+                    
+                    # JSON에서 로드하면 키가 문자열이므로 정수로 변환
+                    self.index_to_id = {int(k): v for k, v in index_to_id_raw.items()}
+                    
+                    # index_to_id 매핑이 불완전하면 id_to_index로 재구축
+                    if len(self.index_to_id) < len(self.id_to_index):
+                        print(f"⚠️ index_to_id 매핑 불완전, 재구축 중... ({len(self.index_to_id)}/{len(self.id_to_index)})")
+                        self.index_to_id = {idx: doc_id for doc_id, idx in self.id_to_index.items()}
+                        self._save_index()  # 재구축된 매핑 저장
+            except Exception as e:
+                print(f"⚠️ 메타데이터 로드 실패: {e}")
+                self.metadata = {}
+                self.id_to_index = {}
+                self.index_to_id = {}
+    
+    def _save_index(self):
+        """FAISS 인덱스 및 메타데이터 저장"""
+        try:
+            # FAISS 인덱스 저장
+            faiss.write_index(self.index, self.index_path)
+            
+            # 메타데이터 저장
+            data = {
+                "metadata": self.metadata,
+                "id_to_index": self.id_to_index,
+                "index_to_id": self.index_to_id
+            }
+            with open(self.metadata_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"⚠️ 인덱스 저장 실패: {e}")
     
     def add_example(
         self,
@@ -112,137 +149,35 @@ class RAGManager:
             추가된 문서의 ID
         """
         import uuid
-        import time
         
         # 문서 ID 생성
         doc_id = str(uuid.uuid4())
         
-        # 메타데이터 구성
-        doc_metadata = metadata.copy() if metadata else {}
-        doc_metadata["ocr_text"] = ocr_text  # payload에 포함
-        doc_metadata["answer_json"] = json.dumps(answer_json, ensure_ascii=False)  # payload에 포함
+        # 임베딩 생성
+        model = self._get_embedding_model()
+        processed_text = self.preprocess_ocr_text(ocr_text)
+        embedding = model.encode([processed_text], convert_to_numpy=True).astype('float32')
         
-        # OCR 텍스트만 임베딩 (answer_json은 임베딩하지 않음)
-        # 재시도 로직 추가 (권한 문제나 잠금 문제 해결)
-        max_retries = 3
-        retry_delay = 0.5
+        # FAISS 인덱스에 추가
+        faiss_index = self.index.ntotal
+        self.index.add(embedding)
         
-        for attempt in range(max_retries):
-            try:
-                self.collection.add(
-                    ids=[doc_id],
-                    documents=[ocr_text],  # 임베딩 대상: OCR 텍스트만
-                    metadatas=[doc_metadata]  # 메타데이터에 answer_json 포함
-                )
-                # BM25 인덱스 새로고침
-                self._refresh_bm25_index()
-                return doc_id
-            except Exception as e:
-                error_msg = str(e)
-                if "readonly" in error_msg.lower() or "permission" in error_msg.lower():
-                    if attempt < max_retries - 1:
-                        time.sleep(retry_delay * (attempt + 1))
-                        continue
-                    else:
-                        # persist_directory를 사용하여 명확한 에러 메시지 제공
-                        db_path = getattr(self, 'persist_directory', '알 수 없음')
-                        
-                        # 권한 자동 수정 시도 (선택적)
-                        try:
-                            import stat
-                            import shutil
-                            
-                            # 1. 디렉토리 및 하위 파일들의 권한 수정 시도
-                            for root, dirs, files in os.walk(db_path):
-                                try:
-                                    os.chmod(root, stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
-                                except Exception:
-                                    pass
-                                
-                                for file in files:
-                                    file_path = os.path.join(root, file)
-                                    try:
-                                        # SQLite 파일은 쓰기 권한이 필수
-                                        os.chmod(file_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
-                                    except Exception:
-                                        pass
-                            
-                            # 2. ChromaDB 내부 SQLite 파일 확인 및 권한 수정
-                            # ChromaDB는 보통 chroma.sqlite3 같은 파일을 생성
-                            sqlite_files = list(Path(db_path).rglob("*.sqlite3"))
-                            sqlite_files.extend(list(Path(db_path).rglob("*.sqlite")))
-                            sqlite_files.extend(list(Path(db_path).rglob("*.db")))
-                            
-                            for sqlite_file in sqlite_files:
-                                try:
-                                    os.chmod(str(sqlite_file), stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
-                                except Exception:
-                                    pass
-                            
-                            # 3. 권한 수정 후 재시도
-                            self.collection.add(
-                                ids=[doc_id],
-                                documents=[ocr_text],
-                                metadatas=[doc_metadata]
-                            )
-                            return doc_id
-                        except Exception as retry_error:
-                            # 컬렉션 재생성 시도 (마지막 시도)
-                            try:
-                                # 기존 컬렉션 삭제 시도
-                                try:
-                                    self.client.delete_collection(name=self.collection_name)
-                                except Exception:
-                                    pass
-                                
-                                # 새 컬렉션 생성
-                                self.collection = self.client.create_collection(
-                                    name=self.collection_name,
-                                    metadata={"description": "OCR 텍스트와 정답 JSON 예제 저장소"}
-                                )
-                                
-                                # 재시도
-                                self.collection.add(
-                                    ids=[doc_id],
-                                    documents=[ocr_text],
-                                    metadatas=[doc_metadata]
-                                )
-                                return doc_id
-                            except Exception as final_error:
-                                # 모든 시도 실패 시 명확한 에러 메시지 제공
-                                # ChromaDB 내부 파일 목록 확인
-                                file_list = []
-                                try:
-                                    for root, dirs, files in os.walk(db_path):
-                                        for file in files:
-                                            file_path = os.path.join(root, file)
-                                            try:
-                                                file_stat = os.stat(file_path)
-                                                file_list.append(f"  {file_path} (권한: {oct(file_stat.st_mode)[-3:]})")
-                                            except Exception:
-                                                pass
-                                except Exception:
-                                    pass
-                                
-                                file_info = "\n".join(file_list[:10])  # 최대 10개만 표시
-                                if len(file_list) > 10:
-                                    file_info += f"\n  ... 외 {len(file_list) - 10}개 파일"
-                                
-                                raise PermissionError(
-                                    f"벡터 DB 저장 실패 (권한 문제): {error_msg}\n"
-                                    f"디렉토리 경로: {db_path}\n"
-                                    f"\n디렉토리 내 파일:\n{file_info if file_list else '  (파일 없음)'}\n"
-                                    f"\n해결 방법:\n"
-                                    f"1. 터미널에서 다음 명령어를 실행하세요:\n"
-                                    f"   chmod -R 755 {db_path}\n"
-                                    f"   find {db_path} -type f -exec chmod 644 {{}} \\;\n"
-                                    f"\n2. 또는 chroma_db 디렉토리를 삭제하고 다시 시도하세요:\n"
-                                    f"   rm -rf {db_path}\n"
-                                    f"   (다음 실행 시 자동으로 재생성됩니다)"
-                                )
-                else:
-                    # 다른 종류의 오류는 즉시 재발생
-                    raise
+        # 메타데이터 저장
+        self.metadata[doc_id] = {
+            "ocr_text": ocr_text,
+            "answer_json": answer_json,
+            "metadata": metadata or {}
+        }
+        self.id_to_index[doc_id] = faiss_index
+        self.index_to_id[faiss_index] = doc_id
+        
+        # 저장
+        self._save_index()
+        
+        # BM25 인덱스 새로고침
+        self._refresh_bm25_index()
+        
+        return doc_id
     
     def get_all_examples(self) -> List[Dict[str, Any]]:
         """
@@ -251,31 +186,19 @@ class RAGManager:
         Returns:
             예제 리스트
         """
-        results = self.collection.get()
-        
         examples = []
-        for i, doc_id in enumerate(results["ids"]):
-            metadata = results["metadatas"][i] if results["metadatas"] else {}
-            ocr_text = metadata.get("ocr_text", "")
-            answer_json_str = metadata.get("answer_json", "{}")
-            
-            try:
-                answer_json = json.loads(answer_json_str)
-            except json.JSONDecodeError:
-                answer_json = {}
-            
+        for doc_id, data in self.metadata.items():
             examples.append({
                 "id": doc_id,
-                "ocr_text": ocr_text,
-                "answer_json": answer_json,
-                "metadata": {k: v for k, v in metadata.items() if k not in ["ocr_text", "answer_json"]}
+                "ocr_text": data.get("ocr_text", ""),
+                "answer_json": data.get("answer_json", {}),
+                "metadata": data.get("metadata", {})
             })
-        
         return examples
     
     def delete_example(self, doc_id: str) -> bool:
         """
-        예제 삭제
+        예제 삭제 (FAISS는 삭제를 지원하지 않으므로 메타데이터만 제거)
         
         Args:
             doc_id: 문서 ID
@@ -283,13 +206,16 @@ class RAGManager:
         Returns:
             삭제 성공 여부
         """
-        try:
-            self.collection.delete(ids=[doc_id])
-            # BM25 인덱스 새로고침
+        if doc_id in self.metadata:
+            faiss_index = self.id_to_index.get(doc_id)
+            if faiss_index is not None:
+                del self.index_to_id[faiss_index]
+            del self.id_to_index[doc_id]
+            del self.metadata[doc_id]
+            self._save_index()
             self._refresh_bm25_index()
             return True
-        except Exception:
-            return False
+        return False
     
     def count_examples(self) -> int:
         """
@@ -298,7 +224,7 @@ class RAGManager:
         Returns:
             예제 수
         """
-        return self.collection.count()
+        return len(self.metadata)
     
     # ============================================
     # OCR 텍스트 전처리 함수
@@ -341,7 +267,6 @@ class RAGManager:
         """
         import re
         # 숫자, 일본어, 한국어, 영어를 모두 포함하는 토큰화
-        # 간단한 방법: 공백, 줄바꿈, 특수문자 기준으로 분리
         tokens = re.findall(r'\b\w+\b|[가-힣]+|[ひらがなカタカナ]+|[一-龠]+', text)
         return tokens
     
@@ -350,13 +275,10 @@ class RAGManager:
     # ============================================
     
     def _build_bm25_index(self):
-        """
-        BM25 인덱스 구축 (지연 로딩)
-        """
+        """BM25 인덱스 구축 (지연 로딩)"""
         try:
             from rank_bm25 import BM25Okapi
         except ImportError:
-            # rank-bm25가 설치되지 않은 경우 None으로 설정
             self._bm25_index = None
             return
         
@@ -373,7 +295,7 @@ class RAGManager:
         self._bm25_texts = []
         self._bm25_example_map = {}
         
-        for idx, example in enumerate(all_examples):
+        for example in all_examples:
             ocr_text = example.get("ocr_text", "")
             doc_id = example.get("id", "")
             
@@ -386,7 +308,7 @@ class RAGManager:
             
             if tokens:  # 토큰이 있는 경우만 추가
                 self._bm25_texts.append(tokens)
-                self._bm25_example_map[doc_id] = len(self._bm25_texts) - 1  # 실제 인덱스 사용
+                self._bm25_example_map[doc_id] = len(self._bm25_texts) - 1
         
         # BM25 인덱스 생성
         if self._bm25_texts:
@@ -395,9 +317,7 @@ class RAGManager:
             self._bm25_index = None
     
     def _refresh_bm25_index(self):
-        """
-        BM25 인덱스 새로고침 (예제 추가/삭제 후 호출)
-        """
+        """BM25 인덱스 새로고침 (예제 추가/삭제 후 호출)"""
         self._bm25_index = None
         self._bm25_texts = None
         self._bm25_example_map = None
@@ -415,7 +335,7 @@ class RAGManager:
         use_preprocessing: bool = True
     ) -> List[Dict[str, Any]]:
         """
-        기본 벡터 검색 (기존 방식)
+        기본 벡터 검색
         
         Args:
             query_text: 검색 쿼리 텍스트 (OCR 텍스트)
@@ -426,16 +346,58 @@ class RAGManager:
         Returns:
             검색 결과 리스트
         """
+        if self.index.ntotal == 0:
+            return []
+        
         # 전처리 적용
         processed_query = self.preprocess_ocr_text(query_text) if use_preprocessing else query_text
         
-        # 벡터 DB에서 검색
-        results = self.collection.query(
-            query_texts=[processed_query],
-            n_results=top_k
-        )
+        # 임베딩 생성
+        model = self._get_embedding_model()
+        query_embedding = model.encode([processed_query], convert_to_numpy=True).astype('float32')
         
-        return self._parse_search_results(results, similarity_threshold)
+        # FAISS 검색
+        k = min(top_k * 2, self.index.ntotal)  # 더 많이 검색 후 필터링
+        distances, indices = self.index.search(query_embedding, k)
+        
+        # 결과 파싱
+        results = []
+        seen_doc_ids = set()
+        
+        for i, (distance, idx) in enumerate(zip(distances[0], indices[0])):
+            if idx == -1:  # FAISS에서 유효하지 않은 인덱스
+                continue
+            
+            doc_id = self.index_to_id.get(idx)
+            if not doc_id or doc_id in seen_doc_ids:
+                continue
+            seen_doc_ids.add(doc_id)
+            
+            # 유사도 계산 (L2 거리를 유사도로 변환)
+            # L2 거리는 보통 0~수백 범위이므로, 더 나은 변환 공식 사용
+            # 거리가 작을수록 유사도가 높아야 하므로 역변환
+            # 거리 0 -> 유사도 1.0, 거리 증가 -> 유사도 감소
+            similarity = max(0.0, 1.0 - (distance / 100.0))  # 거리 100을 기준으로 정규화
+            
+            # 임계값 체크
+            if similarity < similarity_threshold:
+                continue
+            
+            # 메타데이터 가져오기
+            data = self.metadata.get(doc_id, {})
+            
+            results.append({
+                "ocr_text": data.get("ocr_text", ""),
+                "answer_json": data.get("answer_json", {}),
+                "similarity": similarity,
+                "distance": float(distance),
+                "id": doc_id
+            })
+        
+        # 유사도로 정렬
+        results.sort(key=lambda x: x["similarity"], reverse=True)
+        
+        return results[:top_k]
     
     def search_hybrid(
         self,
@@ -465,92 +427,59 @@ class RAGManager:
             # BM25가 사용 불가능하면 벡터 검색만 사용
             return self.search_vector_only(query_text, top_k, similarity_threshold, use_preprocessing)
         
-        # 전처리 적용
-        processed_query = self.preprocess_ocr_text(query_text) if use_preprocessing else query_text
-        
-        # 1. 벡터 검색 (더 많은 후보 검색)
-        vector_results = self.collection.query(
-            query_texts=[processed_query],
-            n_results=top_k * 3  # 하이브리드 결합을 위해 더 많이 검색
+        # 벡터 검색 (더 많은 후보)
+        vector_results = self.search_vector_only(
+            query_text, top_k * 3, 0.0, use_preprocessing  # threshold 무시
         )
         
-        # 2. BM25 검색
+        # BM25 검색
+        processed_query = self.preprocess_ocr_text(query_text) if use_preprocessing else query_text
         query_tokens = self._tokenize(processed_query)
+        
         if not query_tokens:
-            # 토큰이 없으면 벡터 검색만 사용
             return self.search_vector_only(query_text, top_k, similarity_threshold, use_preprocessing)
         
         bm25_scores_list = self._bm25_index.get_scores(query_tokens)
         
         # doc_id -> BM25 점수 매핑
-        # _bm25_example_map을 사용하여 올바른 인덱스로 매핑
         bm25_scores = {}
-        all_examples = self.get_all_examples()
-        for example in all_examples:
-            doc_id = example.get("id", "")
-            if not doc_id:
-                continue
-            # _bm25_example_map에서 실제 BM25 인덱스 가져오기
-            bm25_idx = self._bm25_example_map.get(doc_id)
-            if bm25_idx is not None and bm25_idx < len(bm25_scores_list):
+        for doc_id, bm25_idx in self._bm25_example_map.items():
+            if bm25_idx < len(bm25_scores_list):
                 bm25_scores[doc_id] = bm25_scores_list[bm25_idx]
         
-        # 3. 하이브리드 점수 계산
+        # 하이브리드 점수 계산
         hybrid_results = []
+        candidate_bm25_scores = [bm25_scores.get(r["id"], 0.0) for r in vector_results]
         
-        if vector_results["ids"] and len(vector_results["ids"][0]) > 0:
-            # 먼저 벡터 검색 결과에 포함된 doc_id들의 BM25 점수만 수집
-            candidate_bm25_scores = []
-            for i, doc_id in enumerate(vector_results["ids"][0]):
-                bm25_score = bm25_scores.get(doc_id, 0.0)
-                candidate_bm25_scores.append(bm25_score)
+        if candidate_bm25_scores:
+            max_bm25 = max(candidate_bm25_scores)
+            min_bm25 = min(candidate_bm25_scores)
+        else:
+            max_bm25 = 1.0
+            min_bm25 = 0.0
+        
+        for result in vector_results:
+            doc_id = result["id"]
+            vector_similarity = result["similarity"]
             
-            # BM25 점수 정규화를 위한 최대값/최소값 계산 (후보들 중에서만)
-            if candidate_bm25_scores:
-                max_bm25 = max(candidate_bm25_scores)
-                min_bm25 = min(candidate_bm25_scores)
+            # BM25 점수 정규화
+            bm25_score = bm25_scores.get(doc_id, 0.0)
+            if max_bm25 > min_bm25:
+                normalized_bm25 = (bm25_score - min_bm25) / (max_bm25 - min_bm25)
+            elif max_bm25 == min_bm25 and max_bm25 > 0:
+                normalized_bm25 = 1.0
             else:
-                max_bm25 = 1.0
-                min_bm25 = 0.0
+                normalized_bm25 = 0.0
             
-            for i, doc_id in enumerate(vector_results["ids"][0]):
-                # 벡터 거리
-                distances = vector_results.get("distances", [[]])
-                distance = distances[0][i] if distances and len(distances[0]) > i else 1.0
-                vector_similarity = 1.0 - distance
-                
-                # BM25 점수 (정규화: 0-1 범위)
-                bm25_score = bm25_scores.get(doc_id, 0.0)
-                if max_bm25 > min_bm25:
-                    normalized_bm25 = (bm25_score - min_bm25) / (max_bm25 - min_bm25)
-                elif max_bm25 == min_bm25 and max_bm25 > 0:
-                    # 모든 점수가 같고 0이 아닌 경우
-                    normalized_bm25 = 1.0
-                else:
-                    # 모든 점수가 0인 경우
-                    normalized_bm25 = 0.0
-                
-                # 하이브리드 점수 (가중 평균)
-                hybrid_score = (
-                    hybrid_alpha * vector_similarity + 
-                    (1 - hybrid_alpha) * normalized_bm25
-                )
-                
-                if hybrid_score < similarity_threshold:
-                    continue
-                
-                # 메타데이터 추출 (공통 헬퍼 사용)
-                ocr_text, answer_json, _ = self._extract_metadata_from_result(vector_results, i)
-                
-                hybrid_results.append({
-                    "ocr_text": ocr_text,
-                    "answer_json": answer_json,
-                    "similarity": vector_similarity,
-                    "bm25_score": normalized_bm25,
-                    "hybrid_score": hybrid_score,  # 최종 점수
-                    "distance": distance,
-                    "id": doc_id
-                })
+            # 하이브리드 점수
+            hybrid_score = hybrid_alpha * vector_similarity + (1 - hybrid_alpha) * normalized_bm25
+            
+            if hybrid_score < similarity_threshold:
+                continue
+            
+            result["bm25_score"] = normalized_bm25
+            result["hybrid_score"] = hybrid_score
+            hybrid_results.append(result)
         
         # 하이브리드 점수로 정렬
         hybrid_results.sort(key=lambda x: x["hybrid_score"], reverse=True)
@@ -583,76 +512,52 @@ class RAGManager:
         try:
             from sentence_transformers import CrossEncoder
         except ImportError:
-            # sentence-transformers가 설치되지 않은 경우 벡터 검색만 사용
             return self.search_vector_only(query_text, top_k, similarity_threshold, use_preprocessing)
         
-        # 전처리 적용
-        processed_query = self.preprocess_ocr_text(query_text) if use_preprocessing else query_text
-        
-        # 1. 벡터 검색 (더 많은 후보)
-        vector_results = self.collection.query(
-            query_texts=[processed_query],
-            n_results=rerank_top_n
-        )
-        
-        candidates = self._parse_search_results(vector_results, similarity_threshold)
+        # 벡터 검색
+        candidates = self.search_vector_only(query_text, rerank_top_n, 0.0, use_preprocessing)
         
         if len(candidates) <= 1:
             return candidates[:top_k]
         
-        # 2. Cross-encoder로 재정렬
+        # Cross-encoder로 재정렬
         if rerank_model is None:
             rerank_model = 'cross-encoder/ms-marco-MiniLM-L-6-v2'
         
         try:
             reranker = CrossEncoder(rerank_model)
         except Exception:
-            # 모델 로드 실패 시 벡터 검색 결과 반환
             return candidates[:top_k]
         
-        # 쿼리-문서 쌍 생성
+        processed_query = self.preprocess_ocr_text(query_text) if use_preprocessing else query_text
         pairs = [[processed_query, cand["ocr_text"]] for cand in candidates]
-        
-        # 재정렬 점수 계산
         rerank_scores = reranker.predict(pairs)
         
-        # rerank_scores를 numpy 배열이나 리스트로 변환
-        import numpy as np
         if isinstance(rerank_scores, np.ndarray):
             rerank_scores = rerank_scores.tolist()
-        elif not isinstance(rerank_scores, list):
-            rerank_scores = list(rerank_scores)
         
-        # rerank 점수 정규화 (Cross-encoder 점수는 보통 -10 ~ 10 범위)
         rerank_scores_float = [float(score) for score in rerank_scores]
         
         if not rerank_scores_float:
-            # 점수가 없으면 벡터 검색 결과 반환
             return candidates[:top_k]
         
         max_rerank = max(rerank_scores_float)
         min_rerank = min(rerank_scores_float)
         
-        # 점수 추가 및 정렬
         for i, cand in enumerate(candidates):
             if i >= len(rerank_scores_float):
                 continue
-                
+            
             rerank_score_raw = rerank_scores_float[i]
-            # rerank_score를 0-1 범위로 정규화
             if max_rerank > min_rerank:
                 normalized_rerank = (rerank_score_raw - min_rerank) / (max_rerank - min_rerank)
             elif max_rerank == min_rerank and max_rerank != 0:
-                # 모든 점수가 같고 0이 아닌 경우
                 normalized_rerank = 1.0
             else:
-                # 모든 점수가 0인 경우
                 normalized_rerank = 0.0
             
             cand["rerank_score"] = normalized_rerank
-            cand["rerank_score_raw"] = rerank_score_raw  # 원본 점수도 저장
-            
-            # similarity와 rerank_score를 결합한 최종 점수 (둘 다 0-1 범위)
+            cand["rerank_score_raw"] = rerank_score_raw
             cand["final_score"] = (cand["similarity"] * 0.3 + normalized_rerank * 0.7)
         
         candidates.sort(key=lambda x: x["final_score"], reverse=True)
@@ -698,84 +603,6 @@ class RAGManager:
             return self.search_vector_only(
                 query_text, top_k, similarity_threshold, use_preprocessing
             )
-    
-    # ============================================
-    # 내부 헬퍼 함수
-    # ============================================
-    
-    def _extract_metadata_from_result(
-        self,
-        results: Dict[str, Any],
-        index: int
-    ) -> Tuple[str, Dict[str, Any], str]:
-        """
-        검색 결과에서 메타데이터 추출 (공통 로직)
-        
-        Args:
-            results: ChromaDB 검색 결과
-            index: 결과 인덱스
-            
-        Returns:
-            (ocr_text, answer_json, doc_id) 튜플
-        """
-        metadatas = results.get("metadatas", [[]])
-        metadata = metadatas[0][index] if metadatas and len(metadatas[0]) > index else {}
-        
-        ocr_text = metadata.get("ocr_text", "")
-        answer_json_str = metadata.get("answer_json", "{}")
-        
-        try:
-            answer_json = json.loads(answer_json_str)
-        except json.JSONDecodeError:
-            answer_json = {}
-        
-        ids = results.get("ids", [[]])
-        doc_id = ids[0][index] if ids and len(ids[0]) > index else ""
-        
-        return ocr_text, answer_json, doc_id
-    
-    def _parse_search_results(
-        self,
-        results: Dict[str, Any],
-        similarity_threshold: float
-    ) -> List[Dict[str, Any]]:
-        """
-        검색 결과 파싱 (공통 로직)
-        
-        Args:
-            results: ChromaDB 검색 결과
-            similarity_threshold: 최소 유사도 임계값
-            
-        Returns:
-            파싱된 검색 결과 리스트
-        """
-        similar_examples = []
-        
-        if results["ids"] and len(results["ids"][0]) > 0:
-            for i, doc_id in enumerate(results["ids"][0]):
-                # 거리 계산
-                distances = results.get("distances", [[]])
-                distance = distances[0][i] if distances and len(distances[0]) > i else 1.0
-                
-                # 유사도 계산
-                similarity = 1.0 - distance
-                
-                # 임계값 체크
-                if similarity < similarity_threshold:
-                    continue
-                
-                # 메타데이터 추출 (공통 헬퍼 사용)
-                ocr_text, answer_json, doc_id = self._extract_metadata_from_result(results, i)
-                
-                similar_examples.append({
-                    "ocr_text": ocr_text,
-                    "answer_json": answer_json,
-                    "similarity": similarity,
-                    "distance": distance,
-                    "id": doc_id
-                })
-        
-        return similar_examples
 
 
 # 전역 RAG Manager 인스턴스 (싱글톤 패턴)
@@ -793,4 +620,3 @@ def get_rag_manager() -> RAGManager:
     if _rag_manager is None:
         _rag_manager = RAGManager()
     return _rag_manager
-

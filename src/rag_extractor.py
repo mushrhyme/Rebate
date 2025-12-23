@@ -9,17 +9,40 @@ import os
 import json
 from typing import Dict, Any, Optional, Callable
 from openai import OpenAI
+import numpy as np
 
 from modules.core.rag_manager import get_rag_manager
 
 
+def convert_numpy_types(obj: Any) -> Any:
+    """
+    NumPy 타입을 Python 네이티브 타입으로 변환 (JSON 직렬화를 위해)
+    
+    Args:
+        obj: 변환할 객체 (딕셔너리, 리스트, 또는 단일 값)
+        
+    Returns:
+        변환된 객체
+    """
+    if isinstance(obj, dict):
+        return {k: convert_numpy_types(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_numpy_types(item) for item in obj]
+    elif isinstance(obj, (np.integer, np.floating)):
+        return float(obj) if isinstance(obj, np.floating) else int(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    else:
+        return obj
+
+
 def extract_json_with_rag(
     ocr_text: str,
-    question: str,
-    model_name: str = "gpt-4o-2024-08-06",
+    question: Optional[str] = None,
+    model_name: Optional[str] = None,
     temperature: float = 0.0,
-    top_k: int = 1,
-    similarity_threshold: float = 0.7,
+    top_k: Optional[int] = None,
+    similarity_threshold: Optional[float] = None,
     progress_callback: Optional[Callable[[str], None]] = None,
     debug_dir: Optional[str] = None,
     page_num: Optional[int] = None
@@ -29,11 +52,11 @@ def extract_json_with_rag(
     
     Args:
         ocr_text: OCR 추출 결과 텍스트
-        question: 질문 텍스트 (예: "이 청구서의 상품별 내역을 JSON으로 추출해라")
-        model_name: 사용할 OpenAI 모델명 (기본값: gpt-4o-2024-08-06)
+        question: 질문 텍스트 (None이면 config에서 가져옴)
+        model_name: 사용할 OpenAI 모델명 (None이면 config에서 가져옴)
         temperature: 모델 temperature (기본값: 0.0)
-        top_k: 검색할 예제 수 (기본값: 1)
-        similarity_threshold: 최소 유사도 임계값 (기본값: 0.7)
+        top_k: 검색할 예제 수 (None이면 config에서 가져옴)
+        similarity_threshold: 최소 유사도 임계값 (None이면 config에서 가져옴)
         
     Returns:
         추출된 JSON 딕셔너리
@@ -47,6 +70,12 @@ def extract_json_with_rag(
     rag_manager = get_rag_manager()
     from modules.utils.config import get_rag_config
     config = get_rag_config()  # 설정 한 번만 로드
+    
+    # 파라미터가 None이면 config에서 가져오기 (notepad 예제와 동일하게 설정값 사용)
+    question = question or config.question
+    model_name = model_name or config.openai_model
+    top_k = top_k if top_k is not None else config.top_k
+    similarity_threshold = similarity_threshold if similarity_threshold is not None else config.similarity_threshold
     search_method = getattr(config, 'search_method', 'hybrid')  # 기본값: hybrid
     hybrid_alpha = getattr(config, 'hybrid_alpha', 0.5)  # 기본값: 0.5
     
@@ -67,6 +96,24 @@ def extract_json_with_rag(
         hybrid_alpha=hybrid_alpha,
         use_preprocessing=True
     )
+    
+    # 검색 결과가 없으면 threshold를 낮춰서 재검색 (notepad 예제와 동일하게 최상위 결과 사용)
+    if not similar_examples:
+        print(f"  ⚠️ 검색 결과 없음 (threshold: {similarity_threshold}), threshold를 0.0으로 낮춰 재검색...")
+        similar_examples = rag_manager.search_similar_advanced(
+            query_text=ocr_text,
+            top_k=1,  # 최상위 1개만
+            similarity_threshold=0.0,  # threshold 무시
+            search_method=search_method,
+            hybrid_alpha=hybrid_alpha,
+            use_preprocessing=True
+        )
+        if similar_examples:
+            score_key = "hybrid_score" if "hybrid_score" in similar_examples[0] else \
+                       "final_score" if "final_score" in similar_examples[0] else \
+                       "similarity"
+            score_value = similar_examples[0].get(score_key, 0)
+            print(f"  ✅ 재검색 성공: {score_key}: {score_value:.4f} (threshold 무시하고 최상위 결과 사용)")
     
     if progress_callback:
         if similar_examples:
@@ -95,12 +142,24 @@ def extract_json_with_rag(
             # RAG 검색 결과 저장
             if similar_examples:
                 rag_example_file = os.path.join(debug_dir, f"page_{page_num}_rag_example.json")
+                # NumPy 타입을 Python 네이티브 타입으로 변환
+                example_data = {
+                    "similarity": similar_examples[0].get('similarity', 0),
+                    "ocr_text": similar_examples[0].get('ocr_text', ''),
+                    "answer_json": similar_examples[0].get('answer_json', {})
+                }
+                # 추가 점수 필드도 포함 (hybrid_score, bm25_score 등)
+                if 'hybrid_score' in similar_examples[0]:
+                    example_data["hybrid_score"] = similar_examples[0].get('hybrid_score', 0)
+                if 'bm25_score' in similar_examples[0]:
+                    example_data["bm25_score"] = similar_examples[0].get('bm25_score', 0)
+                if 'final_score' in similar_examples[0]:
+                    example_data["final_score"] = similar_examples[0].get('final_score', 0)
+                
+                # NumPy 타입 변환 후 JSON 저장
+                example_data = convert_numpy_types(example_data)
                 with open(rag_example_file, 'w', encoding='utf-8') as f:
-                    json.dump({
-                        "similarity": similar_examples[0].get('similarity', 0),
-                        "ocr_text": similar_examples[0].get('ocr_text', ''),
-                        "answer_json": similar_examples[0].get('answer_json', {})
-                    }, f, ensure_ascii=False, indent=2)
+                    json.dump(example_data, f, ensure_ascii=False, indent=2)
                 print(f"  💾 디버깅: RAG 예제 저장 완료 - {rag_example_file}")
             else:
                 print(f"  💾 디버깅: RAG 예제 없음 (Zero-shot 모드)")
@@ -176,6 +235,10 @@ OCR 추출 결과:
     
     try:
         client = OpenAI(api_key=api_key)
+        
+        # API 호출 전 프롬프트 길이 확인
+        print(f"  📝 API 호출: 프롬프트 길이={len(prompt)} 문자, 모델={model_name}, temperature={temperature}")
+        
         response = client.chat.completions.create(
             model=model_name,
             messages=[
@@ -188,6 +251,9 @@ OCR 추출 결과:
             timeout=120
         )
         result_text = response.choices[0].message.content
+        
+        # 응답 길이 확인
+        print(f"  📥 API 응답: 길이={len(result_text) if result_text else 0} 문자")
         
         # 디버깅: LLM 원본 응답 저장
         if debug_dir and page_num:

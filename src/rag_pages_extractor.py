@@ -13,8 +13,8 @@ from typing import List, Dict, Any, Optional, Callable
 from PIL import Image
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
+import fitz  # PyMuPDF
 
-from src.upstage_extractor import UpstageExtractor
 from src.rag_extractor import extract_json_with_rag
 
 
@@ -113,33 +113,47 @@ def extract_pages_with_rag(
         "page_details": []
     }
     
-    # 1단계: Upstage OCR 순차 처리 (Rate limit 방지)
-    print(f"📝 1단계: Upstage OCR 순차 처리 시작 ({len(images)}개 페이지, 요청 간 딜레이: {ocr_delay}초)")
-    upstage_extractor = UpstageExtractor()
+    # 1단계: fitz로 PDF에서 텍스트 추출
+    print(f"📝 1단계: fitz로 PDF 텍스트 추출 시작 ({len(images)}개 페이지)")
+    
+    def extract_text_from_pdf_page(pdf_path: str, page_num: int) -> str:
+        """
+        fitz를 사용하여 PDF에서 특정 페이지의 텍스트를 추출합니다.
+        
+        Args:
+            pdf_path: PDF 파일 경로
+            page_num: 페이지 번호 (1부터 시작)
+            
+        Returns:
+            추출된 텍스트 (없으면 빈 문자열)
+        """
+        try:
+            doc = fitz.open(pdf_path)
+            if page_num < 1 or page_num > doc.page_count:
+                doc.close()
+                return ""
+            
+            page = doc.load_page(page_num - 1)  # fitz는 0부터 시작
+            text = page.get_text()
+            doc.close()
+            
+            return text.strip() if text else ""
+        except Exception as e:
+            print(f"⚠️ PDF 텍스트 추출 실패 ({pdf_path}, 페이지 {page_num}): {e}")
+            return ""
+    
     ocr_texts = []  # OCR 텍스트 저장
     
     for idx, image in enumerate(images):
         page_num = idx + 1
         total_pages = len(images)
         
-        # 첫 번째 페이지가 아닌 경우 요청 간 딜레이 (Rate limit 방지)
-        if idx > 0 and ocr_delay > 0:
-            print(f"\n⏳ {ocr_delay}초 대기 중... (Rate limit 방지)", end="", flush=True)
-            time.sleep(ocr_delay)
-            print(" 완료")
-        
         if progress_callback:
-            progress_callback(page_num, total_pages, f"🔍 페이지 {page_num}/{total_pages}: Upstage OCR 작업 중...")
+            progress_callback(page_num, total_pages, f"🔍 페이지 {page_num}/{total_pages}: fitz로 텍스트 추출 중...")
         
-        print(f"페이지 {page_num}/{total_pages} OCR 중...", end="", flush=True)
+        print(f"페이지 {page_num}/{total_pages} 텍스트 추출 중...", end="", flush=True)
         
-        tmp_path = None
         try:
-            # 임시 이미지 파일로 저장
-            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
-                image.save(tmp_file.name, "PNG")
-                tmp_path = tmp_file.name
-            
             # 디버깅: 원본 이미지 저장
             try:
                 os.makedirs(debug_dir, exist_ok=True)
@@ -149,28 +163,22 @@ def extract_pages_with_rag(
             except Exception as debug_error:
                 print(f"  ⚠️ 원본 이미지 저장 실패: {debug_error}")
             
-            try:
-                ocr_text = upstage_extractor.extract_text(tmp_path)
-                if not ocr_text or len(ocr_text.strip()) == 0:
-                    raise Exception("OCR 텍스트가 비어있습니다")
-                
+            # fitz로 PDF에서 텍스트 추출
+            ocr_text = extract_text_from_pdf_page(pdf_path, page_num)
+            
+            if not ocr_text or len(ocr_text.strip()) == 0:
+                print(f"  ⚠️ 텍스트가 비어있습니다")
+                ocr_texts.append(None)
+            else:
                 ocr_texts.append(ocr_text)
-                print(f" 완료")
+                print(f" 완료 (길이: {len(ocr_text)} 문자)")
                 
-            except Exception as e:
-                error_msg = str(e)
-                print(f" 실패 - {error_msg}")
-                ocr_texts.append(None)  # 실패한 페이지는 None으로 표시
-                
-        finally:
-            # 임시 파일 삭제
-            if tmp_path:
-                try:
-                    os.unlink(tmp_path)
-                except Exception:
-                    pass
+        except Exception as e:
+            error_msg = str(e)
+            print(f" 실패 - {error_msg}")
+            ocr_texts.append(None)  # 실패한 페이지는 None으로 표시
     
-    print(f"✅ OCR 완료: {len([t for t in ocr_texts if t is not None])}/{len(images)}개 페이지 성공\n")
+    print(f"✅ 텍스트 추출 완료: {len([t for t in ocr_texts if t is not None])}/{len(images)}개 페이지 성공\n")
     
     # 2단계: RAG+LLM 병렬 처리 (OCR 텍스트가 있는 페이지만)
     stats_lock = Lock()
