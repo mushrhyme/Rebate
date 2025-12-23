@@ -9,16 +9,19 @@ import streamlit as st
 import json
 from PIL import Image
 import io
+import traceback
+import json
+    
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode, JsCode
 
-from src.upstage_extractor import UpstageExtractor
 from modules.utils.openai_utils import ask_openai_with_reference
-from src.openai_extractor import OpenAITextParser
+from src.rag_extractor import extract_json_with_rag
 from modules.ui.aggrid_utils import AgGridUtils
 import pandas as pd
 from modules.core.rag_manager import get_rag_manager
 from modules.utils.config import get_project_root
 from modules.utils.session_utils import ensure_session_state_defaults
-
+from modules.utils.pdf_utils import find_pdf_path
 
 def extract_text_from_pdf_page(pdf_path: Path, page_num: int) -> str:
     """
@@ -131,9 +134,6 @@ def create_management_color_style(mgmt_col, df):
     if not mgmt_col or mgmt_col not in df.columns or len(df) == 0:
         return None
 
-    from st_aggrid import JsCode
-    import json
-
     management_numbers = df[mgmt_col].dropna().unique()
     color_palette = ['#E3F2FD', '#F3E5F5', '#E8F5E9', '#FFF3E0', '#FCE4EC',
                      '#E0F2F1', '#FFF9C4', '#F1F8E9', '#E1BEE7', '#BBDEFB']
@@ -197,9 +197,7 @@ def render_comparison_grid(comparison_df, current_page):
     if not AgGridUtils.is_available():
         st.dataframe(comparison_df, height=400)
         return
-
-    from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode, JsCode
-
+    
     gb = GridOptionsBuilder.from_dataframe(comparison_df)
     gb.configure_default_column(editable=False, resizable=True)
     gb.configure_pagination(enabled=False)
@@ -301,8 +299,8 @@ def render_answer_editor_tab():
 
     st.info(
         "**📌 정답지 편집 가이드**:\n\n"
-        "• PDF 파일을 업로드하면 자동으로 이미지로 변환되고 Upstage로 텍스트를 추출합니다\n\n"
-        "• 각 페이지별로 원문 텍스트, Upstage 추출 결과, 정답 JSON을 편집할 수 있습니다\n\n"
+        "• PDF 파일을 업로드하면 자동으로 이미지로 변환되고 PyMuPDF로 텍스트를 추출합니다\n\n"
+        "• 각 페이지별로 원문 텍스트, PyMuPDF 추출 결과, 정답 JSON을 편집할 수 있습니다\n\n"
         "• 정답 JSON은 RAG 학습용 정답지로 사용됩니다",
         icon="ℹ️"
     )
@@ -318,164 +316,63 @@ def render_answer_editor_tab():
                     existing_pdfs.append(item.name)
     
     # 여러 PDF 일괄 벡터 DB 저장 섹션
-    with st.expander("🔍 여러 PDF 일괄 벡터 DB 저장", expanded=False):
-        st.info("여러 PDF 파일의 모든 페이지를 한 번에 벡터 DB에 저장할 수 있습니다.")
+    with st.expander("🔍 벡터 DB 구축", expanded=False):
+        st.info("img 폴더의 하위 폴더에 있는 PDF 파일들을 벡터 DB에 저장합니다.")
+        st.caption("• img 폴더의 모든 하위 폴더를 순회합니다")
+        st.caption("• 각 하위 폴더의 PDF 파일에서 PyMuPDF로 텍스트를 추출합니다")
+        st.caption("• 하위 폴더의 Page*_answer.json 파일을 정답지로 사용합니다")
         
-        if not existing_pdfs:
-            st.warning("⚠️ 저장된 PDF가 없습니다. 먼저 PDF를 업로드하고 정답 JSON을 생성하세요.")
-        else:
-            # PDF 다중 선택
-            selected_pdfs_for_batch = st.multiselect(
-                "벡터 DB에 저장할 PDF 선택 (여러 개 선택 가능)",
-                options=existing_pdfs,
-                default=[],
-                key="batch_rag_pdf_selector",
-                help="여러 PDF를 선택하면 모든 페이지가 일괄로 벡터 DB에 저장됩니다"
-            )
-            
-            if selected_pdfs_for_batch:
-                # 선택된 PDF들의 페이지 수 확인
-                total_pages = 0
-                pdf_page_counts = {}
-                for pdf_name in selected_pdfs_for_batch:
-                    pdf_img_dir = img_dir / pdf_name
-                    page_count = 0
-                    if pdf_img_dir.exists():
-                        for page_file in sorted(pdf_img_dir.glob("Page*_answer.json")):
-                            page_count += 1
-                    pdf_page_counts[pdf_name] = page_count
-                    total_pages += page_count
+        # 기존 벡터 DB 상태 확인
+        try:
+            rag_manager = get_rag_manager()
+            existing_count = rag_manager.count_examples()
+            if existing_count > 0:
+                st.caption(f"📊 현재 벡터 DB 예제 수: {existing_count}개")
+        except Exception:
+            pass
+        
+        # 벡터 DB 구축 버튼
+        if st.button("🚀 벡터 DB 구축 실행", type="primary", key="build_faiss_db"):
+            try:
+                from build_faiss_db import build_faiss_db
                 
-                st.caption(f"선택된 PDF: {len(selected_pdfs_for_batch)}개, 총 페이지: {total_pages}개")
-                for pdf_name, count in pdf_page_counts.items():
-                    st.caption(f"  - {pdf_name}: {count}개 페이지")
-                
-                # 일괄 저장 버튼
-                if st.button("🚀 선택한 PDF 모두 벡터 DB에 저장", type="primary", key="batch_save_all_rag"):
-                    try:
-                        rag_manager = get_rag_manager()
-                        total_saved = 0
-                        total_skipped = 0
-                        pdf_results = {}
-                        
-                        progress_bar = st.progress(0)
-                        status_text = st.empty()
-                        
-                        total_items = sum(pdf_page_counts.values())
-                        processed_items = 0
-                        
-                        for pdf_idx, pdf_name in enumerate(selected_pdfs_for_batch):
-                            pdf_img_dir = img_dir / pdf_name
-                            pdf_saved = 0
-                            pdf_skipped = 0
-                            
-                            status_text.text(f"처리 중: {pdf_name} ({pdf_idx + 1}/{len(selected_pdfs_for_batch)})")
-                            
-                            # 해당 PDF의 모든 페이지 찾기
-                            page_files = sorted(pdf_img_dir.glob("Page*_answer.json"))
-                            
-                            for page_file in page_files:
-                                try:
-                                    # 페이지 번호 추출
-                                    page_num_str = page_file.stem.replace("Page", "").replace("_answer", "")
-                                    try:
-                                        page_num = int(page_num_str)
-                                    except ValueError:
-                                        continue
-                                    
-                                    # PDF 경로 찾기
-                                    pdf_path = pdf_img_dir / f"{pdf_name}.pdf"
-                                    if not pdf_path.exists():
-                                        # 세션 디렉토리에서도 찾기
-                                        from modules.utils.pdf_utils import find_pdf_path
-                                        session_pdf_path = find_pdf_path(pdf_name)
-                                        if session_pdf_path:
-                                            pdf_path = Path(session_pdf_path)
-                                        else:
-                                            pdf_skipped += 1
-                                            total_skipped += 1
-                                            continue
-                                    
-                                    # fitz를 사용하여 PDF에서 텍스트 추출
-                                    ocr_text = extract_text_from_pdf_page(pdf_path, page_num)
-                                    
-                                    if not ocr_text.strip():
-                                        pdf_skipped += 1
-                                        total_skipped += 1
-                                        continue
-                                    
-                                    # 정답 JSON 읽기
-                                    with open(page_file, "r", encoding="utf-8") as f:
-                                        answer_json = json.load(f)
-                                    
-                                    # 벡터 DB에 저장
-                                    rag_manager.add_example(
-                                        ocr_text=ocr_text,
-                                        answer_json=answer_json,
-                                        metadata={
-                                            "pdf_name": pdf_name,
-                                            "page_num": page_num,
-                                            "page_role": answer_json.get("page_role", "detail")
-                                        }
-                                    )
-                                    
-                                    pdf_saved += 1
-                                    total_saved += 1
-                                    
-                                except PermissionError as e:
-                                    pdf_skipped += 1
-                                    total_skipped += 1
-                                    st.warning(f"⚠️ {pdf_name} 페이지 {page_num_str} 저장 실패 (권한 문제): {e}")
-                                except Exception as e:
-                                    pdf_skipped += 1
-                                    total_skipped += 1
-                                    error_msg = str(e)
-                                    if "readonly" in error_msg.lower():
-                                        st.warning(f"⚠️ {pdf_name} 페이지 {page_num_str} 저장 실패 (읽기 전용): {error_msg}")
-                                    else:
-                                        st.warning(f"⚠️ {pdf_name} 페이지 {page_num_str} 저장 실패: {error_msg}")
-                                
-                                processed_items += 1
-                                progress_bar.progress(processed_items / total_items if total_items > 0 else 1.0)
-                            
-                            pdf_results[pdf_name] = {"saved": pdf_saved, "skipped": pdf_skipped}
-                        
-                        progress_bar.progress(1.0)
-                        status_text.empty()
-                        
-                        # 결과 표시
-                        if total_saved > 0:
-                            st.success(f"✅ 벡터 DB 저장 완료!")
-                            st.caption(f"**저장 통계:**")
-                            st.caption(f"- 총 저장: {total_saved}개 페이지")
-                            st.caption(f"- 건너뜀: {total_skipped}개 페이지")
-                            st.caption(f"- **총 예제 수: {rag_manager.count_examples()}개**")
-                            
-                            with st.expander("📊 PDF별 상세 결과"):
-                                for pdf_name, result in pdf_results.items():
-                                    st.text(f"**{pdf_name}**: 저장 {result['saved']}개, 건너뜀 {result['skipped']}개")
-                        else:
-                            st.error(f"❌ 저장 실패: 모든 페이지 저장에 실패했습니다 (건너뜀: {total_skipped}개)")
-                            st.info("💡 해결 방법:\n"
-                                   "1. `chmod -R 755 chroma_db` 명령어로 권한 수정\n"
-                                   "2. 또는 `chroma_db` 디렉토리를 삭제하고 다시 시도")
+                with st.spinner("벡터 DB 구축 중..."):
+                    # 기존 예제 수 저장
+                    rag_manager = get_rag_manager()
+                    before_count = rag_manager.count_examples()
                     
-                    except PermissionError as e:
-                        st.error(f"❌ 벡터 DB 저장 실패 (권한 문제): {e}")
-                        st.info("💡 해결 방법: 터미널에서 다음 명령어를 실행하세요:\n"
-                               f"`chmod -R 755 chroma_db` 또는 `sudo chmod -R 755 chroma_db`")
-                    except Exception as e:
-                        error_msg = str(e)
-                        if "readonly" in error_msg.lower():
-                            st.error(f"❌ 벡터 DB 저장 실패 (읽기 전용 오류): {error_msg}")
-                            st.info("💡 해결 방법:\n"
-                                   "1. `chmod -R 755 chroma_db` 명령어로 권한 수정\n"
-                                   "2. 또는 `chroma_db` 디렉토리를 삭제하고 다시 시도")
-                        else:
-                            st.error(f"❌ 벡터 DB 저장 실패: {error_msg}")
-                            import traceback
-                            with st.expander("상세 오류 정보"):
-                                st.code(traceback.format_exc())
+                    # build_faiss_db 실행
+                    project_root = get_project_root()
+                    img_dir = project_root / "img"
+                    build_faiss_db(img_dir)
+                    
+                    # 결과 확인
+                    after_count = rag_manager.count_examples()
+                    added_count = after_count - before_count
+                    
+                    if added_count > 0:
+                        st.success(f"✅ 벡터 DB 구축 완료!")
+                        st.caption(f"**구축 결과:**")
+                        st.caption(f"- 새로 추가된 예제: {added_count}개")
+                        st.caption(f"- **총 예제 수: {after_count}개**")
+                    else:
+                        st.warning("⚠️ 새로 추가된 예제가 없습니다. img 폴더에 PDF 파일이 있는지 확인하세요.")
+                    
+            except PermissionError as e:
+                st.error(f"❌ 벡터 DB 구축 실패 (권한 문제): {e}")
+                st.info("💡 해결 방법: 터미널에서 다음 명령어를 실행하세요:\n"
+                       f"`chmod -R 755 faiss_db` 또는 `sudo chmod -R 755 faiss_db`")
+            except Exception as e:
+                error_msg = str(e)
+                if "readonly" in error_msg.lower():
+                    st.error(f"❌ 벡터 DB 구축 실패 (읽기 전용 오류): {error_msg}")
+                    st.info("💡 해결 방법:\n"
+                           "1. `chmod -R 755 faiss_db` 명령어로 권한 수정\n"
+                           "2. 또는 `faiss_db` 디렉토리를 삭제하고 다시 시도")
+                else:
+                    st.error(f"❌ 벡터 DB 구축 실패: {error_msg}")
+                    with st.expander("상세 오류 정보"):
+                        st.code(traceback.format_exc())
             else:
                 st.info("💡 위에서 저장할 PDF를 선택하세요.")
 
@@ -510,20 +407,18 @@ def render_answer_editor_tab():
                     pdf_path = pdf_img_dir / f"{pdf_name}.pdf"
                     if not pdf_path.exists():
                         # 세션 디렉토리에서도 찾기
-                        from modules.utils.pdf_utils import find_pdf_path
                         session_pdf_path = find_pdf_path(pdf_name)
                         if session_pdf_path:
                             pdf_path = Path(session_pdf_path)
                     
-                    upstage_text = ""
+                    ocr_text = ""
                     if pdf_path.exists():
-                        upstage_text = extract_text_from_pdf_page(pdf_path, page_num)
+                        ocr_text = extract_text_from_pdf_page(pdf_path, page_num)
                     page_info_list.append({
                         "page_num": page_num,
                         "image_path": str(image_path),
-                        "upstage_text_path": "",  # fitz 사용으로 더 이상 필요 없음
                         "answer_json_path": str(answer_json_path),
-                        "upstage_text": upstage_text
+                        "ocr_text": ocr_text
                     })
                     page_num += 1
                 if page_info_list:
@@ -554,7 +449,7 @@ def render_answer_editor_tab():
         pdf_info = st.session_state.answer_editor_pdfs[pdf_name]
 
         if not pdf_info["processed"]:
-            if st.button("🔄 PDF 처리 시작 (이미지 변환 + Upstage 텍스트 추출)", type="primary"):
+            if st.button("🔄 PDF 처리 시작 (이미지 변환 + PyMuPDF 텍스트 추출)", type="primary"):
                 with st.spinner("PDF를 처리하는 중... (fitz 기반 이미지 추출)"):
                     try:
                         # 저장 경로 준비
@@ -570,7 +465,6 @@ def render_answer_editor_tab():
                         total_pages = doc.page_count
 
                         page_info_list = []
-                        upstage_extractor = UpstageExtractor()
                         progress_bar = st.progress(0)
                         status_text = st.empty()
 
@@ -584,26 +478,22 @@ def render_answer_editor_tab():
                             image_path = img_dir / f"Page{page_num}.png"
                             image.save(image_path, "PNG", dpi=(300, 300), optimize=True)
 
-                            upstage_text_path = img_dir / f"Page{page_num}_upstage.txt"
                             answer_json_path = img_dir / f"Page{page_num}_answer.json"
 
                             status_text.text(f"페이지 {page_num}/{total_pages} 처리 중...")
-                            upstage_text = ""
-                            if upstage_text_path.exists():
-                                with open(upstage_text_path, "r", encoding="utf-8") as f:
-                                    upstage_text = f.read()
-                            if not upstage_text:
-                                upstage_text = upstage_extractor.extract_text(str(image_path))
-                                with open(upstage_text_path, "w", encoding="utf-8") as f:
-                                    f.write(upstage_text)
+                            
+                            # PyMuPDF로 텍스트 추출
+                            ocr_text = extract_text_from_pdf_page(temp_pdf_path, page_num)
+                            
                             page_info_list.append({
                                 "page_num": page_num,
                                 "image_path": str(image_path),
-                                "upstage_text_path": str(upstage_text_path),
                                 "answer_json_path": str(answer_json_path),
-                                "upstage_text": upstage_text
+                                "ocr_text": ocr_text  # upstage_text 대신 ocr_text 사용
                             })
                             progress_bar.progress((page_idx + 1) / total_pages)
+                        
+                        doc.close()
                         progress_bar.empty()
                         status_text.empty()
 
@@ -648,9 +538,24 @@ def render_answer_editor_tab():
             st.divider()
             st.subheader("📝 정답지 편집")
             total_pages = len(pdf_info["pages"])
-            pages_with_upstage = [p for p in pdf_info["pages"] if p.get("upstage_text")]
+            
+            # 기존 데이터 호환성: upstage_text가 있으면 ocr_text로 변환
+            for page_info in pdf_info["pages"]:
+                if "ocr_text" not in page_info and "upstage_text" in page_info:
+                    page_info["ocr_text"] = page_info["upstage_text"]
+                # ocr_text가 없으면 PDF에서 추출 시도
+                if not page_info.get("ocr_text"):
+                    pdf_path = img_dir / selected_pdf / f"{selected_pdf}.pdf"
+                    if not pdf_path.exists():
+                        session_pdf_path = find_pdf_path(selected_pdf)
+                        if session_pdf_path:
+                            pdf_path = Path(session_pdf_path)
+                    if pdf_path.exists():
+                        page_info["ocr_text"] = extract_text_from_pdf_page(pdf_path, page_info["page_num"])
+            
+            pages_with_ocr = [p for p in pdf_info["pages"] if p.get("ocr_text")]
 
-            if pages_with_upstage:
+            if pages_with_ocr:
                 # 기준 페이지 선택 UI
                 st.caption("**기준 페이지 설정** (선택사항): 기준 페이지의 JSON 정보를 참조하여 다른 페이지를 추출합니다")
                 col_ref1, col_ref2 = st.columns([1, 3])
@@ -702,7 +607,7 @@ def render_answer_editor_tab():
 
                 col_btn1, col_btn2, col_btn3, col_btn4 = st.columns([2, 1, 2, 1])
                 with col_btn1:
-                    if st.button("🤖 OpenAI로 전체 페이지 정답 생성", type="primary", key="openai_batch_extract"):
+                    if st.button("🤖 RAG 기반 전체 페이지 정답 생성", type="primary", key="rag_batch_extract"):
                         st.session_state["_answer_editor_page_backup"] = st.session_state.get("answer_editor_selected_page", 1)
                         progress_bar = st.progress(0)
                         status_text = st.empty()
@@ -718,42 +623,90 @@ def render_answer_editor_tab():
                                     reference_json = json.load(f)
                                 status_text.text(f"기준 페이지 {reference_page_num}의 JSON 정보를 로드했습니다")
 
-                        for idx, page_info in enumerate(pages_with_upstage):
+                        # PDF 경로 찾기
+                        pdf_path = img_dir / selected_pdf / f"{selected_pdf}.pdf"
+                        if not pdf_path.exists():
+                            session_pdf_path = find_pdf_path(selected_pdf)
+                            if session_pdf_path:
+                                pdf_path = Path(session_pdf_path)
+
+                        for idx, page_info in enumerate(pages_with_ocr):
                             page_num = page_info["page_num"]
 
                             # 기준 페이지는 건너뛰기 (이미 JSON이 있으므로)
                             if reference_page_num and page_num == reference_page_num:
-                                status_text.text(f"페이지 {page_num}/{total_pages} 건너뜀 (기준 페이지)... ({idx + 1}/{len(pages_with_upstage)})")
+                                status_text.text(f"페이지 {page_num}/{total_pages} 건너뜀 (기준 페이지)... ({idx + 1}/{len(pages_with_ocr)})")
                                 success_count += 1
-                                progress_bar.progress((idx + 1) / len(pages_with_upstage))
+                                progress_bar.progress((idx + 1) / len(pages_with_ocr))
                                 continue
 
-                            status_text.text(f"페이지 {page_num}/{total_pages} 처리 중... ({idx + 1}/{len(pages_with_upstage)})")
-                            parser = OpenAITextParser(
-                                api_key=None,
-                                model_name="gpt-5-mini-2025-08-07",
-                                prompt_version="v2"
-                            )
-                            result_json = parser.parse_text(
-                                text=page_info["upstage_text"],
-                                reference_json=reference_json
-                            )
-                            with open(page_info["answer_json_path"], "w", encoding="utf-8") as f:
-                                json.dump(result_json, f, ensure_ascii=False, indent=2)
-                            success_count += 1
-                            progress_bar.progress((idx + 1) / len(pages_with_upstage))
+                            status_text.text(f"페이지 {page_num}/{total_pages} 처리 중... ({idx + 1}/{len(pages_with_ocr)})")
+                            
+                            try:
+                                # PyMuPDF로 텍스트 추출 (이미 추출되어 있지만 재확인)
+                                ocr_text = page_info.get("ocr_text", "")
+                                if not ocr_text and pdf_path.exists():
+                                    ocr_text = extract_text_from_pdf_page(pdf_path, page_num)
+                                
+                                if not ocr_text:
+                                    error_count += 1
+                                    status_text.text(f"페이지 {page_num}: 텍스트 추출 실패")
+                                    progress_bar.progress((idx + 1) / len(pages_with_ocr))
+                                    continue
+                                
+                                # 기준 페이지가 있으면 RAG 없이 직접 사용, 없으면 RAG로 유사 예제 찾기
+                                if reference_json:
+                                    # 기준 페이지 JSON을 직접 사용 (RAG 없이)
+                                    status_text.text(f"페이지 {page_num}: 기준 페이지 JSON 참조하여 LLM 호출 중...")
+                                    result_json = ask_openai_with_reference(
+                                        ocr_text=ocr_text,
+                                        answer_json=reference_json,
+                                        question=ocr_text,
+                                        model_name="gpt-4o-2024-08-06",
+                                        use_langchain=False,
+                                        temperature=0.0
+                                    )
+                                else:
+                                    # RAG로 유사 예제 찾아서 LLM 호출
+                                    def progress_wrapper(msg: str):
+                                        status_text.text(f"페이지 {page_num}: {msg}")
+                                    
+                                    result_json = extract_json_with_rag(
+                                        ocr_text=ocr_text,
+                                        question=None,  # config에서 가져옴
+                                        model_name=None,  # config에서 가져옴
+                                        temperature=0.0,
+                                        top_k=None,  # config에서 가져옴
+                                        similarity_threshold=None,  # config에서 가져옴
+                                        progress_callback=progress_wrapper,
+                                        page_num=page_num
+                                    )
+                                
+                                # 결과 저장
+                                with open(page_info["answer_json_path"], "w", encoding="utf-8") as f:
+                                    json.dump(result_json, f, ensure_ascii=False, indent=2)
+                                success_count += 1
+                                
+                            except Exception as e:
+                                error_count += 1
+                                status_text.text(f"페이지 {page_num}: 오류 발생 - {str(e)}")
+                            
+                            progress_bar.progress((idx + 1) / len(pages_with_ocr))
+                        
                         progress_bar.empty()
                         status_text.empty()
-                        ref_msg = f" (기준 페이지 {reference_page_num} 참조)" if reference_json else ""
+                        ref_msg = f" (기준 페이지 {reference_page_num} 참조)" if reference_json else " (RAG 기반)"
                         st.success(f"✅ 전체 {success_count}개 페이지 정답 JSON 생성 완료!{ref_msg}")
+                        if error_count > 0:
+                            st.warning(f"⚠️ {error_count}개 페이지 처리 실패")
                         st.rerun()
                 with col_btn2:
-                    st.caption(f"총 {len(pages_with_upstage)}개 페이지")
+                    st.caption(f"총 {len(pages_with_ocr)}개 페이지")
                 with col_btn3:
                     if reference_page_num:
                         st.caption(f"기준 페이지 {reference_page_num}의 JSON 정보를 참조하여 추출합니다")
                     else:
-                        st.caption("모든 페이지의 Upstage 추출 결과를 OpenAI로 JSON 변환합니다")
+                        st.caption("RAG로 유사 예제를 찾아서 LLM으로 JSON 변환합니다")
                 
                 with col_btn4:
                     if st.button("🔍 전체 벡터 DB 저장", key="save_all_rag", 
@@ -768,7 +721,6 @@ def render_answer_editor_tab():
                                 pdf_path = img_dir / selected_pdf / f"{selected_pdf}.pdf"
                                 if not pdf_path.exists():
                                     # 세션 디렉토리에서도 찾기
-                                    from modules.utils.pdf_utils import find_pdf_path
                                     session_pdf_path = find_pdf_path(selected_pdf)
                                     if session_pdf_path:
                                         pdf_path = Path(session_pdf_path)
@@ -834,7 +786,6 @@ def render_answer_editor_tab():
                                        "2. 또는 `chroma_db` 디렉토리를 삭제하고 다시 시도")
                             else:
                                 st.error(f"❌ 벡터 DB 저장 실패: {error_msg}")
-                                import traceback
                                 with st.expander("상세 오류 정보"):
                                     st.code(traceback.format_exc())
 
@@ -897,39 +848,54 @@ def render_answer_editor_tab():
                             st.error(f"❌ JSON 파일 로드 실패: {e}")
 
                     # 질문 버튼
-                    question_disabled = not (page_info.get("upstage_text") and reference_json)
+                    question_disabled = not page_info.get("ocr_text")
                     if st.button(
-                        "🔍 OpenAI에 질문하기",
+                        "🔍 RAG 기반 정답 생성",
                         type="primary",
                         disabled=question_disabled,
-                        key=f"ask_openai_{current_page}"
+                        key=f"ask_rag_{current_page}"
                     ):
-                        if not page_info.get("upstage_text"):
-                            st.error("❌ 현재 페이지의 Upstage 텍스트가 없습니다.")
-                        elif not reference_json:
-                            st.error("❌ 참조용 JSON 파일을 업로드해주세요.")
+                        if not page_info.get("ocr_text"):
+                            st.error("❌ 현재 페이지의 OCR 텍스트가 없습니다.")
                         else:
-                            with st.spinner("OpenAI API 호출 중..."):
+                            with st.spinner("RAG 검색 및 LLM 호출 중..."):
                                 try:
-                                    use_langchain_flag = False
-                                    temperature = 0.0
-                                    # OpenAI API 호출
-                                    result_json = ask_openai_with_reference(
-                                        ocr_text=page_info["upstage_text"],  # 현재 페이지의 TXT 사용
-                                        answer_json=reference_json,  # 업로드한 JSON 사용
-                                        question=page_info["upstage_text"],  # 현재 페이지의 TXT를 질문으로 사용
-                                        model_name="gpt-4o-2024-08-06",
-                                        use_langchain=use_langchain_flag,  # 라이브러리 선택
-                                        temperature=temperature  # Temperature 설정
-                                    )
+                                    # PDF 경로 찾기
+                                    pdf_path = img_dir / selected_pdf / f"{selected_pdf}.pdf"
+                                    if not pdf_path.exists():
+                                        session_pdf_path = find_pdf_path(selected_pdf)
+                                        if session_pdf_path:
+                                            pdf_path = Path(session_pdf_path)
+                                    
+                                    # PyMuPDF로 텍스트 추출
+                                    ocr_text = page_info.get("ocr_text", "")
+                                    if not ocr_text and pdf_path.exists():
+                                        ocr_text = extract_text_from_pdf_page(pdf_path, current_page)
+                                    
+                                    if not ocr_text:
+                                        st.error("❌ OCR 텍스트를 추출할 수 없습니다.")
+                                    else:
+                                        # RAG 기반 JSON 추출
+                                        def progress_wrapper(msg: str):
+                                            st.info(f"🤖 {msg}")
+                                        
+                                        result_json = extract_json_with_rag(
+                                            ocr_text=ocr_text,
+                                            question=None,
+                                            model_name=None,
+                                            temperature=0.0,
+                                            top_k=None,
+                                            similarity_threshold=None,
+                                            progress_callback=progress_wrapper,
+                                            page_num=current_page
+                                        )
 
-                                    # 세션 상태에 저장
-                                    st.session_state[f"openai_result_{current_page}"] = result_json
-                                    st.success("✅ OpenAI 응답 완료!")
+                                        # 세션 상태에 저장
+                                        st.session_state[f"rag_result_{current_page}"] = result_json
+                                        st.success("✅ RAG 기반 정답 생성 완료!")
 
                                 except Exception as e:
                                     st.error(f"❌ OpenAI API 호출 실패: {e}")
-                                    import traceback
                                     st.code(traceback.format_exc())
 
                     # 응답 결과 표시
@@ -941,8 +907,6 @@ def render_answer_editor_tab():
                             result_df, mgmt_col = prepare_dataframe_for_aggrid(result_json["items"])
 
                             if AgGridUtils.is_available() and len(result_df) > 0:
-                                from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode, JsCode
-
                                 gb = GridOptionsBuilder.from_dataframe(result_df)
                                 gb.configure_default_column(editable=False, resizable=True)
 
@@ -984,17 +948,17 @@ def render_answer_editor_tab():
                                 st.info("응답에 items가 없습니다.")
 
             with col2:
-                st.subheader("📄 Upstage 추출 결과 (원문 텍스트)")
-                if page_info["upstage_text"]:
+                st.subheader("📄 PyMuPDF 추출 결과 (원문 텍스트)")
+                if page_info.get("ocr_text"):
                     st.text_area(
-                        "Upstage OCR 결과",
-                        value=page_info["upstage_text"],
+                        "PyMuPDF OCR 결과",
+                        value=page_info["ocr_text"],
                         height=200,
-                        key=f"upstage_text_{current_page}",
+                        key=f"ocr_text_{current_page}",
                         disabled=True
                     )
                 else:
-                    st.warning("Upstage 추출 결과가 없습니다.")
+                    st.warning("PyMuPDF 추출 결과가 없습니다.")
 
                 # JSON 파일 로드
                 answer_json_path = page_info["answer_json_path"]
@@ -1062,8 +1026,6 @@ def render_answer_editor_tab():
                         df, mgmt_col = prepare_dataframe_for_aggrid(items)
 
                         # GridOptionsBuilder 설정
-                        from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode, JsCode
-                        
                         if len(df) == 0 or len(df.columns) == 0:
                             st.warning(f"⚠️ DataFrame을 생성할 수 없습니다. (items 개수: {len(items)})")
                             st.session_state[f"updated_items_{current_page}"] = items
@@ -1180,16 +1142,14 @@ def render_answer_editor_tab():
                                 st.rerun()
                         except json.JSONDecodeError as e:
                             st.error(f"❌ JSON 파싱 오류: {e}")
-                            import traceback
                             st.code(traceback.format_exc())
                         except Exception as e:
                             st.error(f"❌ 저장 실패: {e}")
-                            import traceback
                             st.code(traceback.format_exc())
                     
                 with col_save2:
                     # 벡터 DB 저장 버튼
-                    ocr_text = page_info.get("upstage_text", "")
+                    ocr_text = page_info.get("ocr_text", "")
                     has_ocr = bool(ocr_text)
                     try:
                         answer_json_str_for_check = st.session_state.get(f"answer_json_{current_page}", answer_json_str_default)
@@ -1236,7 +1196,6 @@ def render_answer_editor_tab():
                                        "2. 또는 `chroma_db` 디렉토리를 삭제하고 다시 시도")
                             else:
                                 st.error(f"❌ 벡터 DB 저장 실패: {error_msg}")
-                                import traceback
                                 with st.expander("상세 오류 정보"):
                                     st.code(traceback.format_exc())
                 

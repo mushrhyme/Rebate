@@ -10,6 +10,7 @@ import pickle
 import numpy as np
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
+from threading import Lock
 import faiss
 
 
@@ -19,6 +20,9 @@ class RAGManager:
     
     FAISS를 사용하여 OCR 텍스트를 임베딩하고 검색합니다.
     """
+    
+    # 클래스 레벨 락 (모델 로딩 동기화용)
+    _model_lock = Lock()
     
     def __init__(self, persist_directory: Optional[str] = None):
         """
@@ -57,17 +61,30 @@ class RAGManager:
         self._bm25_example_map = None
     
     def _get_embedding_model(self):
-        """임베딩 모델 가져오기 (지연 로딩)"""
+        """임베딩 모델 가져오기 (지연 로딩, 스레드 안전)"""
+        # 이중 체크 락킹 패턴 사용
         if self._embedding_model is None:
-            try:
-                from sentence_transformers import SentenceTransformer
-                # 다국어 모델 사용 (일본어/한국어/영어 지원)
-                self._embedding_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
-            except ImportError:
-                raise ImportError(
-                    "sentence-transformers가 설치되지 않았습니다.\n"
-                    "다음 명령어로 설치하세요: pip install sentence-transformers"
-                )
+            with RAGManager._model_lock:  # 클래스 레벨 락 사용
+                # 다시 확인 (다른 스레드가 이미 로드했을 수 있음)
+                if self._embedding_model is None:
+                    try:
+                        # tokenizers 병렬 처리 경고 방지 (멀티프로세싱 환경에서 안전)
+                        # 모델 로딩 전에 설정
+                        os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+                        
+                        from sentence_transformers import SentenceTransformer
+                        # 다국어 모델 사용 (일본어/한국어/영어 지원)
+                        # device 파라미터 제거 - sentence-transformers가 자동으로 디바이스 선택
+                        # 명시적 device 설정은 메타 텐서 문제를 일으킬 수 있음
+                        self._embedding_model = SentenceTransformer(
+                            'paraphrase-multilingual-MiniLM-L12-v2'
+                            # device 파라미터 제거 - 자동 디바이스 선택
+                        )
+                    except ImportError:
+                        raise ImportError(
+                            "sentence-transformers가 설치되지 않았습니다.\n"
+                            "다음 명령어로 설치하세요: pip install sentence-transformers"
+                        )
         return self._embedding_model
     
     def _get_embedding_dim(self) -> int:
@@ -135,8 +152,9 @@ class RAGManager:
         self,
         ocr_text: str,
         answer_json: Dict[str, Any],
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> str:
+        metadata: Optional[Dict[str, Any]] = None,
+        skip_duplicate: bool = True
+    ) -> Optional[str]:
         """
         예제 추가 (OCR 텍스트만 임베딩)
         
@@ -144,11 +162,28 @@ class RAGManager:
             ocr_text: OCR 추출 결과 텍스트 (임베딩 대상)
             answer_json: 정답 JSON 딕셔너리 (payload에 저장)
             metadata: 추가 메타데이터 (예: pdf_name, page_num 등)
+            skip_duplicate: 중복 체크 여부 (True면 같은 pdf_name+page_num이 있으면 스킵)
             
         Returns:
-            추가된 문서의 ID
+            추가된 문서의 ID (중복이면 None)
         """
         import uuid
+        
+        metadata = metadata or {}
+        
+        # 중복 체크 (pdf_name과 page_num으로 확인)
+        if skip_duplicate:
+            pdf_name = metadata.get('pdf_name')
+            page_num = metadata.get('page_num')
+            
+            if pdf_name is not None and page_num is not None:
+                # 기존 예제 중 같은 pdf_name과 page_num이 있는지 확인
+                for existing_id, existing_data in self.metadata.items():
+                    existing_metadata = existing_data.get('metadata', {})
+                    if (existing_metadata.get('pdf_name') == pdf_name and 
+                        existing_metadata.get('page_num') == page_num):
+                        # 중복 발견 - 기존 ID 반환
+                        return None
         
         # 문서 ID 생성
         doc_id = str(uuid.uuid4())
@@ -166,7 +201,7 @@ class RAGManager:
         self.metadata[doc_id] = {
             "ocr_text": ocr_text,
             "answer_json": answer_json,
-            "metadata": metadata or {}
+            "metadata": metadata
         }
         self.id_to_index[doc_id] = faiss_index
         self.index_to_id[faiss_index] = doc_id
@@ -607,16 +642,20 @@ class RAGManager:
 
 # 전역 RAG Manager 인스턴스 (싱글톤 패턴)
 _rag_manager: Optional[RAGManager] = None
+_rag_manager_lock = Lock()  # 싱글톤 생성 락
 
 
 def get_rag_manager() -> RAGManager:
     """
-    전역 RAG Manager 인스턴스 반환
+    전역 RAG Manager 인스턴스 반환 (스레드 안전)
     
     Returns:
         RAGManager 인스턴스
     """
     global _rag_manager
     if _rag_manager is None:
-        _rag_manager = RAGManager()
+        with _rag_manager_lock:
+            # 이중 체크
+            if _rag_manager is None:
+                _rag_manager = RAGManager()
     return _rag_manager

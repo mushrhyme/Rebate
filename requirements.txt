@@ -28,5 +28,8 @@ faiss-cpu>=1.7.0
 
 # RAG 검색 개선 (선택적)
 rank-bm25>=0.2.2  # BM25 하이브리드 검색용
-sentence-transformers>=2.2.0  # 임베딩 모델 및 Re-ranking용
+sentence-transformers==2.2.2  # 메타 텐서 문제 방지를 위해 버전 고정
+transformers==4.35.0  # device_map 사용을 피하기 위한 안정 버전
+torch>=2.0.0,<2.2.0  # PyTorch 안정 버전 범위
+numpy<2.0.0  # NumPy 2.x 호환성 문제 방지
 
