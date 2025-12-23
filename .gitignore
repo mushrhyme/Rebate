@@ -56,6 +56,8 @@ status/
 test_img/
 chroma_db/
 debug/
+debug_example/
+check/
 
 # PDF Registry 및 상태 파일
 pdf_registry.json
