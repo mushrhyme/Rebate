@@ -7,13 +7,14 @@ PdfRegistry와 PageStorage를 사용하여 메타데이터와 결과를 관리�
 
 import os
 import json
+import sys
+import uuid
 import streamlit as st
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 
 # Core 모듈 import
-import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from modules.core.registry import PdfRegistry
 from modules.core.storage import PageStorage
@@ -28,7 +29,6 @@ class SessionManager:
     def get_project_root() -> str:
         """프로젝트 루트 디렉토리 경로 반환"""
         # app.py가 있는 디렉토리를 프로젝트 루트로 사용
-        import sys
         if hasattr(sys, '_getframe'):
             frame = sys._getframe(1)
             while frame:
@@ -52,7 +52,6 @@ class SessionManager:
             return str(st.session_id)
         # fallback: session_state에 저장된 ID 사용
         if 'session_id' not in st.session_state:
-            import uuid
             st.session_state.session_id = str(uuid.uuid4())
         return st.session_state.session_id
     

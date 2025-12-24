@@ -12,6 +12,7 @@ from io import BytesIO
 import streamlit as st
 
 from modules.core.processor import PdfProcessor
+from modules.utils.config import get_rag_config
 from utils.session_manager import SessionManager
 
 
@@ -43,7 +44,6 @@ def process_pdf_with_progress(
         progress_bar = st.progress(0)
         status_text = st.empty()
 
-    from modules.utils.config import get_rag_config
     config = get_rag_config()
     
     if uploaded_file is not None:
@@ -106,7 +106,6 @@ def reparse_single_page(pdf_name: str, page_num: int, timeout: int = 120):
     from pathlib import Path
     import fitz  # PyMuPDF
     from src.rag_extractor import extract_json_with_rag
-    from modules.utils.config import get_rag_config
     from modules.utils.pdf_utils import find_pdf_path
 
     # 설정 로드 (한 번만 호출)
