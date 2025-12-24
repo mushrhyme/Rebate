@@ -17,6 +17,7 @@ from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode
 
 from modules.utils.openai_utils import ask_openai_with_reference
 from src.rag_extractor import extract_json_with_rag
+from src.gemini_extractor import GeminiVisionParser
 from modules.ui.aggrid_utils import AgGridUtils
 import pandas as pd
 from modules.core.rag_manager import get_rag_manager
@@ -846,105 +847,168 @@ def render_answer_editor_tab():
                     if os.path.exists(page_info["image_path"]):
                         st.image(page_info["image_path"], caption=f"Page {current_page}", width='stretch')
 
-                    # OpenAI 질문 기능 섹션
-                    st.divider()
-                    st.subheader("🤖 OpenAI 질문 기능")
-
-                    # JSON 파일 업로더
-                    uploaded_json_file = st.file_uploader(
-                        "참조용 정답 JSON 파일 업로드",
-                        type=['json'],
-                        key=f"reference_json_uploader_{current_page}",
-                        help="참조용 정답 JSON 파일을 업로드하세요. 이 파일과 현재 페이지의 TXT 파일을 사용하여 OpenAI에 질문합니다."
-                    )
-
-                    # 업로드된 JSON 파일 로드
-                    reference_json = None
-                    if uploaded_json_file:
-                        try:
-                            reference_json = json.load(uploaded_json_file)
-                            st.success(f"✅ JSON 파일 로드 완료: {uploaded_json_file.name}")
-                        except Exception as e:
-                            st.error(f"❌ JSON 파일 로드 실패: {e}")
-
-                    # RAG 검색 및 모델 설정 섹션
-                    question_disabled = not page_info.get("ocr_text")
-                    
-                    # 모델 선택 옵션
-                    config = get_rag_config()
-                    available_models = [
-                        "gpt-4o-2024-11-20",
-                        "gpt-4.1-2025-04-14",
-                        "gpt-5-nano-2025-08-07",
-                        "gpt-5-mini-2025-08-07",
-                        "gpt-5.2-2025-12-11"
-                    ]
-                    selected_model = st.selectbox(
-                        "🤖 사용할 모델 선택",
-                        options=available_models,
-                        index=0 if config.openai_model in available_models else 0,
-                        key=f"model_selector_{current_page}",
-                        help="RAG 기반 정답 생성에 사용할 OpenAI 모델을 선택하세요."
-                    )
-                    
-                    # RAG 검색 버튼 (검색 결과 미리보기)
-                    if st.button(
-                        "🔍 RAG 검색 (참고 문서 확인)",
-                        disabled=question_disabled,
-                        key=f"search_rag_{current_page}"
-                    ):
-                        if not page_info.get("ocr_text"):
-                            st.error("❌ 현재 페이지의 OCR 텍스트가 없습니다.")
-                        else:
-                            with st.spinner("RAG 검색 중..."):
-                                try:
-                                    # PDF 경로 찾기
-                                    pdf_path = img_dir / selected_pdf / f"{selected_pdf}.pdf"
-                                    if not pdf_path.exists():
-                                        session_pdf_path = find_pdf_path(selected_pdf)
-                                        if session_pdf_path:
-                                            pdf_path = Path(session_pdf_path)
-                                    
-                                    # PyMuPDF로 텍스트 추출
-                                    ocr_text = page_info.get("ocr_text", "")
-                                    if not ocr_text and pdf_path.exists():
-                                        ocr_text = extract_text_from_pdf_page(pdf_path, current_page)
-                                    
-                                    if not ocr_text:
-                                        st.error("❌ OCR 텍스트를 추출할 수 없습니다.")
-                                    else:
-                                        # RAG Manager로 검색만 수행
-                                        rag_manager = get_rag_manager()
-                                        similar_examples = rag_manager.search_similar_advanced(
-                                            query_text=ocr_text,
-                                            top_k=config.top_k,
-                                            similarity_threshold=config.similarity_threshold,
-                                            search_method=config.search_method,
-                                            hybrid_alpha=config.hybrid_alpha,
-                                            use_preprocessing=True
+                    # Gemini Extractor 기능 섹션
+                    with st.expander("🔮 Gemini Extractor (이미지 직접 추출)", expanded=False):
+                        st.info("현재 페이지의 이미지를 Gemini Vision API로 직접 추출합니다. RAG 없이 바로 추출합니다.")
+                        
+                        # 프롬프트 버전 선택
+                        prompt_version = st.selectbox(
+                            "프롬프트 버전",
+                            options=["v1", "v2"],
+                            index=0,
+                            key=f"gemini_prompt_version_{current_page}",
+                            help="사용할 프롬프트 파일을 선택하세요 (prompts/prompt_v1.txt 또는 prompt_v2.txt)"
+                        )
+                        
+                        # 모델 선택
+                        gemini_model = st.selectbox(
+                            "Gemini 모델",
+                            options=["gemini-3-pro-preview", "gemini-2.0-flash-exp", "gemini-1.5-pro"],
+                            index=0,
+                            key=f"gemini_model_{current_page}",
+                            help="사용할 Gemini 모델을 선택하세요"
+                        )
+                        
+                        if st.button(
+                            "🚀 Gemini로 이미지 추출",
+                            type="primary",
+                            key=f"gemini_extract_{current_page}",
+                            help="현재 페이지 이미지를 Gemini Vision API로 추출합니다"
+                        ):
+                            if not os.path.exists(page_info["image_path"]):
+                                st.error("❌ 페이지 이미지가 없습니다.")
+                            else:
+                                with st.spinner("Gemini Vision API 호출 중..."):
+                                    try:
+                                        # 이미지 로드
+                                        image = Image.open(page_info["image_path"])
+                                        
+                                        # Gemini Vision Parser 초기화
+                                        parser = GeminiVisionParser(
+                                            api_key=None,  # 환경변수에서 가져옴
+                                            model_name=gemini_model,
+                                            prompt_version=prompt_version
                                         )
                                         
-                                        # 검색 결과가 없으면 threshold를 낮춰서 재검색
-                                        if not similar_examples:
+                                        # 이미지 파싱
+                                        result_json = parser.parse_image(image, max_size=1000, timeout=120)
+                                        
+                                        # null 값 정규화
+                                        if result_json.get("items") is None:
+                                            result_json["items"] = []
+                                        if result_json.get("page_role") is None:
+                                            result_json["page_role"] = "detail"
+                                        if not isinstance(result_json.get("items"), list):
+                                            result_json["items"] = []
+                                        
+                                        # 세션 상태에 저장 (정답 JSON 편집 영역에 바로 반영)
+                                        st.session_state[f"gemini_result_{current_page}"] = result_json
+                                        st.session_state[f"answer_json_{current_page}"] = json.dumps(result_json, ensure_ascii=False, indent=2)
+                                        st.session_state[f"page_role_{current_page}"] = result_json.get("page_role", "detail")
+                                        st.success("✅ Gemini 추출 완료! 아래 정답 JSON 편집 영역에서 확인하세요.")
+                                        st.rerun()
+                                        
+                                    except Exception as e:
+                                        st.error(f"❌ Gemini 추출 실패: {e}")
+                                        st.code(traceback.format_exc())
+
+                    # OpenAI 질문 기능 섹션
+                    with st.expander("🤖 OpenAI 질문 기능", expanded=False):
+                        # JSON 파일 업로더
+                        uploaded_json_file = st.file_uploader(
+                            "참조용 정답 JSON 파일 업로드",
+                            type=['json'],
+                            key=f"reference_json_uploader_{current_page}",
+                            help="참조용 정답 JSON 파일을 업로드하세요. 이 파일과 현재 페이지의 TXT 파일을 사용하여 OpenAI에 질문합니다."
+                        )
+
+                        # 업로드된 JSON 파일 로드
+                        reference_json = None
+                        if uploaded_json_file:
+                            try:
+                                reference_json = json.load(uploaded_json_file)
+                                st.success(f"✅ JSON 파일 로드 완료: {uploaded_json_file.name}")
+                            except Exception as e:
+                                st.error(f"❌ JSON 파일 로드 실패: {e}")
+
+                        # RAG 검색 및 모델 설정 섹션
+                        question_disabled = not page_info.get("ocr_text")
+                        
+                        # 모델 선택 옵션
+                        config = get_rag_config()
+                        available_models = [
+                            "gpt-4o-2024-11-20",
+                            "gpt-4.1-2025-04-14",
+                            "gpt-5-nano-2025-08-07",
+                            "gpt-5-mini-2025-08-07",
+                            "gpt-5.2-2025-12-11"
+                        ]
+                        selected_model = st.selectbox(
+                            "🤖 사용할 모델 선택",
+                            options=available_models,
+                            index=0 if config.openai_model in available_models else 0,
+                            key=f"model_selector_{current_page}",
+                            help="RAG 기반 정답 생성에 사용할 OpenAI 모델을 선택하세요."
+                        )
+                        
+                        # RAG 검색 버튼 (검색 결과 미리보기)
+                        if st.button(
+                            "🔍 RAG 검색 (참고 문서 확인)",
+                            disabled=question_disabled,
+                            key=f"search_rag_{current_page}"
+                        ):
+                            if not page_info.get("ocr_text"):
+                                st.error("❌ 현재 페이지의 OCR 텍스트가 없습니다.")
+                            else:
+                                with st.spinner("RAG 검색 중..."):
+                                    try:
+                                        # PDF 경로 찾기
+                                        pdf_path = img_dir / selected_pdf / f"{selected_pdf}.pdf"
+                                        if not pdf_path.exists():
+                                            session_pdf_path = find_pdf_path(selected_pdf)
+                                            if session_pdf_path:
+                                                pdf_path = Path(session_pdf_path)
+                                        
+                                        # PyMuPDF로 텍스트 추출
+                                        ocr_text = page_info.get("ocr_text", "")
+                                        if not ocr_text and pdf_path.exists():
+                                            ocr_text = extract_text_from_pdf_page(pdf_path, current_page)
+                                        
+                                        if not ocr_text:
+                                            st.error("❌ OCR 텍스트를 추출할 수 없습니다.")
+                                        else:
+                                            # RAG Manager로 검색만 수행
+                                            rag_manager = get_rag_manager()
                                             similar_examples = rag_manager.search_similar_advanced(
                                                 query_text=ocr_text,
-                                                top_k=1,
-                                                similarity_threshold=0.0,
+                                                top_k=config.top_k,
+                                                similarity_threshold=config.similarity_threshold,
                                                 search_method=config.search_method,
                                                 hybrid_alpha=config.hybrid_alpha,
                                                 use_preprocessing=True
                                             )
-                                        
-                                        # 검색 결과를 세션 상태에 저장
-                                        st.session_state[f"rag_search_results_{current_page}"] = {
-                                            "similar_examples": similar_examples,
-                                            "ocr_text": ocr_text
-                                        }
-                                        st.success(f"✅ RAG 검색 완료: {len(similar_examples)}개 예제 발견")
-                                        
-                                except Exception as e:
-                                    st.error(f"❌ RAG 검색 실패: {e}")
-                                    st.code(traceback.format_exc())
+                                            
+                                            # 검색 결과가 없으면 threshold를 낮춰서 재검색
+                                            if not similar_examples:
+                                                similar_examples = rag_manager.search_similar_advanced(
+                                                    query_text=ocr_text,
+                                                    top_k=1,
+                                                    similarity_threshold=0.0,
+                                                    search_method=config.search_method,
+                                                    hybrid_alpha=config.hybrid_alpha,
+                                                    use_preprocessing=True
+                                                )
+                                            
+                                            # 검색 결과를 세션 상태에 저장
+                                            st.session_state[f"rag_search_results_{current_page}"] = {
+                                                "similar_examples": similar_examples,
+                                                "ocr_text": ocr_text
+                                            }
+                                            st.success(f"✅ RAG 검색 완료: {len(similar_examples)}개 예제 발견")
+                                            
+                                    except Exception as e:
+                                        st.error(f"❌ RAG 검색 실패: {e}")
+                                        st.code(traceback.format_exc())
                     
                     # 검색 결과 표시 및 예제 선택
                     if f"rag_search_results_{current_page}" in st.session_state:
@@ -1053,37 +1117,35 @@ def render_answer_editor_tab():
                                         example_answer = selected_example["answer_json"]
                                         example_answer_str = json.dumps(example_answer, ensure_ascii=False, indent=2)
                                         
-                                        # 프롬프트 템플릿 로드
+                                        # 프롬프트 템플릿 로드 (필수)
                                         prompt_template_path = prompts_dir / "rag_with_example.txt"
-                                        if prompt_template_path.exists():
-                                            with open(prompt_template_path, 'r', encoding='utf-8') as f:
-                                                prompt_template = f.read()
-                                            prompt = prompt_template.format(
-                                                example_ocr=example_ocr,
-                                                example_answer_str=example_answer_str,
-                                                ocr_text=ocr_text
+                                        if not prompt_template_path.exists():
+                                            raise FileNotFoundError(
+                                                f"프롬프트 파일이 없습니다: {prompt_template_path}\n"
+                                                f"prompts/rag_with_example.txt 파일이 필요합니다."
                                             )
-                                        else:
-                                            # 기본 프롬프트
-                                            prompt = f"""GIVEN_TEXT:
-{example_ocr}
-
-위 글이 주어지면 아래의 내용이 정답이야! 
-{example_answer_str}
-
-MISSION:
-1.너는 위 GIVEN_TEXT를 보고 아래에 주어지는 QUESTION에 대한 답을 찾아내야 해
-2.답을 찾을때는 해당 값의 누락이 없어야 해
-3.임의로 글을 수정하거나 추가하지 말고 QUESTION의 단어 안에서 답을 찾아내야 해(일본어를 네맘대로 한글로 번역하지 마)
-4.출력형식은 **json** 형태여야 해
-5.**중요**: items는 항상 배열([])이어야 합니다. 항목이 없으면 빈 배열 []을 반환하세요. null을 반환하지 마세요.
-6.**중요**: page_role은 항상 문자열이어야 합니다. "cover", "detail", "summary" 중 하나를 반환하세요. null을 반환하지 마세요.
-
-QUESTION:
-{ocr_text}
-
-ANSWER:
-"""
+                                        
+                                        with open(prompt_template_path, 'r', encoding='utf-8') as f:
+                                            prompt_template = f.read()
+                                        prompt = prompt_template.format(
+                                            example_ocr=example_ocr,
+                                            example_answer_str=example_answer_str,
+                                            ocr_text=ocr_text
+                                        )
+                                        
+                                        # 프롬프트를 세션 상태에 저장 (확인용)
+                                        st.session_state[f"last_prompt_{current_page}"] = prompt
+                                        
+                                        # 프롬프트 미리보기 표시
+                                        with st.expander("📝 사용된 프롬프트 확인", expanded=True):
+                                            st.text_area(
+                                                "최종 프롬프트",
+                                                value=prompt,
+                                                height=400,
+                                                key=f"prompt_preview_{current_page}",
+                                                disabled=True,
+                                                help="OpenAI API에 전송되는 최종 프롬프트입니다."
+                                            )
                                         
                                         # OpenAI API 호출
                                         api_key = os.getenv("OPENAI_API_KEY")
@@ -1122,9 +1184,12 @@ ANSWER:
                                         if not isinstance(result_json.get("items"), list):
                                             result_json["items"] = []
                                         
-                                        # 세션 상태에 저장
+                                        # 세션 상태에 저장 (정답 JSON 편집 영역에 바로 반영)
                                         st.session_state[f"rag_result_{current_page}"] = result_json
-                                        st.success("✅ RAG 기반 정답 생성 완료!")
+                                        st.session_state[f"answer_json_{current_page}"] = json.dumps(result_json, ensure_ascii=False, indent=2)
+                                        st.session_state[f"page_role_{current_page}"] = result_json.get("page_role", "detail")
+                                        st.success("✅ RAG 기반 정답 생성 완료! 아래 정답 JSON 편집 영역에서 확인하세요.")
+                                        st.rerun()
                                         
                                     except Exception as e:
                                         st.error(f"❌ 정답 생성 실패: {e}")
@@ -1148,31 +1213,32 @@ ANSWER:
                                         prompts_dir = project_root / "prompts"
                                         
                                         prompt_template_path = prompts_dir / "rag_zero_shot.txt"
-                                        if prompt_template_path.exists():
-                                            with open(prompt_template_path, 'r', encoding='utf-8') as f:
-                                                prompt_template = f.read()
-                                            prompt = prompt_template.format(
-                                                ocr_text=ocr_text,
-                                                question=config.question
+                                        if not prompt_template_path.exists():
+                                            raise FileNotFoundError(
+                                                f"프롬프트 파일이 없습니다: {prompt_template_path}\n"
+                                                f"prompts/rag_zero_shot.txt 파일이 필요합니다."
                                             )
-                                        else:
-                                            prompt = f"""이미지는 일본어 조건청구서(条件請求書) 문서입니다.
-OCR 추출 결과를 보고 다음 질문에 대한 답을 JSON 형식으로 추출해주세요.
-
-OCR 추출 결과:
-{ocr_text}
-
-질문:
-{config.question}
-
-**중요**
-- 답 출력 시에는 불필요한 설명 없이 JSON 형식으로만 출력
-- 누락되는 값 없이 모든 제품을 추출
-- **items는 항상 배열([])이어야 합니다. 항목이 없으면 빈 배열 []을 반환하세요. null을 반환하지 마세요.**
-- **page_role은 항상 문자열이어야 합니다. "cover", "detail", "summary", "main" 중 하나를 반환하세요. null을 반환하지 마세요.**
-
-답:
-"""
+                                        
+                                        with open(prompt_template_path, 'r', encoding='utf-8') as f:
+                                            prompt_template = f.read()
+                                        prompt = prompt_template.format(
+                                            ocr_text=ocr_text,
+                                            question=config.question
+                                        )
+                                        
+                                        # 프롬프트를 세션 상태에 저장 (확인용)
+                                        st.session_state[f"last_prompt_{current_page}"] = prompt
+                                        
+                                        # 프롬프트 미리보기 표시
+                                        with st.expander("📝 사용된 프롬프트 확인", expanded=True):
+                                            st.text_area(
+                                                "최종 프롬프트",
+                                                value=prompt,
+                                                height=400,
+                                                key=f"prompt_preview_zero_shot_{current_page}",
+                                                disabled=True,
+                                                help="OpenAI API에 전송되는 최종 프롬프트입니다."
+                                            )
                                         
                                         # OpenAI API 호출
                                         api_key = os.getenv("OPENAI_API_KEY")
@@ -1211,9 +1277,12 @@ OCR 추출 결과:
                                         if not isinstance(result_json.get("items"), list):
                                             result_json["items"] = []
                                         
-                                        # 세션 상태에 저장
+                                        # 세션 상태에 저장 (정답 JSON 편집 영역에 바로 반영)
                                         st.session_state[f"rag_result_{current_page}"] = result_json
-                                        st.success("✅ Zero-shot 모드로 정답 생성 완료!")
+                                        st.session_state[f"answer_json_{current_page}"] = json.dumps(result_json, ensure_ascii=False, indent=2)
+                                        st.session_state[f"page_role_{current_page}"] = result_json.get("page_role", "detail")
+                                        st.success("✅ Zero-shot 모드로 정답 생성 완료! 아래 정답 JSON 편집 영역에서 확인하세요.")
+                                        st.rerun()
                                         
                                     except Exception as e:
                                         st.error(f"❌ 정답 생성 실패: {e}")
@@ -1247,8 +1316,14 @@ OCR 추출 결과:
                                         st.error("❌ OCR 텍스트를 추출할 수 없습니다.")
                                     else:
                                         # RAG 기반 JSON 추출
+                                        last_prompt = [None]  # 프롬프트를 저장할 리스트 (클로저를 위해)
+                                        
                                         def progress_wrapper(msg: str):
                                             st.info(f"🤖 {msg}")
+                                            # 프롬프트가 포함된 메시지인지 확인
+                                            if "프롬프트" in msg or "prompt" in msg.lower():
+                                                # 프롬프트 추출 시도 (간단한 방법)
+                                                pass
                                         
                                         result_json = extract_json_with_rag(
                                             ocr_text=ocr_text,
@@ -1260,66 +1335,46 @@ OCR 추출 결과:
                                             progress_callback=progress_wrapper,
                                             page_num=current_page
                                         )
+                                        
+                                        # 프롬프트 파일에서 읽기 (디버깅 폴더에 저장된 경우)
+                                        project_root = get_project_root()
+                                        debug_dir = project_root / "debug"
+                                        prompt_file = debug_dir / f"page_{current_page}_prompt.txt"
+                                        if prompt_file.exists():
+                                            with open(prompt_file, 'r', encoding='utf-8') as f:
+                                                saved_prompt = f.read()
+                                            st.session_state[f"last_prompt_{current_page}"] = saved_prompt
+                                            
+                                            # 프롬프트 미리보기 표시
+                                            with st.expander("📝 사용된 프롬프트 확인", expanded=True):
+                                                st.text_area(
+                                                    "최종 프롬프트",
+                                                    value=saved_prompt,
+                                                    height=400,
+                                                    key=f"prompt_preview_auto_{current_page}",
+                                                    disabled=True,
+                                                    help="OpenAI API에 전송되는 최종 프롬프트입니다."
+                                                )
 
-                                        # 세션 상태에 저장
+                                        # null 값 정규화
+                                        if result_json.get("items") is None:
+                                            result_json["items"] = []
+                                        if result_json.get("page_role") is None:
+                                            result_json["page_role"] = "detail"
+                                        if not isinstance(result_json.get("items"), list):
+                                            result_json["items"] = []
+                                        
+                                        # 세션 상태에 저장 (정답 JSON 편집 영역에 바로 반영)
                                         st.session_state[f"rag_result_{current_page}"] = result_json
-                                        st.success("✅ RAG 기반 정답 생성 완료!")
+                                        st.session_state[f"answer_json_{current_page}"] = json.dumps(result_json, ensure_ascii=False, indent=2)
+                                        st.session_state[f"page_role_{current_page}"] = result_json.get("page_role", "detail")
+                                        st.success("✅ RAG 기반 정답 생성 완료! 아래 정답 JSON 편집 영역에서 확인하세요.")
+                                        st.rerun()
 
                                 except Exception as e:
                                     st.error(f"❌ OpenAI API 호출 실패: {e}")
                                     st.code(traceback.format_exc())
 
-                    # RAG 결과 표시
-                    if f"rag_result_{current_page}" in st.session_state:
-                        result_json = st.session_state[f"rag_result_{current_page}"]
-
-                        # 결과를 데이터프레임으로 변환
-                        if result_json.get("items"):
-                            result_df, mgmt_col = prepare_dataframe_for_aggrid(result_json["items"])
-
-                            if AgGridUtils.is_available() and len(result_df) > 0:
-                                gb = GridOptionsBuilder.from_dataframe(result_df)
-                                gb.configure_default_column(editable=False, resizable=True)
-
-                                for col in result_df.columns:
-                                    japanese_name = COLUMN_NAME_MAPPING.get(col, col)
-                                    if col == 'No':
-                                        gb.configure_column(col, header_name=japanese_name, editable=False, width=60, pinned='left')
-                                    else:
-                                        gb.configure_column(col, header_name=japanese_name)
-
-                                gb.configure_pagination(enabled=False)
-                                get_row_style_code = create_management_color_style(mgmt_col, result_df)
-                                grid_options = gb.build()
-                                if get_row_style_code:
-                                    grid_options['getRowStyle'] = get_row_style_code
-                                grid_options['pagination'] = False
-
-                                auto_size_js = JsCode("""
-                                function(params) {
-                                    params.api.sizeColumnsToFit();
-                                    var allColumnIds = [];
-                                    params.columnApi.getColumns().forEach(function(column) {
-                                        if (column.colId) allColumnIds.push(column.colId);
-                                    });
-                                    params.columnApi.autoSizeColumns(allColumnIds);
-                                }
-                                """)
-                                grid_options['onGridReady'] = auto_size_js
-
-                                st.subheader("📊 RAG 기반 정답 생성 결과")
-                                AgGrid(result_df, gridOptions=grid_options, update_mode=GridUpdateMode.NO_UPDATE,
-                                       data_return_mode=DataReturnMode.FILTERED_AND_SORTED, fit_columns_on_grid_load=True,
-                                       height=400, theme='streamlit', allow_unsafe_jscode=True, hide_index=False,
-                                       key=f"rag_result_grid_{current_page}")
-                            elif len(result_df) > 0:
-                                st.subheader("📊 RAG 기반 정답 생성 결과")
-                                st.dataframe(result_df, height=400)
-                            else:
-                                st.info("응답에 items가 없습니다.")
-                        else:
-                            st.info("생성된 결과에 items가 없습니다.")
-                    
                     # 기존 OpenAI 응답 결과 표시 (하위 호환성 유지)
                     if f"openai_result_{current_page}" in st.session_state:
                         result_json = st.session_state[f"openai_result_{current_page}"]
@@ -1382,13 +1437,19 @@ OCR 추출 결과:
                 else:
                     st.warning("PyMuPDF 추출 결과가 없습니다.")
 
-                # JSON 파일 로드
+                # JSON 파일 로드 (Gemini 결과 > RAG 결과 > 파일 순으로 우선 사용)
                 answer_json_path = page_info["answer_json_path"]
                 default_answer_json = {
                     "page_role": "detail",
                     "items": []
                 }
-                if os.path.exists(answer_json_path):
+                
+                # Gemini 결과가 있으면 우선 사용, 없으면 RAG 결과, 없으면 파일에서 로드
+                if f"gemini_result_{current_page}" in st.session_state:
+                    default_answer_json = st.session_state[f"gemini_result_{current_page}"]
+                elif f"rag_result_{current_page}" in st.session_state:
+                    default_answer_json = st.session_state[f"rag_result_{current_page}"]
+                elif os.path.exists(answer_json_path):
                     try:
                         with open(answer_json_path, "r", encoding="utf-8") as f:
                             loaded_json = json.load(f)
@@ -1410,7 +1471,12 @@ OCR 추출 결과:
 
                     # JSON 편집 창 (필터링된 JSON만 표시)
                     # default_answer_json은 이미 filter_answer_json으로 필터링되어 있음
-                    answer_json_str_default = json.dumps(default_answer_json, ensure_ascii=False, indent=2)
+                    # 세션 상태에 저장된 값이 있으면 우선 사용 (RAG 결과 반영)
+                    if f"answer_json_{current_page}" in st.session_state:
+                        answer_json_str_default = st.session_state[f"answer_json_{current_page}"]
+                    else:
+                        answer_json_str_default = json.dumps(default_answer_json, ensure_ascii=False, indent=2)
+                    
                     answer_json_str = st.text_area(
                         "정답 JSON (편집 가능) - page_role과 items만 포함됩니다",
                         value=answer_json_str_default,

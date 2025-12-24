@@ -181,66 +181,36 @@ def extract_json_with_rag(
         example_answer = example["answer_json"]  # RAG 예제의 정답 JSON (given_answer)
         example_answer_str = json.dumps(example_answer, ensure_ascii=False, indent=2)
         
-        # 프롬프트 템플릿 파일 로드
+        # 프롬프트 템플릿 파일 로드 (필수)
         prompt_template_path = prompts_dir / "rag_with_example.txt"
-        if prompt_template_path.exists():
-            with open(prompt_template_path, 'r', encoding='utf-8') as f:
-                prompt_template = f.read()
-            prompt = prompt_template.format(
-                example_ocr=example_ocr,
-                example_answer_str=example_answer_str,
-                ocr_text=ocr_text
+        if not prompt_template_path.exists():
+            raise FileNotFoundError(
+                f"프롬프트 파일이 없습니다: {prompt_template_path}\n"
+                f"prompts/rag_with_example.txt 파일이 필요합니다."
             )
-        else:
-            # 파일이 없으면 기본 프롬프트 사용 (하위 호환성)
-            prompt = f"""GIVEN_TEXT:
-{example_ocr}
-
-위 글이 주어지면 아래의 내용이 정답이야! 
-{example_answer_str}
-
-MISSION:
-1.너는 위 GIVEN_TEXT를 보고 아래에 주어지는 QUESTION에 대한 답을 찾아내야 해
-2.답을 찾을때는 해당 값의 누락이 없어야 해
-3.임의로 글을 수정하거나 추가하지 말고 QUESTION의 단어 안에서 답을 찾아내야 해(일본어를 네맘대로 한글로 번역하지 마)
-4.출력형식은 **json** 형태여야 해
-5.**중요**: items는 항상 배열([])이어야 합니다. 항목이 없으면 빈 배열 []을 반환하세요. null을 반환하지 마세요.
-6.**중요**: page_role은 항상 문자열이어야 합니다. "cover", "detail", "summary" 중 하나를 반환하세요. null을 반환하지 마세요.
-
-QUESTION:
-{ocr_text}
-
-ANSWER:
-"""
+        
+        with open(prompt_template_path, 'r', encoding='utf-8') as f:
+            prompt_template = f.read()
+        prompt = prompt_template.format(
+            example_ocr=example_ocr,
+            example_answer_str=example_answer_str,
+            ocr_text=ocr_text
+        )
     else:
         # 예제가 없는 경우: Zero-shot
         prompt_template_path = prompts_dir / "rag_zero_shot.txt"
-        if prompt_template_path.exists():
-            with open(prompt_template_path, 'r', encoding='utf-8') as f:
-                prompt_template = f.read()
-            prompt = prompt_template.format(
-                ocr_text=ocr_text,
-                question=question
+        if not prompt_template_path.exists():
+            raise FileNotFoundError(
+                f"프롬프트 파일이 없습니다: {prompt_template_path}\n"
+                f"prompts/rag_zero_shot.txt 파일이 필요합니다."
             )
-        else:
-            # 파일이 없으면 기본 프롬프트 사용 (하위 호환성)
-            prompt = f"""이미지는 일본어 조건청구서(条件請求書) 문서입니다.
-OCR 추출 결과를 보고 다음 질문에 대한 답을 JSON 형식으로 추출해주세요.
-
-OCR 추출 결과:
-{ocr_text}
-
-질문:
-{question}
-
-**중요**
-- 답 출력 시에는 불필요한 설명 없이 JSON 형식으로만 출력
-- 누락되는 값 없이 모든 제품을 추출
-- **items는 항상 배열([])이어야 합니다. 항목이 없으면 빈 배열 []을 반환하세요. null을 반환하지 마세요.**
-- **page_role은 항상 문자열이어야 합니다. "cover", "detail", "summary", "main" 중 하나를 반환하세요. null을 반환하지 마세요.**
-
-답:
-"""
+        
+        with open(prompt_template_path, 'r', encoding='utf-8') as f:
+            prompt_template = f.read()
+        prompt = prompt_template.format(
+            ocr_text=ocr_text,
+            question=question
+        )
     
     # 디버깅: 프롬프트 저장
     if debug_dir and page_num:
