@@ -23,6 +23,23 @@ from modules.utils.config import get_project_root
 from modules.utils.session_utils import ensure_session_state_defaults
 from modules.utils.pdf_utils import find_pdf_path
 
+def filter_answer_json(answer_json: dict) -> dict:
+    """
+    정답 JSON에서 필요한 필드만 추출 (page_role과 items만)
+    
+    Args:
+        answer_json: 원본 JSON 딕셔너리
+        
+    Returns:
+        필터링된 JSON 딕셔너리 (page_role과 items만 포함)
+    """
+    filtered = {
+        "page_role": answer_json.get("page_role", "detail"),
+        "items": answer_json.get("items", [])
+    }
+    return filtered
+
+
 def extract_text_from_pdf_page(pdf_path: Path, page_num: int) -> str:
     """
     fitz를 사용하여 PDF에서 특정 페이지의 텍스트를 추출합니다.
@@ -742,7 +759,9 @@ def render_answer_editor_tab():
                                     
                                     try:
                                         with open(answer_json_path, "r", encoding="utf-8") as f:
-                                            answer_json = json.load(f)
+                                            loaded_json = json.load(f)
+                                            # 불필요한 필드 제거 (page_role과 items만 유지)
+                                            answer_json = filter_answer_json(loaded_json)
                                         
                                         rag_manager.add_example(
                                             ocr_text=ocr_text,
@@ -969,7 +988,9 @@ def render_answer_editor_tab():
                 if os.path.exists(answer_json_path):
                     try:
                         with open(answer_json_path, "r", encoding="utf-8") as f:
-                            default_answer_json = json.load(f)
+                            loaded_json = json.load(f)
+                            # 불필요한 필드 제거 (page_role과 items만 유지)
+                            default_answer_json = filter_answer_json(loaded_json)
                     except Exception as e:
                         st.warning(f"기존 정답 JSON 로드 실패: {e}")
 
@@ -984,10 +1005,11 @@ def render_answer_editor_tab():
 
                     st.divider()
 
-                    # JSON 편집 창
+                    # JSON 편집 창 (필터링된 JSON만 표시)
+                    # default_answer_json은 이미 filter_answer_json으로 필터링되어 있음
                     answer_json_str_default = json.dumps(default_answer_json, ensure_ascii=False, indent=2)
                     answer_json_str = st.text_area(
-                        "정답 JSON (편집 가능)",
+                        "정답 JSON (편집 가능) - page_role과 items만 포함됩니다",
                         value=answer_json_str_default,
                         height=300,
                         key=f"answer_json_{current_page}"
@@ -1087,12 +1109,11 @@ def render_answer_editor_tab():
                             col_save_aggrid1, col_save_aggrid2 = st.columns([1, 4])
                             with col_save_aggrid1:
                                 if st.button("💾 AgGrid 변경사항 저장", type="primary", key=f"save_aggrid_{current_page}"):
-                                    # 현재 JSON 로드
-                                    answer_json = json.load(open(answer_json_path, "r", encoding="utf-8")) if os.path.exists(answer_json_path) else default_answer_json.copy()
-
-                                    # AgGrid에서 수정된 items 반영
-                                    answer_json["items"] = st.session_state.get(f"updated_items_{current_page}", items)
-                                    answer_json["page_role"] = st.session_state.get(f"page_role_{current_page}", default_answer_json.get("page_role", "detail"))
+                                    # AgGrid에서 수정된 items와 page_role로 새 JSON 생성 (필요한 필드만)
+                                    answer_json = {
+                                        "page_role": st.session_state.get(f"page_role_{current_page}", default_answer_json.get("page_role", "detail")),
+                                        "items": st.session_state.get(f"updated_items_{current_page}", items)
+                                    }
 
                                     # 파일 저장
                                     os.makedirs(os.path.dirname(answer_json_path), exist_ok=True)
@@ -1119,15 +1140,20 @@ def render_answer_editor_tab():
                             page_role_for_save = st.session_state.get(f"page_role_{current_page}", default_answer_json.get("page_role", "detail"))
                             
                             # JSON 파싱
-                            answer_json = json.loads(answer_json_str_for_save)
-                            answer_json["page_role"] = page_role_for_save
+                            parsed_json = json.loads(answer_json_str_for_save)
                             
                             # items 업데이트 (AgGrid에서 수정한 경우)
                             updated_items = st.session_state.get(f"updated_items_{current_page}")
                             if updated_items is not None:
-                                answer_json["items"] = updated_items
-                            elif "items" not in answer_json:
-                                answer_json["items"] = []
+                                items_to_save = updated_items
+                            else:
+                                items_to_save = parsed_json.get("items", [])
+                            
+                            # 필요한 필드만 추출하여 저장 (page_role과 items만)
+                            answer_json = {
+                                "page_role": page_role_for_save,
+                                "items": items_to_save
+                            }
 
                             # 파일 저장
                             if not answer_json_path:
@@ -1165,9 +1191,20 @@ def render_answer_editor_tab():
                             # JSON 파싱
                             answer_json_str_for_rag = st.session_state.get(f"answer_json_{current_page}", answer_json_str_default)
                             page_role_for_rag = st.session_state.get(f"page_role_{current_page}", default_answer_json.get("page_role", "detail"))
-                            answer_json = json.loads(answer_json_str_for_rag)
-                            answer_json["page_role"] = page_role_for_rag
-                            answer_json["items"] = st.session_state.get(f"updated_items_{current_page}", answer_json.get("items", []))
+                            parsed_json = json.loads(answer_json_str_for_rag)
+                            
+                            # items 가져오기 (AgGrid에서 수정한 경우 우선)
+                            updated_items = st.session_state.get(f"updated_items_{current_page}")
+                            if updated_items is not None:
+                                items_for_rag = updated_items
+                            else:
+                                items_for_rag = parsed_json.get("items", [])
+                            
+                            # 필요한 필드만 추출 (page_role과 items만)
+                            answer_json = {
+                                "page_role": page_role_for_rag,
+                                "items": items_for_rag
+                            }
                             
                             # RAG Manager로 저장
                             rag_manager = get_rag_manager()
@@ -1222,8 +1259,10 @@ def render_answer_editor_tab():
             answer_items = []
             if os.path.exists(answer_json_path):
                 with open(answer_json_path, "r", encoding="utf-8") as f:
-                    answer_json = json.load(f)
-                    answer_items = answer_json.get("items", [])
+                    loaded_json = json.load(f)
+                    # 불필요한 필드 제거 후 items만 추출
+                    filtered_json = filter_answer_json(loaded_json)
+                    answer_items = filtered_json.get("items", [])
 
             if openai_items and answer_items:
                 # 비교용 데이터프레임 생성 (함수 사용)

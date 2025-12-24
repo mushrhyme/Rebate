@@ -7,11 +7,13 @@ OCR 텍스트를 입력받아 벡터 DB에서 유사한 예제를 검색하고,
 
 import os
 import json
+from pathlib import Path
 from typing import Dict, Any, Optional, Callable
 from openai import OpenAI
 import numpy as np
 
 from modules.core.rag_manager import get_rag_manager
+from modules.utils.config import get_project_root
 
 
 def convert_numpy_types(obj: Any) -> Any:
@@ -168,7 +170,10 @@ def extract_json_with_rag(
             print(f"⚠️ 디버깅 정보 저장 실패: {debug_error}")
             print(f"  상세:\n{traceback.format_exc()}")
     
-    # 2. 프롬프트 구성
+    # 2. 프롬프트 구성 (별도 파일에서 로드)
+    project_root = get_project_root()
+    prompts_dir = project_root / "prompts"
+    
     if similar_examples:
         # 예제가 있는 경우: Example-augmented RAG
         example = similar_examples[0]  # 가장 유사한 예제 사용
@@ -176,9 +181,19 @@ def extract_json_with_rag(
         example_answer = example["answer_json"]  # RAG 예제의 정답 JSON (given_answer)
         example_answer_str = json.dumps(example_answer, ensure_ascii=False, indent=2)
         
-        # prompting.py 형식: given_text(예제 OCR)와 given_answer(예제 정답)를 보여주고,
-        # question(현재 페이지 OCR)에서 같은 형식으로 추출하도록 지시
-        prompt = f"""GIVEN_TEXT:
+        # 프롬프트 템플릿 파일 로드
+        prompt_template_path = prompts_dir / "rag_with_example.txt"
+        if prompt_template_path.exists():
+            with open(prompt_template_path, 'r', encoding='utf-8') as f:
+                prompt_template = f.read()
+            prompt = prompt_template.format(
+                example_ocr=example_ocr,
+                example_answer_str=example_answer_str,
+                ocr_text=ocr_text
+            )
+        else:
+            # 파일이 없으면 기본 프롬프트 사용 (하위 호환성)
+            prompt = f"""GIVEN_TEXT:
 {example_ocr}
 
 위 글이 주어지면 아래의 내용이 정답이야! 
@@ -190,7 +205,7 @@ MISSION:
 3.임의로 글을 수정하거나 추가하지 말고 QUESTION의 단어 안에서 답을 찾아내야 해(일본어를 네맘대로 한글로 번역하지 마)
 4.출력형식은 **json** 형태여야 해
 5.**중요**: items는 항상 배열([])이어야 합니다. 항목이 없으면 빈 배열 []을 반환하세요. null을 반환하지 마세요.
-6.**중요**: page_role은 항상 문자열이어야 합니다. "cover", "detail", "summary", "main" 중 하나를 반환하세요. null을 반환하지 마세요.
+6.**중요**: page_role은 항상 문자열이어야 합니다. "cover", "detail", "summary" 중 하나를 반환하세요. null을 반환하지 마세요.
 
 QUESTION:
 {ocr_text}
@@ -199,7 +214,17 @@ ANSWER:
 """
     else:
         # 예제가 없는 경우: Zero-shot
-        prompt = f"""이미지는 일본어 조건청구서(条件請求書) 문서입니다.
+        prompt_template_path = prompts_dir / "rag_zero_shot.txt"
+        if prompt_template_path.exists():
+            with open(prompt_template_path, 'r', encoding='utf-8') as f:
+                prompt_template = f.read()
+            prompt = prompt_template.format(
+                ocr_text=ocr_text,
+                question=question
+            )
+        else:
+            # 파일이 없으면 기본 프롬프트 사용 (하위 호환성)
+            prompt = f"""이미지는 일본어 조건청구서(条件請求書) 문서입니다.
 OCR 추출 결과를 보고 다음 질문에 대한 답을 JSON 형식으로 추출해주세요.
 
 OCR 추출 결과:
