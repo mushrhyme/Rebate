@@ -64,14 +64,7 @@ def render_upload_tab():
                         "pages": 0,
                         "error": None
                     }
-                    # PdfRegistry에서도 제거하고 pending 상태로 재설정 (이전 상태가 있을 수 있음)
-                    try:
-                        from modules.core.registry import PdfRegistry
-                        # 완전히 제거 후 pending 상태로 재생성
-                        PdfRegistry.remove(pdf_name)
-                        PdfRegistry.ensure(pdf_name, status="pending", pages=0, error=None, source="session")
-                    except Exception as e:
-                        print(f"⚠️ PdfRegistry 초기화 실패: {e}")
+                    # PdfRegistry 제거됨 - st.session_state로 관리
         removed_names = existing_names - current_names
         if removed_names:
             st.session_state.uploaded_files_info = [

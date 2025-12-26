@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional, Tuple, Callable
 from PIL import Image
 
-from .registry import PdfRegistry
+# PdfRegistry 제거됨 - DB와 st.session_state로 대체
 from .storage import PageStorage
 
 
@@ -55,9 +55,7 @@ class PdfProcessor:
                 if pdf_path is None:
                     return False, 0, f"PDF 파일을 찾을 수 없습니다: {pdf_name}", 0.0
             
-            # 2. PdfRegistry에 등록 및 상태 업데이트
-            PdfRegistry.ensure(pdf_name, source="session")
-            PdfRegistry.update(pdf_name, status="processing", pages=0, error=None)
+            # 2. 상태는 st.session_state로 관리 (PdfRegistry 제거됨)
             
             # 3. PDF 파싱 (DB 우선 사용, 없으면 RAG 기반 분석)
             # RAG 기반 파싱만 사용 (무조건 RAG 사용)
@@ -195,14 +193,8 @@ class PdfProcessor:
                 if progress_callback:
                     progress_callback(page_num, len(page_results), f"ページ {page_num}/{len(page_results)} 処理完了")
                 
-                # Heartbeat 업데이트 (타임아웃 방지)
-                PdfRegistry.update(pdf_name)
-            
-            # 7. 처리 완료 - DB에 저장되었으므로 pdf_registry.json에서 제거
+            # 7. 처리 완료
             elapsed_time = time.time() - start_time
-            
-            # 분석 완료 시 pdf_registry.json에서 제거 (DB에 저장되었으므로 더 이상 필요 없음)
-            PdfRegistry.remove(pdf_name)
             
             return True, len(page_results), None, elapsed_time
             
@@ -210,13 +202,7 @@ class PdfProcessor:
             error_msg = str(e)
             elapsed_time = time.time() - start_time
             
-            # 에러 상태 저장
-            PdfRegistry.update(
-                pdf_name,
-                status="error",
-                pages=0,
-                error=error_msg
-            )
+            # 에러 상태는 st.session_state로 관리 (PdfRegistry 제거됨)
             
             return False, 0, error_msg, elapsed_time
     
@@ -245,8 +231,7 @@ class PdfProcessor:
         # 1. PDF 파일 저장
         pdf_path = SessionManager.save_pdf_file(uploaded_file, pdf_name)
         
-        # 2. PdfRegistry에 등록 (source="session")
-        PdfRegistry.ensure(pdf_name, source="session")
+        # 2. 상태는 st.session_state로 관리 (PdfRegistry 제거됨)
         
         # 3. 처리 실행
         return PdfProcessor.process_pdf(
@@ -259,43 +244,21 @@ class PdfProcessor:
     @staticmethod
     def can_process_pdf(pdf_name: str) -> bool:
         """
-        PDF를 처리할 수 있는지 확인
+        PDF를 처리할 수 있는지 확인 (PdfRegistry 제거됨 - 항상 True 반환)
         
         Args:
             pdf_name: PDF 파일명 (확장자 제외)
             
         Returns:
-            처리 가능 여부
+            처리 가능 여부 (항상 True)
         """
-        metadata = PdfRegistry.get(pdf_name)
-        
-        # 레지스트리에 없으면 처리 가능
-        if metadata is None:
-            return True
-        
-        status = metadata.get("status", "pending")
-        
-        # pending 또는 error 상태면 처리 가능
-        if status in ["pending", "error"]:
-            return True
-        
-        # processing 상태면 타임아웃 체크
-        if status == "processing":
-            from modules.utils.session_manager import SessionManager
-            is_active = SessionManager.is_analysis_active(pdf_name)
-            # 타임아웃되었으면 처리 가능
-            if not is_active:
-                return True
-            # 활성 상태면 처리 불가
-            return False
-        
-        # completed 상태면 재처리 가능
+        # PdfRegistry 제거됨 - 항상 처리 가능
         return True
     
     @staticmethod
     def get_processing_status(pdf_name: str) -> Dict[str, Any]:
         """
-        PDF 처리 상태 조회
+        PDF 처리 상태 조회 (PdfRegistry 제거됨 - DB에서 조회)
         
         Args:
             pdf_name: PDF 파일명 (확장자 제외)
@@ -303,20 +266,25 @@ class PdfProcessor:
         Returns:
             상태 딕셔너리
         """
-        metadata = PdfRegistry.get(pdf_name)
-        
-        if metadata:
-            return {
-                "status": metadata.get("status", "pending"),
-                "pages": metadata.get("pages", 0),
-                "error": metadata.get("error"),
-                "last_updated": metadata.get("last_updated"),
-                "pdf_name": pdf_name
-            }
+        # DB에서 페이지 수 확인
+        try:
+            from database.registry import get_db
+            db_manager = get_db()
+            pdf_filename = f"{pdf_name}.pdf"
+            page_results = db_manager.get_page_results(
+                pdf_filename=pdf_filename,
+                session_id=None,
+                is_latest=True
+            )
+            pages = len(page_results) if page_results else 0
+            status = "completed" if pages > 0 else "pending"
+        except Exception:
+            pages = 0
+            status = "pending"
         
         return {
-            "status": "pending",
-            "pages": 0,
+            "status": status,
+            "pages": pages,
             "error": None,
             "last_updated": None,
             "pdf_name": pdf_name

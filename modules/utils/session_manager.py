@@ -15,7 +15,7 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime
 
 # Core 모듈 import (같은 프로젝트 내부이므로 상대 import 사용)
-from modules.core.registry import PdfRegistry
+# PdfRegistry 제거됨 - DB와 st.session_state로 대체
 from modules.core.storage import PageStorage
 
 
@@ -427,7 +427,7 @@ class SessionManager:
     @staticmethod
     def save_analysis_status(pdf_name: str, status: str, pages: int = 0, error: Optional[str] = None) -> bool:
         """
-        분석 상태를 PdfRegistry에 저장
+        분석 상태 저장 (PdfRegistry 제거됨 - st.session_state로 관리)
         
         Args:
             pdf_name: PDF 파일명 (확장자 제외)
@@ -436,22 +436,24 @@ class SessionManager:
             error: 에러 메시지 (있는 경우)
             
         Returns:
-            저장 성공 여부
+            저장 성공 여부 (항상 True)
         """
-        # PdfRegistry에 메타데이터 업데이트
-        update_fields = {
-            "status": status,
-            "pages": pages
-        }
-        if error:
-            update_fields["error"] = error
+        # st.session_state로 관리 (PdfRegistry 제거됨)
+        import streamlit as st
+        if "analysis_status" not in st.session_state:
+            st.session_state.analysis_status = {}
         
-        return PdfRegistry.update(pdf_name, **update_fields)
+        st.session_state.analysis_status[pdf_name] = {
+            "status": status,
+            "pages": pages,
+            "error": error
+        }
+        return True
     
     @staticmethod
     def load_analysis_status(pdf_name: str) -> Optional[Dict[str, Any]]:
         """
-        저장된 분석 상태 로드 (PdfRegistry 사용, 하위 호환성 유지)
+        저장된 분석 상태 로드 (PdfRegistry 제거됨 - st.session_state에서 조회)
         
         Args:
             pdf_name: PDF 파일명 (확장자 제외)
@@ -459,141 +461,96 @@ class SessionManager:
         Returns:
             분석 상태 딕셔너리 또는 None
         """
-        # 1. PdfRegistry에서 조회
-        metadata = PdfRegistry.get(pdf_name)
-        if metadata:
-            return {
-                "status": metadata.get("status", "pending"),
-                "pages": metadata.get("pages", 0),
-                "error": metadata.get("error"),
-                "last_updated": metadata.get("last_updated"),
-                "pdf_name": pdf_name
-            }
+        # st.session_state에서 조회 (PdfRegistry 제거됨)
+        import streamlit as st
+        if "analysis_status" in st.session_state:
+            status = st.session_state.analysis_status.get(pdf_name)
+            if status:
+                return {
+                    "status": status.get("status", "pending"),
+                    "pages": status.get("pages", 0),
+                    "error": status.get("error"),
+                    "pdf_name": pdf_name
+                }
         
-        # 2. 기존 status 파일에서 로드 (하위 호환성)
-        status_dir = SessionManager.get_status_dir()
-        status_path = os.path.join(status_dir, f"{pdf_name}_status.json")
-        
-        if os.path.exists(status_path):
-            try:
-                with open(status_path, 'r', encoding='utf-8') as f:
-                    status_data = json.load(f)
-                    # PdfRegistry로 마이그레이션
-                    SessionManager._migrate_status_to_registry(pdf_name, status_data)
-                    return status_data
-            except Exception:
-                pass
+        # DB에서 페이지 수 확인
+        try:
+            from database.registry import get_db
+            db_manager = get_db()
+            pdf_filename = f"{pdf_name}.pdf"
+            page_results = db_manager.get_page_results(
+                pdf_filename=pdf_filename,
+                session_id=None,
+                is_latest=True
+            )
+            pages = len(page_results) if page_results else 0
+            if pages > 0:
+                return {
+                    "status": "completed",
+                    "pages": pages,
+                    "error": None,
+                    "pdf_name": pdf_name
+                }
+        except Exception:
+            pass
         
         return None
     
     @staticmethod
     def _migrate_status_to_registry(pdf_name: str, status_data: Dict[str, Any]) -> None:
         """
-        기존 status 파일 데이터를 PdfRegistry로 마이그레이션
+        기존 status 파일 데이터 마이그레이션 (PdfRegistry 제거됨 - 더 이상 사용 안 함)
         
         Args:
             pdf_name: PDF 파일명 (확장자 제외)
             status_data: 기존 상태 데이터
         """
-        try:
-            PdfRegistry.update(
-                pdf_name,
-                status=status_data.get("status", "pending"),
-                pages=status_data.get("pages", 0),
-                error=status_data.get("error"),
-                source=status_data.get("source", "session")
-            )
-        except Exception:
-            pass  # 마이그레이션 실패해도 계속 진행
+        # PdfRegistry 제거됨 - 더 이상 마이그레이션 불필요
+        pass
     
     @staticmethod
     def update_analysis_heartbeat(pdf_name: str) -> bool:
         """
-        분석 중인 경우 heartbeat 업데이트 (타임아웃 방지, PdfRegistry 사용)
+        분석 중인 경우 heartbeat 업데이트 (PdfRegistry 제거됨 - 더 이상 사용 안 함)
         
         Args:
             pdf_name: PDF 파일명 (확장자 제외)
             
         Returns:
-            업데이트 성공 여부
+            업데이트 성공 여부 (항상 True)
         """
-        metadata = PdfRegistry.get(pdf_name)
-        if metadata and metadata.get("status") == "processing":
-            # last_updated만 갱신 (update 메서드가 자동으로 갱신)
-            return PdfRegistry.update(pdf_name)
-        return False
+        # PdfRegistry 제거됨 - 더 이상 heartbeat 불필요
+        return True
     
     @staticmethod
     def is_analysis_active(pdf_name: str, timeout_minutes: int = 10) -> bool:
         """
-        분석이 현재 활성 상태인지 확인 (타임아웃 체크 포함, PdfRegistry 사용)
+        분석이 현재 활성 상태인지 확인 (PdfRegistry 제거됨 - 항상 False 반환)
         
         Args:
             pdf_name: PDF 파일명 (확장자 제외)
             timeout_minutes: 타임아웃 시간 (분, 기본값: 10분)
             
         Returns:
-            분석이 활성 상태이면 True, 아니면 False
+            분석이 활성 상태이면 True, 아니면 False (항상 False)
         """
-        metadata = PdfRegistry.get(pdf_name)
-        
-        if not metadata:
-            return False
-        
-        if metadata.get("status") != "processing":
-            return False
-        
-        # 타임아웃 체크
-        last_updated_str = metadata.get("last_updated")
-        if not last_updated_str:
-            return False
-        
-        try:
-            last_updated = datetime.fromisoformat(last_updated_str)
-            time_diff = (datetime.now() - last_updated).total_seconds() / 60  # 분 단위
-            
-            # 타임아웃 시간을 초과하면 비활성으로 간주
-            if time_diff > timeout_minutes:
-                # 상태를 "error"로 변경 (타임아웃)
-                PdfRegistry.update(
-                    pdf_name,
-                    status="error",
-                    pages=metadata.get("pages", 0),
-                    error=f"分析がタイムアウトしました（{timeout_minutes}分以上更新されていません）"
-                )
-                return False
-            
-            return True
-        except Exception:
-            return False
+        # PdfRegistry 제거됨 - 항상 비활성으로 간주
+        return False
     
     @staticmethod
     def get_all_analysis_statuses() -> Dict[str, Dict[str, Any]]:
         """
-        사용자가 요청한 분석 목록의 상태만 로드 (source="session"만)
-        
-        PdfRegistry에서 source="session"인 PDF의 상태만 반환합니다.
+        사용자가 요청한 분석 목록의 상태만 로드 (PdfRegistry 제거됨 - st.session_state에서 조회)
         
         Returns:
             {pdf_name: status_dict} 형태의 딕셔너리
         """
-        # PdfRegistry에서 source="session"인 PDF만 조회
-        all_pdfs = PdfRegistry.list_pdfs()
-        all_statuses = {}
+        # st.session_state에서 조회 (PdfRegistry 제거됨)
+        import streamlit as st
+        if "analysis_status" not in st.session_state:
+            return {}
         
-        for pdf_name in all_pdfs:
-            metadata = PdfRegistry.get(pdf_name)
-            # source가 "session"인 것만 포함
-            if metadata and metadata.get("source") == "session":
-                all_statuses[pdf_name] = {
-                    "status": metadata.get("status", "pending"),
-                    "pages": metadata.get("pages", 0),
-                    "error": metadata.get("error"),
-                    "last_updated": metadata.get("last_updated"),
-                    "pdf_name": pdf_name
-                }
-        
-        return all_statuses
+        return st.session_state.analysis_status.copy()
     
     @staticmethod
     def save_analysis_requests(requests: List[Dict[str, Any]]) -> str:
@@ -637,38 +594,13 @@ class SessionManager:
     @staticmethod
     def migrate_legacy_status_files() -> int:
         """
-        기존 status 파일들을 PdfRegistry로 마이그레이션
+        기존 status 파일들을 마이그레이션 (PdfRegistry 제거됨 - 더 이상 사용 안 함)
         
         Returns:
-            마이그레이션된 파일 수
+            마이그레이션된 파일 수 (항상 0)
         """
-        status_dir = SessionManager.get_status_dir()
-        if not os.path.exists(status_dir):
-            return 0
-        
-        migrated_count = 0
-        for filename in os.listdir(status_dir):
-            if filename.endswith('_status.json'):
-                pdf_name = filename.replace('_status.json', '')
-                status_path = os.path.join(status_dir, filename)
-                
-                try:
-                    with open(status_path, 'r', encoding='utf-8') as f:
-                        status_data = json.load(f)
-                    
-                    # PdfRegistry에 등록 (이미 있으면 업데이트)
-                    PdfRegistry.update(
-                        pdf_name,
-                        status=status_data.get("status", "pending"),
-                        pages=status_data.get("pages", 0),
-                        error=status_data.get("error"),
-                        source=status_data.get("source", "session")
-                    )
-                    migrated_count += 1
-                except Exception:
-                    continue
-        
-        return migrated_count
+        # PdfRegistry 제거됨 - 더 이상 마이그레이션 불필요
+        return 0
     
     @staticmethod
     def cleanup_session():
