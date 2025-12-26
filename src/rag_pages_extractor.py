@@ -331,6 +331,57 @@ def extract_pages_with_rag(
     # 인덱스 순서대로 결과 리스트 생성
     page_jsons = [page_results[i] for i in range(len(images))]
     
+    # 후처리: management_id와 customer가 null인 경우 앞 페이지에서 가져오기
+    def fill_missing_management_id_and_customer(page_jsons: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        items가 있는데 management_id와 customer가 모두 null인 경우,
+        바로 앞 페이지의 마지막 item에서 값을 가져와서 채워넣기
+        
+        Args:
+            page_jsons: 페이지별 JSON 결과 리스트
+            
+        Returns:
+            후처리된 페이지별 JSON 결과 리스트
+        """
+        last_management_id = None
+        last_customer = None
+        
+        for page_idx, page_json in enumerate(page_jsons):
+            items = page_json.get("items", [])
+            
+            # items가 비어있지 않은 경우에만 처리
+            if items and len(items) > 0:
+                # 현재 페이지의 모든 items를 확인하여 null인 경우 채워넣기
+                for item in items:
+                    current_mgmt_id = item.get("management_id")
+                    current_customer = item.get("customer")
+                    
+                    # management_id와 customer가 모두 null인 경우
+                    if (current_mgmt_id is None or current_mgmt_id == "") and \
+                       (current_customer is None or current_customer == ""):
+                        # 앞 페이지의 마지막 값이 있으면 사용
+                        if last_management_id is not None:
+                            item["management_id"] = last_management_id
+                        if last_customer is not None:
+                            item["customer"] = last_customer
+                
+                # 현재 페이지의 마지막 item에서 management_id와 customer 추출
+                # (null이 아닌 값만 업데이트)
+                last_item = items[-1]
+                if last_item.get("management_id") is not None and last_item.get("management_id") != "":
+                    last_management_id = last_item.get("management_id")
+                if last_item.get("customer") is not None and last_item.get("customer") != "":
+                    last_customer = last_item.get("customer")
+            else:
+                # items가 비어있는 페이지는 last 값을 업데이트하지 않음
+                # (앞 페이지의 값을 유지)
+                pass
+        
+        return page_jsons
+    
+    # 후처리 실행
+    page_jsons = fill_missing_management_id_and_customer(page_jsons)
+    
     # 디버깅: 결과 확인
     try:
         print(f"\n📋 최종 결과 확인: {len(page_jsons)}개 페이지 결과 생성됨")

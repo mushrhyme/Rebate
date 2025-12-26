@@ -225,12 +225,15 @@ def render_review_tab():
         )
     with col2:
         if st.button("📚 学習リクエスト", type="primary", use_container_width=True):
-            with st.spinner("学習データを保存中..."):
-                success, message = request_training(selected_pdf)
-                if success:
-                    st.success(message)
-                else:
-                    st.error(message)
+            progress_placeholder = st.empty()
+            with progress_placeholder.container():
+                st.info("学習データを保存中...", icon="⏳")
+            success, message = request_training(selected_pdf)
+            progress_placeholder.empty()
+            if success:
+                st.success(message)
+            else:
+                st.error(message)
     if selected_pdf != st.session_state.selected_pdf:
         st.session_state.selected_pdf = selected_pdf
         st.session_state.selected_page = 1

@@ -707,6 +707,7 @@ class RAGManager:
         return {
             "ocr_text": data.get("ocr_text", ""),
             "answer_json": data.get("answer_json", {}),
+            "metadata": data.get("metadata", {}),
             "similarity": similarity,
             "distance": float(distance),
             "id": doc_id,

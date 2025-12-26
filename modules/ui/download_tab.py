@@ -89,7 +89,10 @@ def render_download_tab():
     st.divider()
     st.subheader("📥 Excelダウンロード")
     if st.button("📥 Excelファイル生成及びダウンロード", type="primary", width='stretch'):
+        progress_placeholder = st.empty()
         try:
+            with progress_placeholder.container():
+                st.info("Excelファイルを生成中...", icon="⏳")
             output = BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 merged_df.to_excel(writer, index=False, sheet_name='Sheet1')
@@ -98,6 +101,7 @@ def render_download_tab():
                 filename = f"{selected_pdfs[0]}_parsed.xlsx"
             else:
                 filename = f"merged_{len(selected_pdfs)}files_parsed.xlsx"
+            progress_placeholder.empty()
             st.download_button(
                 label="📥 ダウンロード",
                 data=output.getvalue(),
@@ -108,5 +112,6 @@ def render_download_tab():
             )
             st.success("Excelファイルが生成されました！", icon="✅")
         except Exception as e:
+            progress_placeholder.empty()
             st.error(f"Excelファイル生成失敗: {e}", icon="❌")
 
