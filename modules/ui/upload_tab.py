@@ -185,7 +185,7 @@ def render_upload_tab():
             if actual_count > 0:
                 st.success(f"✅ RAG 기반 분석 활성화 (벡터 DB 예제: {actual_count}개)")
             else:
-                st.warning("⚠️ 벡터 DB에 예제가 없습니다. 정답지 편집 탭에서 예제를 추가하세요.")
+                st.info("ℹ️ 벡터 DB에 예제가 없습니다. Zero-shot 모드로 분석합니다. 더 나은 결과를 위해 정답지 편집 탭에서 예제를 추가하세요.")
         except Exception as e:
             st.error(f"❌ RAG Manager 초기화 실패: {e}")
 
@@ -231,14 +231,12 @@ def render_upload_tab():
                 file_names = [f[0]['name'] for f in prepared_files]
                 total_files = len(prepared_files)
                 
-                # Upstage API Rate limit 방지를 위해 파일 단위 병렬 처리 비활성화
-                # (각 파일 내부의 OCR은 순차 처리, RAG+LLM은 병렬 처리)
+                # 파일 단위는 순차 처리 (Upstage API Rate limit 방지)
+                # 각 파일 내부의 RAG+LLM은 병렬 처리됨 (rag_llm_parallel_workers 설정)
                 use_parallel = False  # 파일 단위 병렬 처리 비활성화
                 max_workers = 1
                 
                 st.info(f"**分析対象**: {total_files}個のファイル - {', '.join(file_names)}", icon="ℹ️")
-                if total_files > 1:
-                    st.info(f"📝 **순차 처리 모드**: 파일을 하나씩 처리합니다 (Upstage API Rate limit 방지)", icon="📝")
                 
                 progress_placeholder = st.empty()
                 start_time = time.time()

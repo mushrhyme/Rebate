@@ -759,6 +759,10 @@ class RAGManager:
         all_results = []
         
         # base 인덱스 검색
+        if self.index is None:
+            print(f"⚠️ RAG 검색: 인덱스가 None입니다. 벡터 DB가 제대로 로드되지 않았을 수 있습니다.")
+            return []
+        
         if self.index.ntotal > 0:
             k = min(top_k * 2, self.index.ntotal)
             distances, indices = self.index.search(query_embedding, k)
@@ -782,6 +786,8 @@ class RAGManager:
                     continue
                 
                 all_results.append(self._create_search_result(doc_id, data, similarity, distance, "base"))
+        else:
+            print(f"⚠️ RAG 검색: 인덱스가 비어있습니다. (ntotal={self.index.ntotal}, 메타데이터={len(self.metadata)}개)")
         
         # 유사도로 정렬 및 중복 제거 (doc_id 기준)
         seen_doc_ids = set()

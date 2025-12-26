@@ -11,7 +11,10 @@ import re
 from PIL import Image
 import io
 import traceback
+import time
 from openai import OpenAI
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
 
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode, JsCode
 
@@ -272,6 +275,75 @@ def render_comparison_grid(comparison_df, current_page):
            key=f"comparison_grid_{current_page}")
 
     st.caption("**일치율 색상 범례**: 🟢 초록색 (100% 일치) | 🟡 노란색 (80% 이상) | 🟠 주황색 (50% 이상) | 🔴 빨간색 (50% 미만)")
+
+
+def process_single_page(
+    page_info: dict,
+    pdf_path: Path,
+    reference_json: dict = None,
+    reference_page_num: int = None,
+    total_pages: int = 0
+) -> tuple[int, bool, str]:
+    """
+    단일 페이지를 처리하여 JSON을 생성합니다.
+    
+    Args:
+        page_info: 페이지 정보 딕셔너리 (page_num, ocr_text, answer_json_path 포함)
+        pdf_path: PDF 파일 경로
+        reference_json: 기준 페이지 JSON (None이면 RAG 사용)
+        reference_page_num: 기준 페이지 번호
+        total_pages: 전체 페이지 수
+        
+    Returns:
+        (page_num, success, message) 튜플
+    """
+    page_num = page_info["page_num"]
+    
+    # 기준 페이지는 건너뛰기
+    if reference_page_num and page_num == reference_page_num:
+        return (page_num, True, f"페이지 {page_num}/{total_pages} 건너뜀 (기준 페이지)")
+    
+    try:
+        # OCR 텍스트 추출
+        ocr_text = page_info.get("ocr_text", "")
+        if not ocr_text and pdf_path.exists():
+            ocr_text = extract_text_from_pdf_page(pdf_path, page_num)
+        
+        if not ocr_text:
+            return (page_num, False, f"페이지 {page_num}: 텍스트 추출 실패")
+        
+        # 기준 페이지가 있으면 RAG 없이 직접 사용, 없으면 RAG로 유사 예제 찾기
+        if reference_json:
+            # 기준 페이지 JSON을 직접 사용 (RAG 없이)
+            result_json = ask_openai_with_reference(
+                ocr_text=ocr_text,
+                answer_json=reference_json,
+                question=ocr_text,
+                model_name="gpt-4o-2024-08-06",
+                use_langchain=False,
+                temperature=0.0
+            )
+        else:
+            # RAG로 유사 예제 찾아서 LLM 호출 (progress_callback은 None으로 설정)
+            result_json = extract_json_with_rag(
+                ocr_text=ocr_text,
+                question=None,  # config에서 가져옴
+                model_name=None,  # config에서 가져옴
+                temperature=0.0,
+                top_k=None,  # config에서 가져옴
+                similarity_threshold=None,  # config에서 가져옴
+                progress_callback=None,  # 병렬 처리에서는 콜백 미사용
+                page_num=page_num
+            )
+        
+        # 결과 저장
+        with open(page_info["answer_json_path"], "w", encoding="utf-8") as f:
+            json.dump(result_json, f, ensure_ascii=False, indent=2)
+        
+        return (page_num, True, f"페이지 {page_num}/{total_pages} 처리 완료")
+        
+    except Exception as e:
+        return (page_num, False, f"페이지 {page_num}: 오류 발생 - {str(e)}")
 
 
 def find_pdf_path_with_form(img_dir: Path, pdf_name: str, form_folder: str = None) -> Path:
@@ -685,6 +757,9 @@ def render_answer_editor_tab():
                 col_btn1, col_btn2, col_btn3, col_btn4 = st.columns([2, 1, 2, 1])
                 with col_btn1:
                     if st.button("🤖 RAG 기반 전체 페이지 정답 생성", type="primary", key="rag_batch_extract"):
+                        # 분석 시작 시간 기록
+                        start_time = time.time()
+                        
                         st.session_state["_answer_editor_page_backup"] = st.session_state.get("answer_editor_selected_page", 1)
                         progress_bar = st.progress(0)
                         status_text = st.empty()
@@ -705,73 +780,78 @@ def render_answer_editor_tab():
                         if not pdf_path or not pdf_path.exists():
                             st.error(f"❌ PDF 파일을 찾을 수 없습니다: {selected_pdf}")
                         else:
-                            for idx, page_info in enumerate(pages_with_ocr):
-                                page_num = page_info["page_num"]
-
-                                # 기준 페이지는 건너뛰기 (이미 JSON이 있으므로)
-                                if reference_page_num and page_num == reference_page_num:
-                                    status_text.text(f"페이지 {page_num}/{total_pages} 건너뜀 (기준 페이지)... ({idx + 1}/{len(pages_with_ocr)})")
+                            # 병렬 처리할 페이지 목록 준비 (기준 페이지 제외)
+                            pages_to_process = [
+                                p for p in pages_with_ocr 
+                                if not (reference_page_num and p["page_num"] == reference_page_num)
+                            ]
+                            
+                            # 기준 페이지는 건너뛰기 처리
+                            if reference_page_num:
+                                skipped_page = next((p for p in pages_with_ocr if p["page_num"] == reference_page_num), None)
+                                if skipped_page:
                                     success_count += 1
-                                    progress_bar.progress((idx + 1) / len(pages_with_ocr))
-                                    continue
-
-                                status_text.text(f"페이지 {page_num}/{total_pages} 처리 중... ({idx + 1}/{len(pages_with_ocr)})")
+                            
+                            # 병렬 처리 실행
+                            max_workers = min(10, len(pages_to_process))  # 최대 10개 스레드
+                            completed_count = 0
+                            
+                            status_text.text(f"🚀 병렬 처리 시작 (최대 {max_workers}개 동시 실행)...")
+                            
+                            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                                # 모든 작업 제출
+                                future_to_page = {
+                                    executor.submit(
+                                        process_single_page,
+                                        page_info,
+                                        pdf_path,
+                                        reference_json,
+                                        reference_page_num,
+                                        total_pages
+                                    ): page_info
+                                    for page_info in pages_to_process
+                                }
                                 
-                                try:
-                                    # PyMuPDF로 텍스트 추출 (이미 추출되어 있지만 재확인)
-                                    ocr_text = page_info.get("ocr_text", "")
-                                    if not ocr_text and pdf_path.exists():
-                                        ocr_text = extract_text_from_pdf_page(pdf_path, page_num)
+                                # 완료된 작업 처리
+                                for future in as_completed(future_to_page):
+                                    page_info = future_to_page[future]
+                                    completed_count += 1
                                     
-                                    if not ocr_text:
-                                        error_count += 1
-                                        status_text.text(f"페이지 {page_num}: 텍스트 추출 실패")
-                                        progress_bar.progress((idx + 1) / len(pages_with_ocr))
-                                        continue
-                                    
-                                    # 기준 페이지가 있으면 RAG 없이 직접 사용, 없으면 RAG로 유사 예제 찾기
-                                    if reference_json:
-                                        # 기준 페이지 JSON을 직접 사용 (RAG 없이)
-                                        status_text.text(f"페이지 {page_num}: 기준 페이지 JSON 참조하여 LLM 호출 중...")
-                                        result_json = ask_openai_with_reference(
-                                            ocr_text=ocr_text,
-                                            answer_json=reference_json,
-                                            question=ocr_text,
-                                            model_name="gpt-4o-2024-08-06",
-                                            use_langchain=False,
-                                            temperature=0.0
-                                        )
-                                    else:
-                                        # RAG로 유사 예제 찾아서 LLM 호출
-                                        def progress_wrapper(msg: str):
-                                            status_text.text(f"페이지 {page_num}: {msg}")
+                                    try:
+                                        page_num, success, message = future.result()
+                                        if success:
+                                            success_count += 1
+                                        else:
+                                            error_count += 1
                                         
-                                        result_json = extract_json_with_rag(
-                                            ocr_text=ocr_text,
-                                            question=None,  # config에서 가져옴
-                                            model_name=None,  # config에서 가져옴
-                                            temperature=0.0,
-                                            top_k=None,  # config에서 가져옴
-                                            similarity_threshold=None,  # config에서 가져옴
-                                            progress_callback=progress_wrapper,
-                                            page_num=page_num
-                                        )
-                                    
-                                    # 결과 저장
-                                    with open(page_info["answer_json_path"], "w", encoding="utf-8") as f:
-                                        json.dump(result_json, f, ensure_ascii=False, indent=2)
-                                    success_count += 1
-                                    
-                                except Exception as e:
-                                    error_count += 1
-                                    status_text.text(f"페이지 {page_num}: 오류 발생 - {str(e)}")
-                                
-                                progress_bar.progress((idx + 1) / len(pages_with_ocr))
+                                        # 진행 상황 업데이트 (경과 시간 포함)
+                                        elapsed_time = time.time() - start_time
+                                        status_text.text(f"진행 중... ({completed_count}/{len(pages_to_process)}) - {message} [경과: {elapsed_time:.1f}초]")
+                                        progress_bar.progress(completed_count / len(pages_to_process))
+                                        
+                                    except Exception as e:
+                                        error_count += 1
+                                        page_num = page_info["page_num"]
+                                        elapsed_time = time.time() - start_time
+                                        status_text.text(f"페이지 {page_num}: 예외 발생 - {str(e)} [경과: {elapsed_time:.1f}초]")
+                            
+                            # 분석 종료 시간 기록 및 총 소요 시간 계산
+                            end_time = time.time()
+                            total_duration = end_time - start_time
                             
                             progress_bar.empty()
                             status_text.empty()
                             ref_msg = f" (기준 페이지 {reference_page_num} 참조)" if reference_json else " (RAG 기반)"
-                            st.success(f"✅ 전체 {success_count}개 페이지 정답 JSON 생성 완료!{ref_msg}")
+                            
+                            # 소요 시간 포맷팅 (초 단위, 분:초 형식으로도 표시)
+                            if total_duration < 60:
+                                duration_msg = f"{total_duration:.1f}초"
+                            else:
+                                minutes = int(total_duration // 60)
+                                seconds = total_duration % 60
+                                duration_msg = f"{minutes}분 {seconds:.1f}초 ({total_duration:.1f}초)"
+                            
+                            st.success(f"✅ 전체 {success_count}개 페이지 정답 JSON 생성 완료!{ref_msg} ⏱️ 소요 시간: {duration_msg}")
                             if error_count > 0:
                                 st.warning(f"⚠️ {error_count}개 페이지 처리 실패")
                             # 탭 상태 유지

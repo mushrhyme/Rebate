@@ -17,7 +17,8 @@ from modules.ui.review_components import (
     load_page_data,
     render_navigation,
     render_page_image,
-    render_editable_table
+    render_editable_table,
+    render_reference_document
 )
 from modules.utils.session_utils import ensure_session_state_defaults
 from modules.utils.config import get_project_root
@@ -106,9 +107,6 @@ def request_training(pdf_name: str) -> Tuple[bool, str]:
                     pi.page_number,
                     MAX(i.page_index) as page_index,
                     COALESCE(MAX(i.page_role), 'detail') as page_role,
-                    MAX(i.issuer) as issuer,
-                    MAX(i.issue_date) as issue_date,
-                    MAX(i.billing_period) as billing_period,
                     JSON_AGG(
                         JSON_BUILD_OBJECT(
                             'management_id', i.management_id,
@@ -147,9 +145,6 @@ def request_training(pdf_name: str) -> Tuple[bool, str]:
                 page_json = {
                     'page_number': row_dict.get('page_number'),
                     'page_role': row_dict.get('page_role', 'detail'),
-                    'issuer': row_dict.get('issuer'),
-                    'issue_date': row_dict.get('issue_date'),
-                    'billing_period': row_dict.get('billing_period'),
                     'customer': page_customer,
                     'items': items
                 }
@@ -252,12 +247,20 @@ def render_review_tab():
     st.session_state.selected_page = current_page
     render_navigation(selected_pdf, current_page, page_count)
     page_data = load_page_data(selected_pdf, current_page)
-    col1, col2 = st.columns(2)
-    with col1:
-        render_page_image(selected_pdf, current_page)
-    with col2:
-        if page_data is None:
-            st.error("このページの解析結果が見つかりません。", icon="⚠️")
-        else:
-            render_editable_table(selected_pdf, current_page)
+    
+    # 탭으로 분석 결과와 참고 문서 구분
+    tab1, tab2 = st.tabs(["📊 解析結果", "📚 参考文書"])
+    
+    with tab1:
+        col1, col2 = st.columns(2)
+        with col1:
+            render_page_image(selected_pdf, current_page)
+        with col2:
+            if page_data is None:
+                st.error("このページの解析結果が見つかりません。", icon="⚠️")
+            else:
+                render_editable_table(selected_pdf, current_page)
+    
+    with tab2:
+        render_reference_document(selected_pdf, current_page)
 

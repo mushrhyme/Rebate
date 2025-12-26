@@ -49,11 +49,29 @@ def main():
     print("-"*70)
     rag_manager = get_rag_manager()
     example_count = rag_manager.count_examples()
-    print(f"✅ 벡터 DB 예제 수: {example_count}개\n")
+    print(f"✅ 벡터 DB 예제 수: {example_count}개")
+    
+    # 인덱스 상태 상세 확인
+    print("\n🔍 인덱스 상세 상태:")
+    if rag_manager.index is None:
+        print("  ❌ 인덱스가 None입니다. 벡터 DB가 제대로 로드되지 않았습니다.")
+        return
+    else:
+        print(f"  ✅ 인덱스 로드됨: ntotal={rag_manager.index.ntotal}")
+        print(f"  ✅ 메타데이터: {len(rag_manager.metadata)}개")
+        print(f"  ✅ ID to Index 매핑: {len(rag_manager.id_to_index)}개")
+        print(f"  ✅ Index to ID 매핑: {len(rag_manager.index_to_id)}개")
     
     if example_count == 0:
-        print("⚠️ 벡터 DB에 예제가 없습니다. build_faiss_db.py를 먼저 실행하세요.")
+        print("\n⚠️ 벡터 DB에 예제가 없습니다. build_faiss_db.py를 먼저 실행하세요.")
         return
+    
+    if rag_manager.index.ntotal == 0:
+        print("\n⚠️ 인덱스가 비어있습니다. (ntotal=0)")
+        print("   벡터 DB를 다시 구축해야 할 수 있습니다.")
+        return
+    
+    print()
     
     # 3. PDF 파일 정보 표시
     print("📄 2단계: PDF 파일 선택 및 텍스트 추출")
@@ -83,15 +101,51 @@ def main():
     print("="*70)
     
     config = get_rag_config()
+    print(f"\n🔧 검색 설정:")
+    print(f"  - top_k: {config.top_k}")
+    print(f"  - similarity_threshold: {config.similarity_threshold}")
+    print(f"  - search_method: {config.search_method}")
+    print(f"  - hybrid_alpha: {getattr(config, 'hybrid_alpha', 0.5)}")
+    print()
+    
+    print("🔄 첫 번째 검색 시도...")
     similar_examples = rag_manager.search_similar_advanced(
         query_text=ocr_text,
         top_k=config.top_k,
         similarity_threshold=config.similarity_threshold,
         search_method=config.search_method,
-        hybrid_alpha=config.hybrid_alpha
+        hybrid_alpha=getattr(config, 'hybrid_alpha', 0.5)
     )
     
-    print(f"\n📊 검색 결과: {len(similar_examples)}개\n")
+    print(f"📊 첫 번째 검색 결과: {len(similar_examples)}개")
+    
+    # 검색 결과가 없으면 threshold를 낮춰서 재검색
+    if not similar_examples:
+        print(f"\n⚠️ 검색 결과 없음 (threshold: {config.similarity_threshold})")
+        print("🔄 threshold를 0.0으로 낮춰 재검색...")
+        similar_examples = rag_manager.search_similar_advanced(
+            query_text=ocr_text,
+            top_k=1,  # 최상위 1개만
+            similarity_threshold=0.0,  # threshold 무시
+            search_method=config.search_method,
+            hybrid_alpha=getattr(config, 'hybrid_alpha', 0.5)
+        )
+        if similar_examples:
+            score_key = "hybrid_score" if "hybrid_score" in similar_examples[0] else \
+                       "final_score" if "final_score" in similar_examples[0] else \
+                       "similarity"
+            score_value = similar_examples[0].get(score_key, 0)
+            print(f"✅ 재검색 성공: {score_key}: {score_value:.4f} (threshold 무시하고 최상위 결과 사용)")
+        else:
+            print("❌ 재검색도 실패했습니다. 벡터 DB에 문제가 있을 수 있습니다.")
+            print("\n🔍 디버깅 정보:")
+            print(f"  - 인덱스 ntotal: {rag_manager.index.ntotal if rag_manager.index else 'None'}")
+            print(f"  - 메타데이터 개수: {len(rag_manager.metadata)}")
+            print(f"  - ID to Index 매핑: {len(rag_manager.id_to_index)}")
+            print(f"  - Index to ID 매핑: {len(rag_manager.index_to_id)}")
+            return
+    
+    print(f"\n📊 최종 검색 결과: {len(similar_examples)}개\n")
     
     # 참고 문서 정보 표시
     reference_docs = []
