@@ -84,8 +84,6 @@ def extract_json_with_rag(
     if progress_callback:
         if search_method == "hybrid":
             progress_callback("벡터 DB에서 유사한 예제 검색 중 (하이브리드: BM25 + 벡터)...")
-        elif search_method == "rerank":
-            progress_callback("벡터 DB에서 유사한 예제 검색 중 (Re-ranking)...")
         else:
             progress_callback("벡터 DB에서 유사한 예제 검색 중...")
     
@@ -95,8 +93,7 @@ def extract_json_with_rag(
         top_k=top_k,
         similarity_threshold=similarity_threshold,
         search_method=search_method,
-        hybrid_alpha=hybrid_alpha,
-        use_preprocessing=True
+        hybrid_alpha=hybrid_alpha
     )
     
     # 검색 결과가 없으면 threshold를 낮춰서 재검색 (notepad 예제와 동일하게 최상위 결과 사용)
@@ -107,8 +104,7 @@ def extract_json_with_rag(
             top_k=1,  # 최상위 1개만
             similarity_threshold=0.0,  # threshold 무시
             search_method=search_method,
-            hybrid_alpha=hybrid_alpha,
-            use_preprocessing=True
+            hybrid_alpha=hybrid_alpha
         )
         if similar_examples:
             score_key = "hybrid_score" if "hybrid_score" in similar_examples[0] else \

@@ -21,37 +21,8 @@ import fitz  # PyMuPDF
 
 from modules.core.rag_manager import get_rag_manager
 from modules.utils.config import get_rag_config, get_project_root
+from modules.utils.pdf_utils import extract_text_from_pdf_page
 from openai import OpenAI
-
-
-def extract_text_from_pdf_page(pdf_path: Path, page_num: int) -> str:
-    """
-    fitz를 사용하여 PDF에서 특정 페이지의 텍스트를 추출합니다.
-    
-    Args:
-        pdf_path: PDF 파일 경로
-        page_num: 페이지 번호 (1부터 시작)
-        
-    Returns:
-        추출된 텍스트 (없으면 빈 문자열)
-    """
-    try:
-        if not pdf_path.exists():
-            return ""
-        
-        doc = fitz.open(pdf_path)
-        if page_num < 1 or page_num > doc.page_count:
-            doc.close()
-            return ""
-        
-        page = doc.load_page(page_num - 1)  # fitz는 0부터 시작
-        text = page.get_text()
-        doc.close()
-        
-        return text.strip() if text else ""
-    except Exception as e:
-        print(f"⚠️ PDF 텍스트 추출 실패 ({pdf_path}, 페이지 {page_num}): {e}")
-        return ""
 
 
 def main():
@@ -117,8 +88,7 @@ def main():
         top_k=config.top_k,
         similarity_threshold=config.similarity_threshold,
         search_method=config.search_method,
-        hybrid_alpha=config.hybrid_alpha,
-        use_preprocessing=True
+        hybrid_alpha=config.hybrid_alpha
     )
     
     print(f"\n📊 검색 결과: {len(similar_examples)}개\n")

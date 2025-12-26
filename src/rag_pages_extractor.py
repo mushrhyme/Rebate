@@ -13,9 +13,9 @@ from typing import List, Dict, Any, Optional, Callable
 from PIL import Image
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
-import fitz  # PyMuPDF
 
 from src.rag_extractor import extract_json_with_rag
+from modules.utils.pdf_utils import PdfTextExtractor
 
 
 def extract_pages_with_rag(
@@ -116,67 +116,49 @@ def extract_pages_with_rag(
     # 1단계: fitz로 PDF에서 텍스트 추출
     print(f"📝 1단계: fitz로 PDF 텍스트 추출 시작 ({len(images)}개 페이지)")
     
-    def extract_text_from_pdf_page(pdf_path: str, page_num: int) -> str:
-        """
-        fitz를 사용하여 PDF에서 특정 페이지의 텍스트를 추출합니다.
-        
-        Args:
-            pdf_path: PDF 파일 경로
-            page_num: 페이지 번호 (1부터 시작)
-            
-        Returns:
-            추출된 텍스트 (없으면 빈 문자열)
-        """
-        try:
-            doc = fitz.open(pdf_path)
-            if page_num < 1 or page_num > doc.page_count:
-                doc.close()
-                return ""
-            
-            page = doc.load_page(page_num - 1)  # fitz는 0부터 시작
-            text = page.get_text()
-            doc.close()
-            
-            return text.strip() if text else ""
-        except Exception as e:
-            print(f"⚠️ PDF 텍스트 추출 실패 ({pdf_path}, 페이지 {page_num}): {e}")
-            return ""
+    # PDF 텍스트 추출기 생성 (캐싱 지원 - 여러 페이지 처리 시 성능 향상)
+    text_extractor = PdfTextExtractor()
+    pdf_path_obj = Path(pdf_path)
     
     ocr_texts = []  # OCR 텍스트 저장
     
-    for idx, image in enumerate(images):
-        page_num = idx + 1
-        total_pages = len(images)
-        
-        if progress_callback:
-            progress_callback(page_num, total_pages, f"🔍 페이지 {page_num}/{total_pages}: fitz로 텍스트 추출 중...")
-        
-        print(f"페이지 {page_num}/{total_pages} 텍스트 추출 중...", end="", flush=True)
-        
-        try:
-            # 디버깅: 원본 이미지 저장
+    try:
+        for idx, image in enumerate(images):
+            page_num = idx + 1
+            total_pages = len(images)
+            
+            if progress_callback:
+                progress_callback(page_num, total_pages, f"🔍 페이지 {page_num}/{total_pages}: fitz로 텍스트 추출 중...")
+            
+            print(f"페이지 {page_num}/{total_pages} 텍스트 추출 중...", end="", flush=True)
+            
             try:
-                os.makedirs(debug_dir, exist_ok=True)
-                debug_image_path = os.path.join(debug_dir, f"page_{page_num}_original_image.png")
-                image.save(debug_image_path, "PNG")
-                print(f"  💾 디버깅: 원본 이미지 저장 완료 - {debug_image_path}")
-            except Exception as debug_error:
-                print(f"  ⚠️ 원본 이미지 저장 실패: {debug_error}")
-            
-            # fitz로 PDF에서 텍스트 추출
-            ocr_text = extract_text_from_pdf_page(pdf_path, page_num)
-            
-            if not ocr_text or len(ocr_text.strip()) == 0:
-                print(f"  ⚠️ 텍스트가 비어있습니다")
-                ocr_texts.append(None)
-            else:
-                ocr_texts.append(ocr_text)
-                print(f" 완료 (길이: {len(ocr_text)} 문자)")
+                # 디버깅: 원본 이미지 저장
+                try:
+                    os.makedirs(debug_dir, exist_ok=True)
+                    debug_image_path = os.path.join(debug_dir, f"page_{page_num}_original_image.png")
+                    image.save(debug_image_path, "PNG")
+                    print(f"  💾 디버깅: 원본 이미지 저장 완료 - {debug_image_path}")
+                except Exception as debug_error:
+                    print(f"  ⚠️ 원본 이미지 저장 실패: {debug_error}")
                 
-        except Exception as e:
-            error_msg = str(e)
-            print(f" 실패 - {error_msg}")
-            ocr_texts.append(None)  # 실패한 페이지는 None으로 표시
+                # fitz로 PDF에서 텍스트 추출 (캐싱 사용)
+                ocr_text = text_extractor.extract_text(pdf_path_obj, page_num)
+                
+                if not ocr_text or len(ocr_text.strip()) == 0:
+                    print(f"  ⚠️ 텍스트가 비어있습니다")
+                    ocr_texts.append(None)
+                else:
+                    ocr_texts.append(ocr_text)
+                    print(f" 완료 (길이: {len(ocr_text)} 문자)")
+                    
+            except Exception as e:
+                error_msg = str(e)
+                print(f" 실패 - {error_msg}")
+                ocr_texts.append(None)  # 실패한 페이지는 None으로 표시
+    finally:
+        # PDF 텍스트 추출기 캐시 정리
+        text_extractor.close_all()
     
     print(f"✅ 텍스트 추출 완료: {len([t for t in ocr_texts if t is not None])}/{len(images)}개 페이지 성공\n")
     
