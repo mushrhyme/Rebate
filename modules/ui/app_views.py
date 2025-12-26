@@ -64,7 +64,9 @@ def main():
         initial_sidebar_state="collapsed"
     )
     st.title("Nongshim 条件請求書分析システム")
+    
     tab1, tab2, tab3, tab4 = st.tabs(["📤 アップロード & 解析", "📝 レビュー", "📥 ダウンロード", "✏️ 정답지 편집"])
+    
     with tab1:
         render_upload_tab()
     with tab2:

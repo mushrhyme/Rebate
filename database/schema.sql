@@ -34,10 +34,7 @@ CREATE TABLE items (
     page_number INTEGER NOT NULL,                    -- ページ番号 (1から開始、ユーザー用)
     page_role VARCHAR(50),                            -- ページ役割 (cover/main/detail/reply)
     
-    -- 文書メタデータ (重複保存、検索用)
-    issuer VARCHAR(255),                               -- 発行者 (例: "ヤマエ久野株式会社")
-    issue_date VARCHAR(100),                          -- 発行日 (例: "2024年06月06日")
-    billing_period VARCHAR(255),                      -- 請求期間 (例: "2024年05月分")
+    -- 文書メタデータ
     total_amount_document BIGINT,                     -- 文書全体総額 (整数、円単位)
     pdf_filename VARCHAR(500),                        -- PDFファイル名 (検索用)
     
@@ -62,6 +59,38 @@ CREATE TABLE page_images (
 );
 
 -- ============================================
+-- 2-2. RAG学習状態テーブル (rag_learning_status) - ベクトルDB学習状態管理
+-- ============================================
+CREATE TABLE rag_learning_status (
+    learning_id SERIAL PRIMARY KEY,                   -- 学習状態固有ID
+    pdf_filename VARCHAR(500) NOT NULL,              -- PDFファイル名 (拡張子含む)
+    page_number INTEGER NOT NULL,                    -- ページ番号 (1から開始)
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',   -- 状態 (staged/merged/deleted)
+    page_hash VARCHAR(64),                          -- ページハッシュ (SHA256)
+    fingerprint_mtime REAL,                          -- ファイルfingerprint (mtime)
+    fingerprint_size INTEGER,                        -- ファイルfingerprint (size)
+    shard_id VARCHAR(255),                           -- Shard ID
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- 作成日時
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- 更新日時
+    UNIQUE(pdf_filename, page_number)                -- 同一ページは1つだけ
+);
+
+-- ============================================
+-- 2-3. RAGベクトルインデックステーブル (rag_vector_index) - FAISSインデックスをDBに保存
+-- ============================================
+CREATE TABLE rag_vector_index (
+    index_id SERIAL PRIMARY KEY,                      -- インデックス固有ID
+    index_name VARCHAR(100) NOT NULL DEFAULT 'base', -- インデックス名 (base, shard_xxx 등)
+    index_data BYTEA NOT NULL,                       -- FAISSインデックスデータ (BYTEA)
+    metadata_json JSONB NOT NULL,                    -- メタデータ (metadata, id_to_index, index_to_id)
+    index_size BIGINT,                               -- インデックスサイズ (バイト)
+    vector_count INTEGER DEFAULT 0,                  -- ベクトル数
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- 作成日時
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- 更新日時
+    UNIQUE(index_name)                               -- インデックス名は一意
+);
+
+-- ============================================
 -- 3. インデックス作成 (パフォーマンス最適化)
 -- ============================================
 -- パースセッション検索用インデックス
@@ -76,13 +105,18 @@ CREATE INDEX idx_items_customer ON items(customer);
 CREATE INDEX idx_items_product_name ON items(product_name);
 CREATE INDEX idx_items_page_number ON items(page_number);
 CREATE INDEX idx_items_pdf_filename ON items(pdf_filename);
-CREATE INDEX idx_items_issuer ON items(issuer);
-CREATE INDEX idx_items_issue_date ON items(issue_date);
-CREATE INDEX idx_items_billing_period ON items(billing_period);
 
 -- ページ画像検索用インデックス
 CREATE INDEX idx_page_images_session_id ON page_images(session_id);
 CREATE INDEX idx_page_images_page_number ON page_images(session_id, page_number);
+
+-- RAG学習状態検索用インデックス
+CREATE INDEX idx_rag_learning_status_pdf_page ON rag_learning_status(pdf_filename, page_number);
+CREATE INDEX idx_rag_learning_status_status ON rag_learning_status(status);
+CREATE INDEX idx_rag_learning_status_hash ON rag_learning_status(page_hash);
+
+-- RAGベクトルインデックス検索用インデックス
+CREATE INDEX idx_rag_vector_index_name ON rag_vector_index(index_name);
 
 -- ============================================
 -- 4. ビュー: ユーザー向けエクセル出力用 (最新セッションのみ)
@@ -101,10 +135,7 @@ SELECT
     page_number AS ページ番号,                       -- ページ番号 (1から開始)
     page_role AS ページ役割,                          -- ページ役割
     
-    -- 追加コンテキスト情報 (必要時に使用)
-    issuer AS 発行者,                                 -- 発行者
-    issue_date AS 発行日,                             -- 発行日
-    billing_period AS 請求期間,                       -- 請求期間
+    -- 追加コンテキスト情報
     pdf_filename AS PDFファイル名,                    -- PDFファイル名
     
     -- 開発者用ID (非表示可能)

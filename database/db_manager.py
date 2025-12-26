@@ -143,10 +143,7 @@ class DatabaseManager:
             is_latest=True
         )
         
-        # 2. 문서 메타데이터 추출
-        issuer = doc_info.get('issuer')
-        issue_date = doc_info.get('issue_date')
-        billing_period = doc_info.get('billing_period')
+        # 2. 문서 총액 계산
         total_amount_document = self._parse_amount(doc_info.get('total_amount_document'))
         
         # 3. items 데이터 준비
@@ -191,9 +188,6 @@ class DatabaseManager:
                     self._parse_amount(item.get('amount')),
                     page_number,
                     page_role,
-                    issuer,
-                    issue_date,
-                    billing_period,
                     total_amount_document,
                     pdf_filename,
                     page_index,
@@ -211,7 +205,7 @@ class DatabaseManager:
                         session_id, management_id, customer, product_name,
                         quantity, case_count, bara_count, units_per_case, amount,
                         page_number, page_role,
-                        issuer, issue_date, billing_period, total_amount_document,
+                        total_amount_document,
                         pdf_filename, page_index, item_order
                     ) VALUES %s
                     """,
@@ -254,13 +248,7 @@ class DatabaseManager:
             is_latest=True
         )
         
-        # 2. 문서 메타데이터 추출 (첫 번째 페이지에서)
-        first_page = page_results[0]
-        issuer = first_page.get('issuer')
-        issue_date = first_page.get('issue_date')
-        billing_period = first_page.get('billing_period')
-        
-        # 전체 총액 계산
+        # 2. 전체 총액 계산
         total_amount_document = 0
         for page in page_results:
             for item in page.get('items', []):
@@ -295,14 +283,6 @@ class DatabaseManager:
             # 페이지 레벨 거래처 (항목별 거래처가 없을 때 사용)
             page_customer = page_json.get('customer')
             
-            # 문서 메타데이터 (페이지별로 다를 수 있으므로 첫 번째 비어있지 않은 값 사용)
-            if not issuer:
-                issuer = page_json.get('issuer')
-            if not issue_date:
-                issue_date = page_json.get('issue_date')
-            if not billing_period:
-                billing_period = page_json.get('billing_period')
-            
             # 각 항목에 대해 items 데이터 생성
             for item in page_items:
                 item_order += 1
@@ -331,9 +311,6 @@ class DatabaseManager:
                     self._parse_amount(item.get('amount')),
                     page_number,
                     page_role,
-                    issuer,
-                    issue_date,
-                    billing_period,
                     total_amount_document,
                     pdf_filename,
                     page_index,
@@ -364,7 +341,7 @@ class DatabaseManager:
                             session_id, management_id, customer, product_name,
                             quantity, case_count, bara_count, units_per_case, amount,
                             page_number, page_role,
-                            issuer, issue_date, billing_period, total_amount_document,
+                            total_amount_document,
                             pdf_filename, page_index, item_order
                         ) VALUES %s
                         """,
@@ -634,9 +611,6 @@ class DatabaseManager:
                     pi.page_number,
                     MAX(i.page_index) as page_index,
                     COALESCE(MAX(i.page_role), 'detail') as page_role,
-                    MAX(i.issuer) as issuer,
-                    MAX(i.issue_date) as issue_date,
-                    MAX(i.billing_period) as billing_period,
                     MAX(i.pdf_filename) as pdf_filename,
                     JSON_AGG(
                         JSON_BUILD_OBJECT(
@@ -649,7 +623,7 @@ class DatabaseManager:
                             'amount', i.amount,
                             'customer', i.customer
                         ) ORDER BY i.item_order
-                    ) FILTER (WHERE i.management_id IS NOT NULL) AS items
+                    ) FILTER (WHERE i.product_name IS NOT NULL) AS items
                 FROM page_images pi
                 LEFT JOIN items i ON pi.session_id = i.session_id AND pi.page_number = i.page_number
                 WHERE pi.session_id = %s
@@ -675,9 +649,6 @@ class DatabaseManager:
                 # 페이지별 JSON 구조 생성 (기존 형식과 호환)
                 page_json = {
                     'page_role': row_dict.get('page_role', 'detail'),
-                    'issuer': row_dict.get('issuer'),
-                    'issue_date': row_dict.get('issue_date'),
-                    'billing_period': row_dict.get('billing_period'),
                     'customer': page_customer,  # 페이지 레벨 customer
                     'items': items
                 }
@@ -728,33 +699,31 @@ class DatabaseManager:
                     return None
                 session_id = result[0]
         
-        # 페이지 데이터 조회
+        # 페이지 데이터 조회 (page_images와 LEFT JOIN하여 items가 없는 페이지도 포함)
         with self.get_connection() as conn:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cursor.execute("""
                 SELECT 
-                    page_number,
-                    page_index,
-                    page_role,
-                    issuer,
-                    issue_date,
-                    billing_period,
-                    pdf_filename,
+                    pi.page_number,
+                    MAX(i.page_index) as page_index,
+                    COALESCE(MAX(i.page_role), 'detail') as page_role,
+                    MAX(i.pdf_filename) as pdf_filename,
                     JSON_AGG(
                         JSON_BUILD_OBJECT(
-                            'management_id', management_id,
-                            'product_name', product_name,
-                            'quantity', quantity,
-                            'case_count', case_count,
-                            'bara_count', bara_count,
-                            'units_per_case', units_per_case,
-                            'amount', amount,
-                            'customer', customer
-                        ) ORDER BY item_order
-                    ) FILTER (WHERE management_id IS NOT NULL) AS items
-                FROM items
-                WHERE session_id = %s AND page_number = %s
-                GROUP BY page_number, page_index, page_role, issuer, issue_date, billing_period, pdf_filename
+                            'management_id', i.management_id,
+                            'product_name', i.product_name,
+                            'quantity', i.quantity,
+                            'case_count', i.case_count,
+                            'bara_count', i.bara_count,
+                            'units_per_case', i.units_per_case,
+                            'amount', i.amount,
+                            'customer', i.customer
+                        ) ORDER BY i.item_order
+                    ) FILTER (WHERE i.product_name IS NOT NULL) AS items
+                FROM page_images pi
+                LEFT JOIN items i ON pi.session_id = i.session_id AND pi.page_number = i.page_number
+                WHERE pi.session_id = %s AND pi.page_number = %s
+                GROUP BY pi.page_number
             """, (session_id, page_num))
             
             row = cursor.fetchone()
@@ -777,9 +746,6 @@ class DatabaseManager:
             # 페이지별 JSON 구조 생성 (기존 형식과 호환)
             page_json = {
                 'page_role': row_dict.get('page_role', 'main'),
-                'issuer': row_dict.get('issuer'),
-                'issue_date': row_dict.get('issue_date'),
-                'billing_period': row_dict.get('billing_period'),
                 'customer': page_customer,  # 페이지 레벨 customer
                 'items': items
             }
@@ -985,9 +951,6 @@ class DatabaseManager:
                 amount,
                 page_num,
                 page_data.get('page_role', 'main'),
-                page_data.get('issuer'),
-                page_data.get('issue_date'),
-                page_data.get('billing_period'),
                 None,  # total_amount_document (페이지 단위 업데이트에서는 계산하지 않음)
                 pdf_filename,
                 page_num - 1,  # page_index (0부터 시작)
@@ -1005,7 +968,7 @@ class DatabaseManager:
                         session_id, management_id, customer, product_name,
                         quantity, case_count, bara_count, units_per_case, amount,
                         page_number, page_role,
-                        issuer, issue_date, billing_period, total_amount_document,
+                        total_amount_document,
                         pdf_filename, page_index, item_order
                     ) VALUES %s
                     """,

@@ -23,7 +23,7 @@ import pandas as pd
 from modules.core.rag_manager import get_rag_manager
 from modules.utils.config import get_project_root, get_rag_config
 from modules.utils.session_utils import ensure_session_state_defaults
-from modules.utils.pdf_utils import find_pdf_path
+from modules.utils.pdf_utils import find_pdf_path, extract_text_from_pdf_page
 
 def filter_answer_json(answer_json: dict) -> dict:
     """
@@ -40,36 +40,6 @@ def filter_answer_json(answer_json: dict) -> dict:
         "items": answer_json.get("items", [])
     }
     return filtered
-
-
-def extract_text_from_pdf_page(pdf_path: Path, page_num: int) -> str:
-    """
-    fitz를 사용하여 PDF에서 특정 페이지의 텍스트를 추출합니다.
-    
-    Args:
-        pdf_path: PDF 파일 경로
-        page_num: 페이지 번호 (1부터 시작)
-        
-    Returns:
-        추출된 텍스트 (없으면 빈 문자열)
-    """
-    try:
-        if not pdf_path.exists():
-            return ""
-        
-        doc = fitz.open(pdf_path)
-        if page_num < 1 or page_num > doc.page_count:
-            doc.close()
-            return ""
-        
-        page = doc.load_page(page_num - 1)  # fitz는 0부터 시작
-        text = page.get_text()
-        doc.close()
-        
-        return text.strip() if text else ""
-    except Exception as e:
-        print(f"⚠️ PDF 텍스트 추출 실패 ({pdf_path}, 페이지 {page_num}): {e}")
-        return ""
 
 # 컬럼명 일본어 매핑 (공통 상수)
 COLUMN_NAME_MAPPING = {
@@ -304,6 +274,38 @@ def render_comparison_grid(comparison_df, current_page):
     st.caption("**일치율 색상 범례**: 🟢 초록색 (100% 일치) | 🟡 노란색 (80% 이상) | 🟠 주황색 (50% 이상) | 🔴 빨간색 (50% 미만)")
 
 
+def find_pdf_path_with_form(img_dir: Path, pdf_name: str, form_folder: str = None) -> Path:
+    """
+    양식 폴더를 고려하여 PDF 경로를 찾습니다.
+    
+    Args:
+        img_dir: img 폴더 경로
+        pdf_name: PDF 파일명 (확장자 제외)
+        form_folder: 양식 폴더명 (예: "01", "02"). None이면 모든 양식 폴더에서 찾기
+        
+    Returns:
+        PDF 파일 경로 (없으면 None)
+    """
+    if form_folder and form_folder != "전체":
+        # 선택된 양식 폴더에서 찾기
+        pdf_path = img_dir / form_folder / pdf_name / f"{pdf_name}.pdf"
+        if pdf_path.exists():
+            return pdf_path
+    else:
+        # 모든 양식 폴더에서 찾기
+        for form_folder_name in sorted([d.name for d in img_dir.iterdir() if d.is_dir() and d.name.isdigit()]):
+            pdf_path = img_dir / form_folder_name / pdf_name / f"{pdf_name}.pdf"
+            if pdf_path.exists():
+                return pdf_path
+    
+    # 세션 디렉토리에서도 찾기
+    session_pdf_path = find_pdf_path(pdf_name)
+    if session_pdf_path and Path(session_pdf_path).exists():
+        return Path(session_pdf_path)
+    
+    return None
+
+
 def render_answer_editor_tab():
     """정답지 편집 탭"""
     ensure_session_state_defaults()
@@ -324,15 +326,48 @@ def render_answer_editor_tab():
         icon="ℹ️"
     )
 
-    # 기존 처리된 PDF 목록 확인
+    # 양식 폴더 목록 확인 (01, 02, 03, 04, 05 등)
     project_root = get_project_root()
     img_dir = project_root / "img"
-    existing_pdfs = []
+    form_folders = []
     if img_dir.exists():
         for item in img_dir.iterdir():
-            if item.is_dir():
-                if (item / "Page1.png").exists():
-                    existing_pdfs.append(item.name)
+            if item.is_dir() and item.name.isdigit():
+                form_folders.append(item.name)
+        form_folders.sort()  # 숫자 순서로 정렬
+    
+    # 양식 선택 UI
+    if form_folders:
+        st.subheader("📁 양식 선택")
+        selected_form = st.selectbox(
+            "양식 폴더 선택",
+            options=["전체"] + form_folders,
+            key="answer_editor_form_selector",
+            help="양식별 폴더를 선택하면 해당 양식의 PDF만 표시됩니다"
+        )
+    else:
+        selected_form = "전체"
+    
+    # 기존 처리된 PDF 목록 확인 (선택된 양식 폴더 기준)
+    existing_pdfs = []
+    if img_dir.exists():
+        if selected_form == "전체":
+            # 모든 양식 폴더 순회
+            for form_folder_name in form_folders:
+                form_folder = img_dir / form_folder_name
+                if form_folder.exists():
+                    for item in form_folder.iterdir():
+                        if item.is_dir():
+                            if (item / "Page1.png").exists():
+                                existing_pdfs.append(f"{form_folder_name}/{item.name}")
+        else:
+            # 선택된 양식 폴더만 순회
+            form_folder = img_dir / selected_form
+            if form_folder.exists():
+                for item in form_folder.iterdir():
+                    if item.is_dir():
+                        if (item / "Page1.png").exists():
+                            existing_pdfs.append(item.name)
     
     # 여러 PDF 일괄 벡터 DB 저장 섹션
     with st.expander("🔍 벡터 DB 구축", expanded=False):
@@ -360,10 +395,11 @@ def render_answer_editor_tab():
                     rag_manager = get_rag_manager()
                     before_count = rag_manager.count_examples()
                     
-                    # build_faiss_db 실행
+                    # build_faiss_db 실행 (선택된 양식 폴더 기준)
                     project_root = get_project_root()
                     img_dir = project_root / "img"
-                    build_faiss_db(img_dir)
+                    form_folder = selected_form if selected_form != "전체" else None
+                    build_faiss_db(img_dir, form_folder=form_folder, auto_merge=True)
                     
                     # 결과 확인
                     after_count = rag_manager.count_examples()
@@ -405,7 +441,25 @@ def render_answer_editor_tab():
         )
 
         if selected_existing != "새로 업로드":
-            pdf_name = selected_existing
+            # 양식 폴더 경로 처리
+            if "/" in selected_existing:
+                form_folder_name, pdf_name = selected_existing.split("/", 1)
+                pdf_img_dir = img_dir / form_folder_name / pdf_name
+            else:
+                pdf_name = selected_existing
+                if selected_form != "전체":
+                    pdf_img_dir = img_dir / selected_form / pdf_name
+                else:
+                    # 전체 모드에서는 첫 번째 양식 폴더에서 찾기
+                    pdf_img_dir = None
+                    for form_folder_name in form_folders:
+                        candidate_dir = img_dir / form_folder_name / pdf_name
+                        if candidate_dir.exists() and (candidate_dir / "Page1.png").exists():
+                            pdf_img_dir = candidate_dir
+                            break
+                    if pdf_img_dir is None:
+                        pdf_img_dir = img_dir / pdf_name
+            
             if pdf_name not in st.session_state.answer_editor_pdfs:
                 st.session_state.answer_editor_pdfs[pdf_name] = {
                     "pages": [],
@@ -415,7 +469,6 @@ def render_answer_editor_tab():
             pdf_info = st.session_state.answer_editor_pdfs[pdf_name]
             if not pdf_info["processed"]:
                 page_info_list = []
-                pdf_img_dir = img_dir / pdf_name
                 page_num = 1
                 while True:
                     image_path = pdf_img_dir / f"Page{page_num}.png"
@@ -425,10 +478,10 @@ def render_answer_editor_tab():
                     # fitz를 사용하여 PDF에서 텍스트 추출
                     pdf_path = pdf_img_dir / f"{pdf_name}.pdf"
                     if not pdf_path.exists():
-                        # 세션 디렉토리에서도 찾기
-                        session_pdf_path = find_pdf_path(pdf_name)
-                        if session_pdf_path:
-                            pdf_path = Path(session_pdf_path)
+                        # 양식 폴더를 고려하여 PDF 경로 찾기
+                        found_path = find_pdf_path_with_form(img_dir, pdf_name, selected_form)
+                        if found_path:
+                            pdf_path = found_path
                     
                     ocr_text = ""
                     if pdf_path.exists():
@@ -445,6 +498,9 @@ def render_answer_editor_tab():
                     pdf_info["processed"] = True
                     st.session_state.answer_editor_selected_pdf = pdf_name
                     st.session_state.answer_editor_selected_page = 1
+                    # 탭 상태 유지
+                    if "active_tab" not in st.session_state:
+                        st.session_state.active_tab = "✏️ 정답지 편집"
                     st.rerun()
 
     # PDF 업로드
@@ -522,6 +578,9 @@ def render_answer_editor_tab():
                         st.session_state.answer_editor_selected_page = 1
 
                         st.success(f"✅ PDF 처리 완료! {len(page_info_list)}개 페이지")
+                        # 탭 상태 유지
+                        if "active_tab" not in st.session_state:
+                            st.session_state.active_tab = "✏️ 정답지 편집"
                         st.rerun()
                     except Exception as e:
                         st.error(f"PDF 처리 실패: {e}", icon="❌")
@@ -546,6 +605,9 @@ def render_answer_editor_tab():
             if selected_pdf != st.session_state.answer_editor_selected_pdf:
                 st.session_state.answer_editor_selected_pdf = selected_pdf
                 st.session_state.answer_editor_selected_page = 1
+                # 탭 상태 유지
+                if "active_tab" not in st.session_state:
+                    st.session_state.active_tab = "✏️ 정답지 편집"
                 st.rerun()
         else:
             selected_pdf = processed_pdfs[0]
@@ -564,12 +626,8 @@ def render_answer_editor_tab():
                     page_info["ocr_text"] = page_info["upstage_text"]
                 # ocr_text가 없으면 PDF에서 추출 시도
                 if not page_info.get("ocr_text"):
-                    pdf_path = img_dir / selected_pdf / f"{selected_pdf}.pdf"
-                    if not pdf_path.exists():
-                        session_pdf_path = find_pdf_path(selected_pdf)
-                        if session_pdf_path:
-                            pdf_path = Path(session_pdf_path)
-                    if pdf_path.exists():
+                    pdf_path = find_pdf_path_with_form(img_dir, selected_pdf, selected_form)
+                    if pdf_path and pdf_path.exists():
                         page_info["ocr_text"] = extract_text_from_pdf_page(pdf_path, page_info["page_num"])
             
             pages_with_ocr = [p for p in pdf_info["pages"] if p.get("ocr_text")]
@@ -642,83 +700,84 @@ def render_answer_editor_tab():
                                     reference_json = json.load(f)
                                 status_text.text(f"기준 페이지 {reference_page_num}의 JSON 정보를 로드했습니다")
 
-                        # PDF 경로 찾기
-                        pdf_path = img_dir / selected_pdf / f"{selected_pdf}.pdf"
-                        if not pdf_path.exists():
-                            session_pdf_path = find_pdf_path(selected_pdf)
-                            if session_pdf_path:
-                                pdf_path = Path(session_pdf_path)
+                        # PDF 경로 찾기 (양식 폴더 고려)
+                        pdf_path = find_pdf_path_with_form(img_dir, selected_pdf, selected_form)
+                        if not pdf_path or not pdf_path.exists():
+                            st.error(f"❌ PDF 파일을 찾을 수 없습니다: {selected_pdf}")
+                        else:
+                            for idx, page_info in enumerate(pages_with_ocr):
+                                page_num = page_info["page_num"]
 
-                        for idx, page_info in enumerate(pages_with_ocr):
-                            page_num = page_info["page_num"]
-
-                            # 기준 페이지는 건너뛰기 (이미 JSON이 있으므로)
-                            if reference_page_num and page_num == reference_page_num:
-                                status_text.text(f"페이지 {page_num}/{total_pages} 건너뜀 (기준 페이지)... ({idx + 1}/{len(pages_with_ocr)})")
-                                success_count += 1
-                                progress_bar.progress((idx + 1) / len(pages_with_ocr))
-                                continue
-
-                            status_text.text(f"페이지 {page_num}/{total_pages} 처리 중... ({idx + 1}/{len(pages_with_ocr)})")
-                            
-                            try:
-                                # PyMuPDF로 텍스트 추출 (이미 추출되어 있지만 재확인)
-                                ocr_text = page_info.get("ocr_text", "")
-                                if not ocr_text and pdf_path.exists():
-                                    ocr_text = extract_text_from_pdf_page(pdf_path, page_num)
-                                
-                                if not ocr_text:
-                                    error_count += 1
-                                    status_text.text(f"페이지 {page_num}: 텍스트 추출 실패")
+                                # 기준 페이지는 건너뛰기 (이미 JSON이 있으므로)
+                                if reference_page_num and page_num == reference_page_num:
+                                    status_text.text(f"페이지 {page_num}/{total_pages} 건너뜀 (기준 페이지)... ({idx + 1}/{len(pages_with_ocr)})")
+                                    success_count += 1
                                     progress_bar.progress((idx + 1) / len(pages_with_ocr))
                                     continue
+
+                                status_text.text(f"페이지 {page_num}/{total_pages} 처리 중... ({idx + 1}/{len(pages_with_ocr)})")
                                 
-                                # 기준 페이지가 있으면 RAG 없이 직접 사용, 없으면 RAG로 유사 예제 찾기
-                                if reference_json:
-                                    # 기준 페이지 JSON을 직접 사용 (RAG 없이)
-                                    status_text.text(f"페이지 {page_num}: 기준 페이지 JSON 참조하여 LLM 호출 중...")
-                                    result_json = ask_openai_with_reference(
-                                        ocr_text=ocr_text,
-                                        answer_json=reference_json,
-                                        question=ocr_text,
-                                        model_name="gpt-4o-2024-08-06",
-                                        use_langchain=False,
-                                        temperature=0.0
-                                    )
-                                else:
-                                    # RAG로 유사 예제 찾아서 LLM 호출
-                                    def progress_wrapper(msg: str):
-                                        status_text.text(f"페이지 {page_num}: {msg}")
+                                try:
+                                    # PyMuPDF로 텍스트 추출 (이미 추출되어 있지만 재확인)
+                                    ocr_text = page_info.get("ocr_text", "")
+                                    if not ocr_text and pdf_path.exists():
+                                        ocr_text = extract_text_from_pdf_page(pdf_path, page_num)
                                     
-                                    result_json = extract_json_with_rag(
-                                        ocr_text=ocr_text,
-                                        question=None,  # config에서 가져옴
-                                        model_name=None,  # config에서 가져옴
-                                        temperature=0.0,
-                                        top_k=None,  # config에서 가져옴
-                                        similarity_threshold=None,  # config에서 가져옴
-                                        progress_callback=progress_wrapper,
-                                        page_num=page_num
-                                    )
+                                    if not ocr_text:
+                                        error_count += 1
+                                        status_text.text(f"페이지 {page_num}: 텍스트 추출 실패")
+                                        progress_bar.progress((idx + 1) / len(pages_with_ocr))
+                                        continue
+                                    
+                                    # 기준 페이지가 있으면 RAG 없이 직접 사용, 없으면 RAG로 유사 예제 찾기
+                                    if reference_json:
+                                        # 기준 페이지 JSON을 직접 사용 (RAG 없이)
+                                        status_text.text(f"페이지 {page_num}: 기준 페이지 JSON 참조하여 LLM 호출 중...")
+                                        result_json = ask_openai_with_reference(
+                                            ocr_text=ocr_text,
+                                            answer_json=reference_json,
+                                            question=ocr_text,
+                                            model_name="gpt-4o-2024-08-06",
+                                            use_langchain=False,
+                                            temperature=0.0
+                                        )
+                                    else:
+                                        # RAG로 유사 예제 찾아서 LLM 호출
+                                        def progress_wrapper(msg: str):
+                                            status_text.text(f"페이지 {page_num}: {msg}")
+                                        
+                                        result_json = extract_json_with_rag(
+                                            ocr_text=ocr_text,
+                                            question=None,  # config에서 가져옴
+                                            model_name=None,  # config에서 가져옴
+                                            temperature=0.0,
+                                            top_k=None,  # config에서 가져옴
+                                            similarity_threshold=None,  # config에서 가져옴
+                                            progress_callback=progress_wrapper,
+                                            page_num=page_num
+                                        )
+                                    
+                                    # 결과 저장
+                                    with open(page_info["answer_json_path"], "w", encoding="utf-8") as f:
+                                        json.dump(result_json, f, ensure_ascii=False, indent=2)
+                                    success_count += 1
+                                    
+                                except Exception as e:
+                                    error_count += 1
+                                    status_text.text(f"페이지 {page_num}: 오류 발생 - {str(e)}")
                                 
-                                # 결과 저장
-                                with open(page_info["answer_json_path"], "w", encoding="utf-8") as f:
-                                    json.dump(result_json, f, ensure_ascii=False, indent=2)
-                                success_count += 1
-                                
-                            except Exception as e:
-                                error_count += 1
-                                status_text.text(f"페이지 {page_num}: 오류 발생 - {str(e)}")
+                                progress_bar.progress((idx + 1) / len(pages_with_ocr))
                             
-                            progress_bar.progress((idx + 1) / len(pages_with_ocr))
-                        
-                        progress_bar.empty()
-                        status_text.empty()
-                        ref_msg = f" (기준 페이지 {reference_page_num} 참조)" if reference_json else " (RAG 기반)"
-                        st.success(f"✅ 전체 {success_count}개 페이지 정답 JSON 생성 완료!{ref_msg}")
-                        if error_count > 0:
-                            st.warning(f"⚠️ {error_count}개 페이지 처리 실패")
-                        st.rerun()
+                            progress_bar.empty()
+                            status_text.empty()
+                            ref_msg = f" (기준 페이지 {reference_page_num} 참조)" if reference_json else " (RAG 기반)"
+                            st.success(f"✅ 전체 {success_count}개 페이지 정답 JSON 생성 완료!{ref_msg}")
+                            if error_count > 0:
+                                st.warning(f"⚠️ {error_count}개 페이지 처리 실패")
+                            # 탭 상태 유지
+                            if "active_tab" not in st.session_state:
+                                st.session_state.active_tab = "✏️ 정답지 편집"
+                            st.rerun()
                 with col_btn2:
                     st.caption(f"총 {len(pages_with_ocr)}개 페이지")
                 with col_btn3:
@@ -824,10 +883,16 @@ def render_answer_editor_tab():
             with col1:
                 if st.button("◀ 이전", disabled=(current_page <= 1)):
                     st.session_state.answer_editor_selected_page -= 1
+                    # 탭 상태 유지
+                    if "active_tab" not in st.session_state:
+                        st.session_state.active_tab = "✏️ 정답지 편집"
                     st.rerun()
             with col2:
                 if st.button("다음 ▶", disabled=(current_page >= total_pages)):
                     st.session_state.answer_editor_selected_page += 1
+                    # 탭 상태 유지
+                    if "active_tab" not in st.session_state:
+                        st.session_state.active_tab = "✏️ 정답지 편집"
                     st.rerun()
             with col3:
                 st.text(f"페이지 {current_page}/{total_pages}")
@@ -906,6 +971,9 @@ def render_answer_editor_tab():
                                         st.session_state[f"answer_json_{current_page}"] = json.dumps(result_json, ensure_ascii=False, indent=2)
                                         st.session_state[f"page_role_{current_page}"] = result_json.get("page_role", "detail")
                                         st.success("✅ Gemini 추출 완료! 아래 정답 JSON 편집 영역에서 확인하세요.")
+                                        # 탭 상태 유지
+                                        if "active_tab" not in st.session_state:
+                                            st.session_state.active_tab = "✏️ 정답지 편집"
                                         st.rerun()
                                         
                                     except Exception as e:
@@ -984,8 +1052,7 @@ def render_answer_editor_tab():
                                                 top_k=config.top_k,
                                                 similarity_threshold=config.similarity_threshold,
                                                 search_method=config.search_method,
-                                                hybrid_alpha=config.hybrid_alpha,
-                                                use_preprocessing=True
+                                                hybrid_alpha=config.hybrid_alpha
                                             )
                                             
                                             # 검색 결과가 없으면 threshold를 낮춰서 재검색
@@ -995,8 +1062,7 @@ def render_answer_editor_tab():
                                                     top_k=1,
                                                     similarity_threshold=0.0,
                                                     search_method=config.search_method,
-                                                    hybrid_alpha=config.hybrid_alpha,
-                                                    use_preprocessing=True
+                                                    hybrid_alpha=config.hybrid_alpha
                                                 )
                                             
                                             # 검색 결과를 세션 상태에 저장
@@ -1189,6 +1255,9 @@ def render_answer_editor_tab():
                                         st.session_state[f"answer_json_{current_page}"] = json.dumps(result_json, ensure_ascii=False, indent=2)
                                         st.session_state[f"page_role_{current_page}"] = result_json.get("page_role", "detail")
                                         st.success("✅ RAG 기반 정답 생성 완료! 아래 정답 JSON 편집 영역에서 확인하세요.")
+                                        # 탭 상태 유지
+                                        if "active_tab" not in st.session_state:
+                                            st.session_state.active_tab = "✏️ 정답지 편집"
                                         st.rerun()
                                         
                                     except Exception as e:
@@ -1369,6 +1438,9 @@ def render_answer_editor_tab():
                                         st.session_state[f"answer_json_{current_page}"] = json.dumps(result_json, ensure_ascii=False, indent=2)
                                         st.session_state[f"page_role_{current_page}"] = result_json.get("page_role", "detail")
                                         st.success("✅ RAG 기반 정답 생성 완료! 아래 정답 JSON 편집 영역에서 확인하세요.")
+                                        # 탭 상태 유지
+                                        if "active_tab" not in st.session_state:
+                                            st.session_state.active_tab = "✏️ 정답지 편집"
                                         st.rerun()
 
                                 except Exception as e:
@@ -1590,6 +1662,9 @@ def render_answer_editor_tab():
                                         json.dump(answer_json, f, ensure_ascii=False, indent=2)
 
                                     st.success(f"✅ AgGrid 변경사항 저장 완료! (파일 크기: {os.path.getsize(answer_json_path)} bytes)")
+                                    # 탭 상태 유지
+                                    if "active_tab" not in st.session_state:
+                                        st.session_state.active_tab = "✏️ 정답지 편집"
                                     st.rerun()
 
                             with col_save_aggrid2:
@@ -1634,6 +1709,9 @@ def render_answer_editor_tab():
 
                                 st.success(f"✅ 정답 JSON 저장 완료! (파일 크기: {os.path.getsize(answer_json_path)} bytes)")
                                 st.caption(f"저장 경로: `{answer_json_path}`")
+                                # 탭 상태 유지
+                                if "active_tab" not in st.session_state:
+                                    st.session_state.active_tab = "✏️ 정답지 편집"
                                 st.rerun()
                         except json.JSONDecodeError as e:
                             st.error(f"❌ JSON 파싱 오류: {e}")

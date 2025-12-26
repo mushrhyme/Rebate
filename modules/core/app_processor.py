@@ -13,7 +13,7 @@ import streamlit as st
 
 from modules.core.processor import PdfProcessor
 from modules.utils.config import get_rag_config
-from utils.session_manager import SessionManager
+from modules.utils.session_manager import SessionManager
 
 
 def process_pdf_with_progress(
@@ -104,7 +104,6 @@ def reparse_single_page(pdf_name: str, page_num: int, timeout: int = 120):
         timeout: API 호출 타임아웃 (초, 기본값: 120초 = 2분)
     """
     from pathlib import Path
-    import fitz  # PyMuPDF
     from src.rag_extractor import extract_json_with_rag
     from modules.utils.pdf_utils import find_pdf_path
 
@@ -138,15 +137,9 @@ def reparse_single_page(pdf_name: str, page_num: int, timeout: int = 120):
         with progress_placeholder.container():
             st.info("🔍 PyMuPDFでテキスト抽出中...", icon="⏳")
         
-        # PyMuPDF로 PDF에서 텍스트 추출
-        doc = fitz.open(pdf_path)
-        if page_num < 1 or page_num > doc.page_count:
-            doc.close()
-            raise Exception(f"페이지 번호가 범위를 벗어났습니다 (1-{doc.page_count})")
-        
-        page = doc.load_page(page_num - 1)  # fitz는 0부터 시작
-        ocr_text = page.get_text()
-        doc.close()
+        # 통합 함수 사용
+        from modules.utils.pdf_utils import extract_text_from_pdf_page
+        ocr_text = extract_text_from_pdf_page(pdf_path, page_num)
         
         if not ocr_text or len(ocr_text.strip()) == 0:
             raise Exception("PDF에서 텍스트를 추출할 수 없습니다")
@@ -215,6 +208,9 @@ def reparse_single_page(pdf_name: str, page_num: int, timeout: int = 120):
 
         progress_placeholder.empty()
         st.success(f"ページ {page_num} 再パース完了！ (소요 시간: {parse_duration:.2f}초, {items_count}개 items)", icon="✅")
+        # 탭 상태 유지
+        if "active_tab" not in st.session_state:
+            st.session_state.active_tab = "📝 レビュー"
         st.rerun()
     except Exception as e:
         parse_end_time = time.time()

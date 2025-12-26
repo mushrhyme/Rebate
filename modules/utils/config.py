@@ -54,7 +54,7 @@ class RAGConfig:
     # RAG 검색 설정
     top_k: int = 3 # 벡터 DB에서 검색할 예제 수
     similarity_threshold: float = 0.7  # 최소 유사도 임계값 (0.0 ~ 1.0)
-    search_method: str = "hybrid"  # 검색 방식: "vector", "hybrid", "rerank"
+    search_method: str = "hybrid"  # 검색 방식: "vector", "hybrid"
     hybrid_alpha: float = 0.5  # 하이브리드 검색 가중치 (0.0~1.0, 0.5 = 벡터와 BM25 동일 가중치)
     
     # OpenAI 모델 설정

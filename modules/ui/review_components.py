@@ -5,7 +5,7 @@
 import os
 from typing import Dict, Any, Optional
 from PIL import Image
-from utils.session_manager import SessionManager
+from modules.utils.session_manager import SessionManager
 import pandas as pd
 
 def load_page_data(pdf_name: str, page_num: int) -> Optional[Dict[str, Any]]:
@@ -109,11 +109,17 @@ def render_navigation(pdf_name: str, current_page: int, total_pages: int):
     with col1:
         if st.button("◀", disabled=current_page <= 1, width='stretch', key="nav_prev", type="primary"):
             st.session_state.selected_page = current_page - 1
+            # 탭 상태 유지
+            if "active_tab" not in st.session_state:
+                st.session_state.active_tab = "📝 レビュー"
             st.rerun()
     
     with col2:
         if st.button("▶", disabled=current_page >= total_pages, width='stretch', key="nav_next", type="primary"):
             st.session_state.selected_page = current_page + 1
+            # 탭 상태 유지
+            if "active_tab" not in st.session_state:
+                st.session_state.active_tab = "📝 レビュー"
             st.rerun()
     
     with col3:

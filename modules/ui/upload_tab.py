@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import streamlit as st
 
-from utils.session_manager import SessionManager
+from modules.utils.session_manager import SessionManager
 from modules.core.processor import PdfProcessor
 from modules.utils.pdf_utils import find_pdf_path
 from modules.core.app_processor import (
@@ -177,22 +177,10 @@ def render_upload_tab():
         # RAG 기반 분석 정보 표시 (무조건 RAG 사용)
         st.divider()
         try:
-            import json
-            from modules.utils.config import get_project_root
-            
-            # 벡터 DB의 실제 파일에서 직접 개수 확인 (캐시 문제 방지)
-            project_root = get_project_root()
-            metadata_path = project_root / "faiss_db" / "metadata.json"
-            
-            if metadata_path.exists():
-                with open(metadata_path, 'r', encoding='utf-8') as f:
-                    metadata_data = json.load(f)
-                actual_count = len(metadata_data.get('metadata', {}))
-            else:
-                # 파일이 없으면 RAG Manager에서 확인
-                from modules.core.rag_manager import get_rag_manager
-                rag_manager = get_rag_manager()
-                actual_count = rag_manager.count_examples()
+            # RAG Manager에서 직접 확인 (DB 또는 파일 모드 모두 지원)
+            from modules.core.rag_manager import get_rag_manager
+            rag_manager = get_rag_manager()
+            actual_count = rag_manager.count_examples()
             
             if actual_count > 0:
                 st.success(f"✅ RAG 기반 분석 활성화 (벡터 DB 예제: {actual_count}개)")
@@ -413,6 +401,9 @@ def render_upload_tab():
                         st.success(f"🎉 **{success_count}個のファイル解析完了！** (総 {total_pages}ページ、所要時間: {time_str}, 병렬 처리)", icon="✅")
                     else:
                         st.success(f"🎉 **{success_count}個のファイル解析完了！** (総 {total_pages}ページ、所要時間: {time_str})", icon="✅")
+                    # 탭 상태 유지
+                    if "active_tab" not in st.session_state:
+                        st.session_state.active_tab = "📤 アップロード & 解析"
                     st.rerun()
             else:
                 st.warning("分析対象のファイルがありません。", icon="⚠️")

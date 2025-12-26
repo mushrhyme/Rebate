@@ -38,7 +38,7 @@ class AgGridUtils:
             return
         
         import pandas as pd
-        from utils.session_manager import SessionManager
+        from modules.utils.session_manager import SessionManager
         
         # DataFrame으로 변환
         df = pd.DataFrame(items)
@@ -84,6 +84,10 @@ class AgGridUtils:
         # 모든 값이 null인 컬럼 제거
         df = df.dropna(axis=1, how='all')
         
+        # dropna 후 mgmt_col이 여전히 존재하는지 확인
+        if mgmt_col and mgmt_col not in df.columns:
+            mgmt_col = None
+        
         # 컬럼명 일본어 매핑 (영어 → 일본어)
         column_name_mapping = {
             'No': 'No',  # 번호는 그대로
@@ -125,7 +129,7 @@ class AgGridUtils:
         gb.configure_pagination(enabled=False)
         
         # 관리번호별 색상 지정 (있는 경우)
-        if mgmt_col:
+        if mgmt_col and mgmt_col in df.columns:
             # 관리번호별로 고유 색상 매핑 생성
             management_numbers = df[mgmt_col].dropna().unique()
             
@@ -316,6 +320,9 @@ class AgGridUtils:
 
                         if success:
                             st.success("保存完了！")
+                            # 탭 상태 유지
+                            if "active_tab" not in st.session_state:
+                                st.session_state.active_tab = "📝 レビュー"
                             st.rerun()
                         else:
                             st.error("DB保存に失敗しました。")

@@ -12,7 +12,7 @@ import fitz  # PyMuPDF
 from PIL import Image
 import io
 
-from utils.session_manager import SessionManager
+from modules.utils.session_manager import SessionManager
 from modules.ui.review_components import (
     load_page_data,
     render_navigation,
@@ -239,6 +239,9 @@ def render_review_tab():
     if selected_pdf != st.session_state.selected_pdf:
         st.session_state.selected_pdf = selected_pdf
         st.session_state.selected_page = 1
+        # 탭 상태 유지
+        if "active_tab" not in st.session_state:
+            st.session_state.active_tab = "📝 レビュー"
         st.rerun()
     page_count = SessionManager.get_pdf_page_count(selected_pdf)
     if page_count == 0:

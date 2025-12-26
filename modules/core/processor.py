@@ -46,7 +46,7 @@ class PdfProcessor:
         
         try:
             # 순환 import 방지를 위해 함수 내부에서 import
-            from utils.session_manager import SessionManager
+            from modules.utils.session_manager import SessionManager
             from modules.utils.pdf_utils import find_pdf_path
             
             # 1. PDF 파일 경로 확인
@@ -240,7 +240,7 @@ class PdfProcessor:
             (성공 여부, 페이지 수, 에러 메시지, 소요 시간) 튜플
         """
         # 순환 import 방지를 위해 함수 내부에서 import
-        from utils.session_manager import SessionManager
+        from modules.utils.session_manager import SessionManager
         
         # 1. PDF 파일 저장
         pdf_path = SessionManager.save_pdf_file(uploaded_file, pdf_name)
@@ -281,7 +281,7 @@ class PdfProcessor:
         
         # processing 상태면 타임아웃 체크
         if status == "processing":
-            from utils.session_manager import SessionManager
+            from modules.utils.session_manager import SessionManager
             is_active = SessionManager.is_analysis_active(pdf_name)
             # 타임아웃되었으면 처리 가능
             if not is_active:
