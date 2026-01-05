@@ -47,7 +47,8 @@ def extract_json_with_rag(
     similarity_threshold: Optional[float] = None,
     progress_callback: Optional[Callable[[str], None]] = None,
     debug_dir: Optional[str] = None,
-    page_num: Optional[int] = None
+    page_num: Optional[int] = None,
+    prompt_version: str = "v1"
 ) -> Dict[str, Any]:
     """
     RAG 기반 JSON 추출
@@ -177,12 +178,22 @@ def extract_json_with_rag(
         example_answer = example["answer_json"]  # RAG 예제의 정답 JSON (given_answer)
         example_answer_str = json.dumps(example_answer, ensure_ascii=False, indent=2)
         
-        # 프롬프트 템플릿 파일 로드 (필수)
-        prompt_template_path = prompts_dir / "rag_with_example.txt"
+        # 프롬프트 템플릿 파일 로드 (버전에 따라)
+        if prompt_version == "v2":
+            prompt_template_path = prompts_dir / "rag_with_example_v2.txt"
+            fallback_path = prompts_dir / "rag_with_example.txt"  # v2가 없으면 v1 사용
+        else:
+            prompt_template_path = prompts_dir / "rag_with_example.txt"
+            fallback_path = None
+        
+        # v2 파일이 없으면 v1 파일 사용 (하위 호환성)
+        if not prompt_template_path.exists() and fallback_path and fallback_path.exists():
+            prompt_template_path = fallback_path
+        
         if not prompt_template_path.exists():
             raise FileNotFoundError(
                 f"프롬프트 파일이 없습니다: {prompt_template_path}\n"
-                f"prompts/rag_with_example.txt 파일이 필요합니다."
+                f"prompts/rag_with_example{'_v2' if prompt_version == 'v2' else ''}.txt 파일이 필요합니다."
             )
         
         with open(prompt_template_path, 'r', encoding='utf-8') as f:
@@ -194,11 +205,21 @@ def extract_json_with_rag(
         )
     else:
         # 예제가 없는 경우: Zero-shot
-        prompt_template_path = prompts_dir / "rag_zero_shot.txt"
+        if prompt_version == "v2":
+            prompt_template_path = prompts_dir / "rag_zero_shot_v2.txt"
+            fallback_path = prompts_dir / "rag_zero_shot.txt"  # v2가 없으면 v1 사용
+        else:
+            prompt_template_path = prompts_dir / "rag_zero_shot.txt"
+            fallback_path = None
+        
+        # v2 파일이 없으면 v1 파일 사용 (하위 호환성)
+        if not prompt_template_path.exists() and fallback_path and fallback_path.exists():
+            prompt_template_path = fallback_path
+        
         if not prompt_template_path.exists():
             raise FileNotFoundError(
                 f"프롬프트 파일이 없습니다: {prompt_template_path}\n"
-                f"prompts/rag_zero_shot.txt 파일이 필요합니다."
+                f"prompts/rag_zero_shot{'_v2' if prompt_version == 'v2' else ''}.txt 파일이 필요합니다."
             )
         
         with open(prompt_template_path, 'r', encoding='utf-8') as f:

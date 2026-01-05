@@ -68,9 +68,13 @@ def find_pdf_pages(img_dir: Path, form_folder: Optional[str] = None) -> List[Dic
                 print(f"  ⚠️ PDF 파일 없음: {pdf_name}")
                 continue
             
-            answer_files = sorted(pdf_folder.glob("Page*_answer.json"))
+            # v1과 v2 정답지 파일 모두 찾기
+            answer_files_v1 = sorted(pdf_folder.glob("Page*_answer.json"))
+            answer_files_v2 = sorted(pdf_folder.glob("Page*_answer_v2.json"))
+            answer_files = answer_files_v1 + answer_files_v2  # v1과 v2 모두 포함
+            
             if not answer_files:
-                print(f"  ⚠️ {pdf_name}: answer.json 파일이 없습니다")
+                print(f"  ⚠️ {pdf_name}: answer.json 파일이 없습니다 (v1 또는 v2)")
                 continue
             
             try:
@@ -85,7 +89,12 @@ def find_pdf_pages(img_dir: Path, form_folder: Optional[str] = None) -> List[Dic
             
             for answer_file in answer_files:
                 try:
-                    page_num_str = answer_file.stem.replace("Page", "").replace("_answer", "")
+                    # v1: Page{num}_answer.json, v2: Page{num}_answer_v2.json
+                    stem = answer_file.stem
+                    if stem.endswith("_v2"):
+                        page_num_str = stem.replace("Page", "").replace("_answer_v2", "")
+                    else:
+                        page_num_str = stem.replace("Page", "").replace("_answer", "")
                     page_num = int(page_num_str)
                     
                     if page_num < 1 or page_num > page_count:

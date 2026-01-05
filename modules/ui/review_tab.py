@@ -23,6 +23,7 @@ from modules.ui.review_components import (
 from modules.utils.session_utils import ensure_session_state_defaults
 from modules.utils.config import get_project_root
 from modules.utils.pdf_utils import find_pdf_path
+from modules.ui.answer_editor_tab import get_answer_json_path  # 정답지 경로 생성 헬퍼 함수
 
 
 def request_training(pdf_name: str) -> Tuple[bool, str]:
@@ -180,8 +181,10 @@ def request_training(pdf_name: str) -> Tuple[bool, str]:
             if not page_num:
                 continue
             
-            # answer.json 파일 경로
-            answer_json_path = pdf_img_dir / f"Page{page_num}_answer.json"
+            # answer.json 파일 경로 (기본값: v1)
+            # review_tab에서는 기본적으로 v1을 사용 (나중에 버전 선택 UI 추가 가능)
+            answer_version = st.session_state.get("review_tab_answer_version", "v1")
+            answer_json_path = get_answer_json_path(pdf_img_dir, page_num, answer_version)
             
             # 필요한 필드만 추출 (page_role과 items만)
             answer_data = {

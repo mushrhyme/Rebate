@@ -44,6 +44,50 @@ def filter_answer_json(answer_json: dict) -> dict:
     }
     return filtered
 
+
+def get_answer_json_path(pdf_img_dir: Path, page_num: int, version: str = "v1") -> Path:
+    """
+    정답지 JSON 파일 경로를 버전에 따라 생성
+    
+    Args:
+        pdf_img_dir: PDF 이미지 디렉토리 경로
+        page_num: 페이지 번호 (1부터 시작)
+        version: 정답지 버전 ("v1" 또는 "v2")
+        
+    Returns:
+        정답지 JSON 파일 경로
+    """
+    if version == "v2":
+        return pdf_img_dir / f"Page{page_num}_answer_v2.json"
+    else:  # v1 (기본값)
+        return pdf_img_dir / f"Page{page_num}_answer.json"
+
+
+def get_prompt_file_path(version: str = "v1", use_example: bool = True) -> Path:
+    """
+    프롬프트 파일 경로를 버전에 따라 생성
+    
+    Args:
+        version: 정답지 버전 ("v1" 또는 "v2")
+        use_example: 예제 사용 여부 (True: rag_with_example, False: rag_zero_shot)
+        
+    Returns:
+        프롬프트 파일 경로
+    """
+    project_root = get_project_root()
+    prompts_dir = project_root / "prompts"
+    
+    if version == "v2":
+        if use_example:
+            return prompts_dir / "rag_with_example_v2.txt"
+        else:
+            return prompts_dir / "rag_zero_shot_v2.txt"
+    else:  # v1 (기본값)
+        if use_example:
+            return prompts_dir / "rag_with_example.txt"
+        else:
+            return prompts_dir / "rag_zero_shot.txt"
+
 # 컬럼명 일본어 매핑 (공통 상수)
 COLUMN_NAME_MAPPING = {
     'No': 'No',
@@ -282,7 +326,8 @@ def process_single_page(
     pdf_path: Path,
     reference_json: dict = None,
     reference_page_num: int = None,
-    total_pages: int = 0
+    total_pages: int = 0,
+    version: str = "v1"
 ) -> tuple[int, bool, str]:
     """
     단일 페이지를 처리하여 JSON을 생성합니다.
@@ -333,7 +378,8 @@ def process_single_page(
                 top_k=None,  # config에서 가져옴
                 similarity_threshold=None,  # config에서 가져옴
                 progress_callback=None,  # 병렬 처리에서는 콜백 미사용
-                page_num=page_num
+                page_num=page_num,
+                prompt_version=version  # 정답지 버전에 따라 프롬프트 파일 선택
             )
         
         # 결과 저장
@@ -389,6 +435,8 @@ def render_answer_editor_tab():
         st.session_state.answer_editor_selected_pdf = None
     if "answer_editor_selected_page" not in st.session_state:
         st.session_state.answer_editor_selected_page = 1
+    if "answer_editor_version" not in st.session_state:
+        st.session_state.answer_editor_version = "v1"  # 기본값: v1
 
     st.info(
         "**📌 정답지 편집 가이드**:\n\n"
@@ -419,6 +467,17 @@ def render_answer_editor_tab():
         )
     else:
         selected_form = "전체"
+    
+    # 정답지 버전 선택 UI
+    st.subheader("📝 정답지 버전 선택")
+    selected_version = st.selectbox(
+        "정답지 버전",
+        options=["v1", "v2"],
+        index=0 if st.session_state.answer_editor_version == "v1" else 1,
+        key="answer_editor_version_selector",
+        help="v1: Page{num}_answer.json, v2: Page{num}_answer_v2.json\n선택한 버전에 따라 사용되는 프롬프트 파일도 변경됩니다."
+    )
+    st.session_state.answer_editor_version = selected_version
     
     # 기존 처리된 PDF 목록 확인 (선택된 양식 폴더 기준)
     existing_pdfs = []
@@ -546,7 +605,7 @@ def render_answer_editor_tab():
                     image_path = pdf_img_dir / f"Page{page_num}.png"
                     if not image_path.exists():
                         break
-                    answer_json_path = pdf_img_dir / f"Page{page_num}_answer.json"
+                    answer_json_path = get_answer_json_path(pdf_img_dir, page_num, st.session_state.answer_editor_version)
                     # fitz를 사용하여 PDF에서 텍스트 추출
                     pdf_path = pdf_img_dir / f"{pdf_name}.pdf"
                     if not pdf_path.exists():
@@ -625,7 +684,7 @@ def render_answer_editor_tab():
                             image_path = img_dir / f"Page{page_num}.png"
                             image.save(image_path, "PNG", dpi=(300, 300), optimize=True)
 
-                            answer_json_path = img_dir / f"Page{page_num}_answer.json"
+                            answer_json_path = get_answer_json_path(img_dir, page_num, st.session_state.answer_editor_version)
 
                             status_text.text(f"페이지 {page_num}/{total_pages} 처리 중...")
                             
@@ -807,7 +866,8 @@ def render_answer_editor_tab():
                                         pdf_path,
                                         reference_json,
                                         reference_page_num,
-                                        total_pages
+                                        total_pages,
+                                        st.session_state.answer_editor_version  # 정답지 버전 전달
                                     ): page_info
                                     for page_info in pages_to_process
                                 }
@@ -1480,6 +1540,7 @@ def render_answer_editor_tab():
                                             model_name=selected_model,  # 선택된 모델 사용
                                             temperature=0.0,
                                             top_k=None,
+                                            prompt_version=st.session_state.answer_editor_version,  # 정답지 버전에 따라 프롬프트 파일 선택
                                             similarity_threshold=None,
                                             progress_callback=progress_wrapper,
                                             page_num=current_page
