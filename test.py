@@ -1,373 +1,432 @@
 """
-RAG 벡터 DB 테스트 스크립트
-
-1. PDF를 읽어서 (fitz) 텍스트를 추출
-2. RAG로 정답지를 불러내서 참고 문서 정보 표시
-3. 최종 프롬프트 생성하여 OpenAI에 요청
-4. 최종 응답 표시
-
-사용법:
-    python test.py <pdf_file_path> [page_num]
-    
-예제:
-    python test.py img/日本アクセス東京中央支店/日本アクセス東京中央支店.pdf 1
-    python test.py img/日本アクセス東京中央支店/日本アクセス東京中央支店.pdf
+PDF 페이지를 엑셀로 변환하여 텍스트 추출 후 RAG로 레퍼런스 JSON 찾아서 LLM 호출하는 테스트 스크립트
 """
 
 import os
 import json
+import re
 from pathlib import Path
-import fitz  # PyMuPDF
-
-from modules.core.rag_manager import get_rag_manager
-from modules.utils.config import get_rag_config, get_project_root
-from modules.utils.pdf_utils import extract_text_from_pdf_page
 from openai import OpenAI
 
+from modules.utils.pdf_utils import extract_text_from_pdf_page
+from modules.core.rag_manager import get_rag_manager
+from modules.utils.config import get_rag_config, get_project_root
+from typing import Dict, Any, Optional
 
-def main():
-    print("="*70)
-    print("🚀 RAG 벡터 DB 테스트 시작")
-    print("="*70)
+
+def get_prompt_file_path(version: str = "v3") -> Path:
+    """
+    프롬프트 파일 경로를 버전에 따라 생성
     
-    pdf_file_path = "test_img/01/コゲツ産業2025.01 (1).pdf"
-    page_num = 2
+    Args:
+        version: 프롬프트 버전 ("v3")
+        
+    Returns:
+        프롬프트 파일 경로
+    """
+    project_root = get_project_root()
+    prompts_dir = project_root / "prompts"
+    return prompts_dir / f"rag_with_example_{version}.txt"
+
+
+def reorder_json_keys(result_json: Dict[str, Any], reference_json: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """
+    결과 JSON의 키 순서를 REFERENCE_JSON의 키 순서에 맞춰 재정렬
     
-    # PDF 파일 경로 확인
-    pdf_path = Path(pdf_file_path)
-    if not pdf_path.is_absolute():
-        # 상대 경로인 경우 프로젝트 루트 기준으로 변환
-        project_root = get_project_root()
-        pdf_path = project_root / pdf_file_path
+    Args:
+        result_json: 재정렬할 JSON 딕셔너리
+        reference_json: 참조용 JSON 딕셔너리 (키 순서 기준)
+        
+    Returns:
+        키 순서가 재정렬된 JSON 딕셔너리
+    """
+    if not reference_json:
+        return result_json
     
-    if not pdf_path.exists():
-        print(f"\n❌ PDF 파일을 찾을 수 없습니다: {pdf_path}")
-        return
+    # 최상위 레벨 키 순서 추출
+    reference_top_keys = list(reference_json.keys())
     
-    # 2. 벡터 DB 상태 확인
-    print("\n📊 1단계: 벡터 DB 상태 확인")
-    print("-"*70)
-    rag_manager = get_rag_manager()
-    example_count = rag_manager.count_examples()
-    print(f"✅ 벡터 DB 예제 수: {example_count}개")
+    # 결과 JSON의 최상위 키 재정렬
+    reordered_result = {}
     
-    # 인덱스 상태 상세 확인
-    print("\n🔍 인덱스 상세 상태:")
-    if rag_manager.index is None:
-        print("  ❌ 인덱스가 None입니다. 벡터 DB가 제대로 로드되지 않았습니다.")
-        return
-    else:
-        print(f"  ✅ 인덱스 로드됨: ntotal={rag_manager.index.ntotal}")
-        print(f"  ✅ 메타데이터: {len(rag_manager.metadata)}개")
-        print(f"  ✅ ID to Index 매핑: {len(rag_manager.id_to_index)}개")
-        print(f"  ✅ Index to ID 매핑: {len(rag_manager.index_to_id)}개")
+    # 1. REFERENCE_JSON에 있는 키를 순서대로 추가
+    for key in reference_top_keys:
+        if key in result_json:
+            if key == "items" and isinstance(result_json[key], list) and isinstance(reference_json.get(key), list):
+                # items 배열 처리
+                if len(reference_json[key]) > 0:
+                    # items[0]의 키 순서 추출
+                    reference_item_keys = list(reference_json[key][0].keys())
+                    # items 배열 내부 객체들의 키 순서 재정렬
+                    reordered_items = []
+                    for item in result_json[key]:
+                        if isinstance(item, dict):
+                            reordered_item = {}
+                            # REFERENCE_JSON의 키 순서대로 추가
+                            for item_key in reference_item_keys:
+                                if item_key in item:
+                                    reordered_item[item_key] = item[item_key]
+                            # REFERENCE_JSON에 없지만 결과에 있는 키 추가 (순서는 뒤로)
+                            for item_key in item.keys():
+                                if item_key not in reference_item_keys:
+                                    reordered_item[item_key] = item[item_key]
+                            reordered_items.append(reordered_item)
+                        else:
+                            reordered_items.append(item)
+                    reordered_result[key] = reordered_items
+                else:
+                    reordered_result[key] = result_json[key]
+            elif isinstance(result_json[key], dict) and isinstance(reference_json.get(key), dict):
+                # 중첩된 딕셔너리도 재정렬
+                reference_nested_keys = list(reference_json[key].keys())
+                reordered_nested = {}
+                for nested_key in reference_nested_keys:
+                    if nested_key in result_json[key]:
+                        reordered_nested[nested_key] = result_json[key][nested_key]
+                # REFERENCE에 없지만 결과에 있는 키 추가
+                for nested_key in result_json[key].keys():
+                    if nested_key not in reference_nested_keys:
+                        reordered_nested[nested_key] = result_json[key][nested_key]
+                reordered_result[key] = reordered_nested
+            else:
+                reordered_result[key] = result_json[key]
     
-    if example_count == 0:
-        print("\n⚠️ 벡터 DB에 예제가 없습니다. build_faiss_db.py를 먼저 실행하세요.")
-        return
+    # 2. REFERENCE_JSON에 없지만 결과에 있는 키 추가 (순서는 뒤로)
+    for key in result_json.keys():
+        if key not in reference_top_keys:
+            reordered_result[key] = result_json[key]
     
-    if rag_manager.index.ntotal == 0:
-        print("\n⚠️ 인덱스가 비어있습니다. (ntotal=0)")
-        print("   벡터 DB를 다시 구축해야 할 수 있습니다.")
-        return
+    return reordered_result
+
+
+class RAGProcessor:
+    """RAG 기반 JSON 추출 처리 클래스"""
     
-    print()
+    def __init__(self):
+        """초기화"""
+        self.rag_manager = get_rag_manager()
+        self.config = get_rag_config()
     
-    # 3. PDF 파일 정보 표시
-    print("📄 2단계: PDF 파일 선택 및 텍스트 추출")
-    print("-"*70)
-    print(f"📁 PDF 파일: {pdf_path.name}")
-    print(f"📂 전체 경로: {pdf_path}")
-    print(f"📄 페이지: {page_num}\n")
-    
-    # 3. PDF에서 텍스트 추출 (fitz 사용)
-    print("🔄 fitz를 사용하여 PDF에서 텍스트 추출 중...")
-    ocr_text = extract_text_from_pdf_page(pdf_path, page_num)
-    
-    if not ocr_text or not ocr_text.strip():
-        print("❌ 텍스트를 추출할 수 없습니다.")
-        return
-    
-    print(f"✅ 텍스트 추출 완료 (길이: {len(ocr_text)} 문자)\n")
-    print("="*70)
-    print("📝 추출된 텍스트")
-    print("="*70)
-    print(ocr_text[:500] + "..." if len(ocr_text) > 500 else ocr_text)
-    print()
-    
-    # 4. RAG 검색
-    print("="*70)
-    print("🔍 3단계: RAG 벡터 DB에서 유사한 예제 검색")
-    print("="*70)
-    
-    config = get_rag_config()
-    print(f"\n🔧 검색 설정:")
-    print(f"  - top_k: {config.top_k}")
-    print(f"  - similarity_threshold: {config.similarity_threshold}")
-    print(f"  - search_method: {config.search_method}")
-    print(f"  - hybrid_alpha: {getattr(config, 'hybrid_alpha', 0.5)}")
-    print()
-    
-    print("🔄 첫 번째 검색 시도...")
-    similar_examples = rag_manager.search_similar_advanced(
-        query_text=ocr_text,
-        top_k=config.top_k,
-        similarity_threshold=config.similarity_threshold,
-        search_method=config.search_method,
-        hybrid_alpha=getattr(config, 'hybrid_alpha', 0.5)
-    )
-    
-    print(f"📊 첫 번째 검색 결과: {len(similar_examples)}개")
-    
-    # 검색 결과가 없으면 threshold를 낮춰서 재검색
-    if not similar_examples:
-        print(f"\n⚠️ 검색 결과 없음 (threshold: {config.similarity_threshold})")
-        print("🔄 threshold를 0.0으로 낮춰 재검색...")
-        similar_examples = rag_manager.search_similar_advanced(
-            query_text=ocr_text,
-            top_k=1,  # 최상위 1개만
-            similarity_threshold=0.0,  # threshold 무시
-            search_method=config.search_method,
-            hybrid_alpha=getattr(config, 'hybrid_alpha', 0.5)
+    def extract_text_from_pdf(self, pdf_path: Path, page_num: int) -> str:
+        """
+        PDF 페이지에서 엑셀 변환 방식으로 텍스트 추출
+        
+        Args:
+            pdf_path: PDF 파일 경로
+            page_num: 페이지 번호 (1부터 시작)
+            
+        Returns:
+            추출된 텍스트
+        """
+        print(f"📄 PDF 텍스트 추출 중... (파일: {pdf_path}, 페이지: {page_num})")
+        ocr_text = extract_text_from_pdf_page(
+            pdf_path=pdf_path,
+            page_num=page_num,
+            method="excel"  # 엑셀 변환 방식 사용
         )
-        if similar_examples:
-            score_key = "hybrid_score" if "hybrid_score" in similar_examples[0] else \
-                       "final_score" if "final_score" in similar_examples[0] else \
-                       "similarity"
-            score_value = similar_examples[0].get(score_key, 0)
-            print(f"✅ 재검색 성공: {score_key}: {score_value:.4f} (threshold 무시하고 최상위 결과 사용)")
-        else:
-            print("❌ 재검색도 실패했습니다. 벡터 DB에 문제가 있을 수 있습니다.")
-            print("\n🔍 디버깅 정보:")
-            print(f"  - 인덱스 ntotal: {rag_manager.index.ntotal if rag_manager.index else 'None'}")
-            print(f"  - 메타데이터 개수: {len(rag_manager.metadata)}")
-            print(f"  - ID to Index 매핑: {len(rag_manager.id_to_index)}")
-            print(f"  - Index to ID 매핑: {len(rag_manager.index_to_id)}")
-            return
-    
-    print(f"\n📊 최종 검색 결과: {len(similar_examples)}개\n")
-    
-    # 참고 문서 정보 표시
-    reference_docs = []
-    for idx, ex in enumerate(similar_examples, 1):
-        print(f"[{idx}] " + "="*60)
-        print(f"  📌 유사도 점수:")
-        if 'hybrid_score' in ex:
-            print(f"     - Hybrid Score: {ex['hybrid_score']:.4f}")
-        if 'bm25_score' in ex:
-            print(f"     - BM25 Score: {ex['bm25_score']:.4f}")
-        print(f"     - Similarity: {ex['similarity']:.4f}")
         
-        # 참고 문서 정보 수집
-        doc_info = {
-            'rank': idx,
-            'similarity': ex['similarity'],
-            'hybrid_score': ex.get('hybrid_score', None),
-            'pdf_name': 'Unknown',
-            'page_num': 'Unknown',
-            'page_role': ex['answer_json'].get('page_role', 'N/A')
-        }
+        if not ocr_text:
+            raise ValueError(f"텍스트 추출 실패: {pdf_path} 페이지 {page_num}")
         
-        # 메타데이터에서 PDF 정보 추출
-        if 'id' in ex:
-            doc_id = ex['id']
-            all_examples = rag_manager.get_all_examples()
-            for example in all_examples:
-                if example['id'] == doc_id:
-                    metadata = example.get('metadata', {})
-                    doc_info['pdf_name'] = metadata.get('pdf_name', 'Unknown')
-                    doc_info['page_num'] = metadata.get('page_num', 'Unknown')
-                    break
-        
-        print(f"  📁 참고 문서: {doc_info['pdf_name']} - Page{doc_info['page_num']}")
-        print(f"  🏷️  Page Role: {doc_info['page_role']}")
-        print(f"  📝 OCR 텍스트 미리보기:")
-        print(f"     {ex['ocr_text'][:200]}...")
-        print()
-        
-        reference_docs.append(doc_info)
+        print(f"✅ 텍스트 추출 완료 (길이: {len(ocr_text)} 문자)")
+        return ocr_text
     
-    # 5. 프롬프트 생성 (rag_extractor 참고)
-    print("="*70)
-    print("📝 4단계: 최종 프롬프트 생성")
-    print("="*70)
+    def search_reference_examples(self, ocr_text: str) -> list:
+        """
+        RAG 벡터 DB에서 유사한 예제 검색
+        
+        Args:
+            ocr_text: 검색할 OCR 텍스트
+            
+        Returns:
+            검색된 예제 리스트
+        """
+        print(f"🔍 RAG 벡터 DB에서 유사 예제 검색 중...")
+        
+        # 벡터 DB 상태 확인
+        example_count = self.rag_manager.count_examples()
+        if example_count == 0:
+            raise ValueError("벡터 DB에 예제가 없습니다. build_faiss_db.py를 먼저 실행하세요.")
+        
+        print(f"📊 벡터 DB 예제 수: {example_count}개")
+        
+        # 유사 예제 검색
+        similar_examples = self.rag_manager.search_similar_advanced(
+            query_text=ocr_text,
+            top_k=self.config.top_k,
+            similarity_threshold=self.config.similarity_threshold,
+            search_method=self.config.search_method,
+            hybrid_alpha=self.config.hybrid_alpha
+        )
+        
+        # 검색 결과가 없으면 threshold를 낮춰서 재검색
+        if not similar_examples:
+            print(f"⚠️ 검색 결과 없음 (threshold: {self.config.similarity_threshold})")
+            print("🔄 threshold를 0.0으로 낮춰 재검색...")
+            similar_examples = self.rag_manager.search_similar_advanced(
+                query_text=ocr_text,
+                top_k=1,
+                similarity_threshold=0.0,
+                search_method=self.config.search_method,
+                hybrid_alpha=self.config.hybrid_alpha
+            )
+        
+        if not similar_examples:
+            raise ValueError("검색된 예제가 없습니다.")
+        
+        print(f"✅ {len(similar_examples)}개 예제 발견")
+        
+        # 검색 결과 정보 출력
+        for idx, ex in enumerate(similar_examples):
+            score_info = []
+            if 'hybrid_score' in ex:
+                score_info.append(f"Hybrid: {ex['hybrid_score']:.4f}")
+            if 'bm25_score' in ex:
+                score_info.append(f"BM25: {ex['bm25_score']:.4f}")
+            score_info.append(f"Similarity: {ex['similarity']:.4f}")
+            
+            metadata = ex.get('metadata', {})
+            pdf_name = metadata.get('pdf_name', 'Unknown')
+            page_num = metadata.get('page_num', 'Unknown')
+            
+            print(f"  [{idx+1}] {pdf_name} - Page{page_num} ({', '.join(score_info)})")
+        
+        return similar_examples
     
-    if similar_examples:
-        # 예제가 있는 경우: Example-augmented RAG
-        example = similar_examples[0]  # 가장 유사한 예제 사용
-        example_ocr = example["ocr_text"]  # RAG 예제의 OCR 텍스트 (given_text)
-        example_answer = example["answer_json"]  # RAG 예제의 정답 JSON (given_answer)
+    def build_prompt(self, ocr_text: str, reference_example: dict) -> str:
+        """
+        프롬프트 템플릿을 사용하여 최종 프롬프트 생성
+        
+        Args:
+            ocr_text: 대상 OCR 텍스트
+            reference_example: 참조 예제 (ocr_text, answer_json 포함)
+            
+        Returns:
+            완성된 프롬프트 문자열
+        """
+        print(f"📝 프롬프트 생성 중...")
+        
+        # 프롬프트 템플릿 로드
+        prompt_template_path = get_prompt_file_path(version="v3")
+        if not prompt_template_path.exists():
+            raise FileNotFoundError(f"프롬프트 파일이 없습니다: {prompt_template_path}")
+        
+        with open(prompt_template_path, 'r', encoding='utf-8') as f:
+            prompt_template = f.read()
+        
+        # 참조 예제 정보 추출
+        example_ocr = reference_example["ocr_text"]
+        example_answer = reference_example["answer_json"]
         example_answer_str = json.dumps(example_answer, ensure_ascii=False, indent=2)
         
-        # prompting.py 형식: given_text(예제 OCR)와 given_answer(예제 정답)를 보여주고,
-        # question(현재 페이지 OCR)에서 같은 형식으로 추출하도록 지시
-        prompt = f"""GIVEN_TEXT:
-{example_ocr}
-
-위 글이 주어지면 아래의 내용이 정답이야! 
-{example_answer_str}
-
-MISSION:
-1.너는 위 GIVEN_TEXT를 보고 아래에 주어지는 QUESTION에 대한 답을 찾아내세요.
-2.답을 찾을때는 해당 값의 누락이 없어야 합니다.
-3.임의로 글을 수정하거나 추가하지 말고 QUESTION의 단어 안에서 답을 찾아내세요.
-4.출력형식은 **json** 형태여야 합니다
-5.**중요**: items는 항상 배열([])이어야 합니다. 항목이 없으면 빈 배열 []을 반환하세요. null을 반환하지 마세요.
-6.**중요**: page_role은 항상 문자열이어야 합니다. "cover", "detail", "summary" 중 하나를 반환하세요. null을 반환하지 마세요.
-
-QUESTION:
-{ocr_text}
-
-ANSWER:
-"""
-    else:
-        # 예제가 없는 경우: Zero-shot
-        question = config.question
-        prompt = f"""이미지는 일본어 조건청구서(条件請求書) 문서입니다.
-OCR 추출 결과를 보고 다음 질문에 대한 답을 JSON 형식으로 추출해주세요.
-
-OCR 추출 결과:
-{ocr_text}
-
-질문:
-{question}
-
-**중요**
-- 답 출력 시에는 불필요한 설명 없이 JSON 형식으로만 출력
-- 누락되는 값 없이 모든 제품을 추출
-- **items는 항상 배열([])이어야 합니다. 항목이 없으면 빈 배열 []을 반환하세요. null을 반환하지 마세요. 항목이 없는 경우는 cover 또는 summary입니다.**
-- **page_role은 항상 문자열이어야 합니다. "cover", "detail", "summary" 중 하나를 반환하세요. null을 반환하지 마세요.**
-
-답:
-"""
+        # 프롬프트 완성
+        prompt = prompt_template.format(
+            example_ocr=example_ocr,
+            example_answer_str=example_answer_str,
+            ocr_text=ocr_text
+        )
+        
+        print(f"✅ 프롬프트 생성 완료 (길이: {len(prompt)} 문자)")
+        return prompt
     
-    print("\n📋 생성된 프롬프트:")
-    print("-"*70)
-    print(prompt[:1000] + "..." if len(prompt) > 1000 else prompt)
-    print()
-    
-    # 6. OpenAI API 호출
-    print("="*70)
-    print("🤖 5단계: OpenAI API 호출")
-    print("="*70)
-    
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        print("❌ OPENAI_API_KEY가 설정되지 않았습니다.")
-        print("   .env 파일에 OPENAI_API_KEY를 설정하세요.")
-        return
-    
-    try:
+    def call_llm(self, prompt: str, model_name: str = None, reference_example: dict = None) -> dict:
+        """
+        OpenAI LLM 호출하여 JSON 응답 받기
+        
+        Args:
+            prompt: 완성된 프롬프트
+            model_name: 사용할 모델명 (None이면 설정값 사용)
+            reference_example: 참조 예제 (키 순서 재정렬용)
+            
+        Returns:
+            파싱된 JSON 딕셔너리
+        """
+        if model_name is None:
+            model_name = self.config.openai_model
+        
+        print(f"🤖 LLM 호출 중... (모델: {model_name})")
+        
+        # API 키 확인
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY 환경 변수가 설정되지 않았습니다.")
+        
+        # OpenAI 클라이언트 생성
         client = OpenAI(api_key=api_key)
-        model_name = config.openai_model
         
-        print(f"\n🔄 OpenAI API 호출 중...")
-        print(f"   모델: {model_name}")
-        print(f"   프롬프트 길이: {len(prompt)} 문자\n")
-        
+        # LLM 호출
         response = client.chat.completions.create(
             model=model_name,
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
+            messages=[{"role": "user", "content": prompt}],
             temperature=0.0,
             timeout=120
         )
         
         result_text = response.choices[0].message.content
         
-        if not result_text:
-            raise Exception("OpenAI API 응답에 텍스트가 없습니다.")
-        
-        print("✅ API 호출 완료!\n")
+        print(f"✅ LLM 응답 받음 (길이: {len(result_text)} 문자)")
         
         # JSON 파싱
-        result_text_cleaned = result_text.strip()
+        result_text = result_text.strip()
         
-        # 마크다운 코드 블록 제거
-        if result_text_cleaned.startswith('```'):
-            result_text_cleaned = result_text_cleaned.split('```', 1)[1]
-            if result_text_cleaned.startswith('json'):
-                result_text_cleaned = result_text_cleaned[4:].strip()
-            elif result_text_cleaned.startswith('\n'):
-                result_text_cleaned = result_text_cleaned[1:]
-            if result_text_cleaned.endswith('```'):
-                result_text_cleaned = result_text_cleaned.rsplit('```', 1)[0].strip()
+        # 코드 블록 제거
+        if result_text.startswith('```'):
+            result_text = result_text.split('```', 1)[1]
+            if result_text.startswith('json'):
+                result_text = result_text[4:].strip()
+            if result_text.endswith('```'):
+                result_text = result_text.rsplit('```', 1)[0].strip()
         
-        result_text_cleaned = result_text_cleaned.strip()
+        # Python None/True/False를 JSON null/true/false로 변환
+        result_text = re.sub(r':\s*None\s*([,}])', r': null\1', result_text)
+        result_text = re.sub(r':\s*True\s*([,}])', r': true\1', result_text)
+        result_text = re.sub(r':\s*False\s*([,}])', r': false\1', result_text)
         
-        # Python의 None을 JSON의 null로 치환
-        import re
-        result_text_cleaned = re.sub(r':\s*None\s*([,}])', r': null\1', result_text_cleaned)
-        result_text_cleaned = re.sub(r':\s*True\s*([,}])', r': true\1', result_text_cleaned)
-        result_text_cleaned = re.sub(r':\s*False\s*([,}])', r': false\1', result_text_cleaned)
+        # NaN 문자열을 null로 변환
+        import math
+        result_text = re.sub(r':\s*NaN\s*([,}])', r': null\1', result_text, flags=re.IGNORECASE)
+        result_text = re.sub(r':\s*"NaN"\s*([,}])', r': null\1', result_text, flags=re.IGNORECASE)
         
-        result_json = json.loads(result_text_cleaned)
+        # JSON 파싱
+        result_json = json.loads(result_text)
         
-        # 7. 최종 결과 표시
-        print("="*70)
-        print("✅ 6단계: 최종 결과")
-        print("="*70)
+        # NaN 값 정규화 함수 (재귀적으로 딕셔너리와 리스트를 순회)
+        def normalize_nan(obj):
+            import math
+            if isinstance(obj, dict):
+                # Python 3.7+에서는 dict가 삽입 순서를 보존하므로 items() 순서대로 재생성하면 순서 유지
+                return {k: normalize_nan(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [normalize_nan(item) for item in obj]
+            elif isinstance(obj, float) and (math.isnan(obj) or math.isinf(obj)):
+                return None
+            else:
+                return obj
         
-        print("\n📋 OpenAI 원본 응답:")
-        print("-"*70)
-        print(result_text[:500] + "..." if len(result_text) > 500 else result_text)
+        # NaN 값 정규화
+        result_json = normalize_nan(result_json)
+        
+        # null 값 정규화
+        if result_json.get("items") is None:
+            result_json["items"] = []
+            print(f"  ⚠️ items가 null이어서 빈 리스트로 변환했습니다.")
+        if result_json.get("page_role") is None:
+            result_json["page_role"] = "detail"
+            print(f"  ⚠️ page_role이 null이어서 'detail'로 변환했습니다.")
+        if not isinstance(result_json.get("items"), list):
+            result_json["items"] = []
+            print(f"  ⚠️ items가 리스트가 아닙니다. 빈 리스트로 변환합니다.")
+        
+        # items 내부의 각 항목에서 NaN 값 정규화
+        if isinstance(result_json.get("items"), list):
+            for item in result_json["items"]:
+                if isinstance(item, dict):
+                    for key in ['quantity', 'case_count', 'bara_count', 'units_per_case', 'amount']:
+                        if key in item and isinstance(item[key], float) and (math.isnan(item[key]) or math.isinf(item[key])):
+                            item[key] = None
+                            print(f"  ⚠️ {key}가 NaN이어서 null로 변환했습니다.")
+        
+        # 키 순서 재정렬 (REFERENCE_JSON이 있는 경우)
+        if reference_example and reference_example.get("answer_json"):
+            # RAG에서 가져온 answer_json은 키 순서가 바뀔 수 있으므로,
+            # 원본 파일에서 직접 읽어서 키 순서를 가져옴
+            example_answer = None
+            
+            # 메타데이터에서 원본 파일 정보 가져오기
+            metadata = reference_example.get("metadata", {})
+            pdf_name = metadata.get("pdf_name")
+            page_num = metadata.get("page_num")
+            
+            if pdf_name and page_num:
+                # 원본 answer.json 파일 경로 구성
+                project_root = get_project_root()
+                img_dir = project_root / "img"
+                
+                # PDF 이름으로 폴더 찾기
+                pdf_folders = list(img_dir.glob(f"*/{pdf_name}"))
+                if not pdf_folders:
+                    # PDF 이름이 폴더명에 포함된 경우
+                    pdf_folders = [d for d in img_dir.iterdir() if d.is_dir() and pdf_name in d.name]
+                
+                if pdf_folders:
+                    pdf_folder = pdf_folders[0]
+                    answer_json_path = pdf_folder / f"Page{page_num}_answer.json"
+                    
+                    if answer_json_path.exists():
+                        try:
+                            with open(answer_json_path, 'r', encoding='utf-8') as f:
+                                example_answer = json.load(f)
+                        except Exception:
+                            pass
+            
+            # 원본 파일을 읽지 못한 경우 RAG에서 가져온 것 사용
+            if example_answer is None:
+                example_answer = reference_example["answer_json"]
+            
+            result_json = reorder_json_keys(result_json, example_answer)
+        
+        print(f"✅ JSON 파싱 완료")
+        return result_json
+
+
+def main(filename, page_num):
+    """메인 함수"""
+    print("=" * 80)
+    print("PDF 페이지 RAG 기반 JSON 추출 테스트")
+    print("=" * 80)
+    
+    # PDF 경로와 페이지 번호 설정 (여기서 수정)
+    pdf_path = Path(filename)
+    
+    # 경로 확인
+    if not pdf_path.exists():
+        print(f"❌ PDF 파일을 찾을 수 없습니다: {pdf_path}")
+        print("💡 pdf_path 변수를 올바른 경로로 수정하세요.")
+        return
+    
+    try:
+        # RAG 프로세서 생성
+        processor = RAGProcessor()
+        
+        # 1. PDF에서 텍스트 추출 (엑셀 변환 방식)
+        ocr_text = processor.extract_text_from_pdf(pdf_path, page_num)
         print()
         
-        print("📊 파싱된 JSON 결과:")
-        print("-"*70)
+        # 2. RAG로 유사 예제 검색
+        similar_examples = processor.search_reference_examples(ocr_text)
+        reference_example = similar_examples[0]  # 최상위 예제 사용
+        print()
+        
+        # 3. 프롬프트 생성
+        prompt = processor.build_prompt(ocr_text, reference_example)
+        print()
+        
+        # 4. LLM 호출 (reference_example 전달하여 키 순서 재정렬)
+        result_json = processor.call_llm(prompt, reference_example=reference_example)
+        print()
+        
+        # 5. 결과 출력
+        print("=" * 80)
+        print("📊 최종 결과")
+        print("=" * 80)
         print(json.dumps(result_json, ensure_ascii=False, indent=2))
         print()
         
         # 결과 요약
-        page_role = result_json.get('page_role', 'N/A')
-        items = result_json.get('items', [])
-        items_count = len(items) if items else 0
+        print("=" * 80)
+        print("📋 결과 요약")
+        print("=" * 80)
+        print(f"page_role: {result_json.get('page_role', 'N/A')}")
+        print(f"items 개수: {len(result_json.get('items', []))}")
         
-        print("="*70)
-        print("📊 결과 요약")
-        print("="*70)
-        print(f"  📄 Page Role: {page_role}")
-        print(f"  📦 Items 개수: {items_count}개")
-        if items_count > 0:
-            print(f"\n  📝 첫 번째 항목:")
-            first_item = items[0]
-            for key, value in first_item.items():
-                if isinstance(value, (str, int, float)) and len(str(value)) < 100:
-                    print(f"     - {key}: {value}")
-        print()
-        
-        # 참고 문서 정보 요약
-        if reference_docs:
-            print("="*70)
-            print("📚 활용한 참고 문서")
-            print("="*70)
-            for doc in reference_docs:
-                print(f"  [{doc['rank']}] {doc['pdf_name']} - Page{doc['page_num']}")
-                print(f"      - 유사도: {doc['similarity']:.4f}")
-                if doc['hybrid_score']:
-                    print(f"      - Hybrid Score: {doc['hybrid_score']:.4f}")
-                print(f"      - Page Role: {doc['page_role']}")
-            print()
-        
-    except json.JSONDecodeError as e:
-        print(f"\n❌ JSON 파싱 실패: {e}")
-        print(f"\n원본 응답:")
-        print(result_text)
-        import traceback
-        traceback.print_exc()
     except Exception as e:
         print(f"\n❌ 오류 발생: {e}")
         import traceback
         traceback.print_exc()
-    
-    print("="*70)
-    print("✅ 테스트 완료!")
-    print("="*70)
 
 
 if __name__ == "__main__":
-    main()
+    filename = "img/02/조건청구서② M0059065511500-農心ジャパン202502/조건청구서② M0059065511500-農心ジャパン202502.pdf"
+    
+    main(filename=filename, page_num=4)
+

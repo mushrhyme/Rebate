@@ -1102,6 +1102,11 @@ def render_answer_editor_tab():
             # JSON 편집 expander
             with st.expander("📝 JSON 편집", expanded=True):
                 # 전체 JSON 로드 (필터링하지 않음)
+                # pending 값이 있으면 먼저 적용 (rerun 후 위젯이 읽어올 수 있도록)
+                if f"answer_json_{current_page}_pending" in st.session_state:
+                    st.session_state[f"answer_json_{current_page}"] = st.session_state[f"answer_json_{current_page}_pending"]
+                    del st.session_state[f"answer_json_{current_page}_pending"]
+                
                 full_answer_json = {}
                 if f"answer_json_{current_page}" in st.session_state:
                     try:
@@ -1137,15 +1142,78 @@ def render_answer_editor_tab():
                                 # 딕셔너리인 경우 평탄화하여 데이터프레임으로 표시
                                 flattened = flatten_dict(value)
                                 if flattened:
-                                    df = pd.DataFrame([flattened]).T
-                                    edited_df = st.data_editor(
-                                        df,
-                                        height=400,
-                                        key=f"json_editor_{current_page}_{key}",
-                                        use_container_width=True
-                                    )
-                                    # 수정된 데이터를 다시 딕셔너리로 변환 (간단한 역변환은 어려우므로 전체 JSON 업데이트는 저장 시 수행)
-                                    st.session_state[f"json_data_{current_page}_{key}"] = edited_df.to_dict('records')[0] if len(edited_df) > 0 else {}
+                                    # 리스트 필드와 일반 필드 분리
+                                    list_fields = {}  # 리스트 필드 저장
+                                    flattened_for_df = {}  # 일반 필드 저장
+                                    
+                                    for k, v in flattened.items():
+                                        if isinstance(v, list):
+                                            # 리스트는 별도 데이터프레임으로 표시하기 위해 저장
+                                            list_fields[k] = v
+                                        elif isinstance(v, dict):
+                                            # 딕셔너리는 JSON 문자열로 변환
+                                            flattened_for_df[k] = json.dumps(v, ensure_ascii=False)
+                                        else:
+                                            flattened_for_df[k] = v
+                                    
+                                    # 일반 필드 데이터프레임 표시
+                                    if flattened_for_df:
+                                        # 딕셔너리를 "키: 값" 행의 리스트로 변환하여 DF 생성하므로, transpose 없이 바로 원하는 모양
+                                        df = pd.DataFrame(
+                                            [
+                                                {"Key": k, "Value": v}
+                                                for k, v in flattened_for_df.items()
+                                            ], columns=["Key", "Value"]
+                                        )
+                                        df.set_index("Key", inplace=True)
+                                        edited_df = st.data_editor(
+                                            df,
+                                            height=400,
+                                            key=f"json_editor_{current_page}_{key}",
+                                            use_container_width=True
+                                        )
+                                        # 수정된 데이터를 다시 딕셔너리로 변환
+                                        edited_dict = edited_df.to_dict('records')[0] if len(edited_df) > 0 else {}
+                                        # JSON 문자열을 다시 파싱하여 원래 타입으로 복원
+                                        restored_dict = {}
+                                        for k, v in edited_dict.items():
+                                            if isinstance(v, str):
+                                                try:
+                                                    # JSON 문자열인지 확인하고 파싱
+                                                    restored_dict[k] = json.loads(v)
+                                                except (json.JSONDecodeError, TypeError):
+                                                    restored_dict[k] = v
+                                            else:
+                                                restored_dict[k] = v
+                                    else:
+                                        restored_dict = {}
+                                    
+                                    # 리스트 필드를 별도 데이터프레임으로 표시
+                                    for list_key, list_value in list_fields.items():
+                                        if isinstance(list_value[0], dict) if list_value else False:
+                                            # 딕셔너리 리스트인 경우
+                                            list_df = pd.DataFrame(list_value)
+                                            list_df.set_index(list_df.columns[0], inplace=True)
+                                            edited_list_df = st.data_editor(
+                                                list_df,
+                                                height=300,
+                                                key=f"json_editor_{current_page}_{key}_{list_key}",
+                                                use_container_width=True
+                                            )
+                                            restored_dict[list_key] = edited_list_df.to_dict('records')
+                                        else:
+                                            # 단순 리스트인 경우
+                                            list_df = pd.DataFrame({list_key: list_value})
+                                            edited_list_df = st.data_editor(
+                                                list_df,
+                                                height=300,
+                                                key=f"json_editor_{current_page}_{key}_{list_key}",
+                                                use_container_width=True
+                                            )
+                                            # 단일 컬럼 데이터프레임을 리스트로 변환
+                                            restored_dict[list_key] = edited_list_df[list_key].tolist()
+                                    
+                                    st.session_state[f"json_data_{current_page}_{key}"] = restored_dict
                                 else:
                                     st.info(f"'{key}' 키의 값이 비어있습니다.")
                             elif isinstance(value, list):
@@ -1275,9 +1343,11 @@ def render_answer_editor_tab():
                     # 전체 JSON 텍스트 편집 영역 (참고용)
                     st.caption("💡 전체 JSON 텍스트 (참고용)")
                     answer_json_str_default = json.dumps(full_answer_json, ensure_ascii=False, indent=2)
+                    # session_state에서 최신 값을 읽어오거나 기본값 사용
+                    answer_json_str_value = st.session_state.get(f"answer_json_{current_page}", answer_json_str_default)
                     answer_json_str = st.text_area(
                         "정답 JSON (전체)",
-                        value=answer_json_str_default,
+                        value=answer_json_str_value,
                         height=200,
                         key=f"answer_json_{current_page}"
                     )
@@ -1504,11 +1574,11 @@ def render_answer_editor_tab():
                                         example_answer_str = json.dumps(example_answer, ensure_ascii=False, indent=2)
                                         
                                         # 프롬프트 템플릿 로드 (필수)
-                                        prompt_template_path = prompts_dir / "rag_with_example.txt"
+                                        
+                                        prompt_template_path = get_prompt_file_path(version="v3")
                                         if not prompt_template_path.exists():
                                             raise FileNotFoundError(
                                                 f"프롬프트 파일이 없습니다: {prompt_template_path}\n"
-                                                f"prompts/rag_with_example.txt 파일이 필요합니다."
                                             )
                                         
                                         with open(prompt_template_path, 'r', encoding='utf-8') as f:
@@ -1571,8 +1641,10 @@ def render_answer_editor_tab():
                                             result_json["items"] = []
                                         
                                         # 세션 상태에 저장 (정답 JSON 편집 영역에 바로 반영)
+                                        # 위젯이 이미 생성된 상태에서는 직접 수정할 수 없으므로 pending 키 사용
                                         st.session_state[f"rag_result_{current_page}"] = result_json
-                                        st.session_state[f"answer_json_{current_page}"] = json.dumps(result_json, ensure_ascii=False, indent=2)
+                                        answer_json_str = json.dumps(result_json, ensure_ascii=False, indent=2)
+                                        st.session_state[f"answer_json_{current_page}_pending"] = answer_json_str
                                         st.session_state[f"page_role_{current_page}"] = result_json.get("page_role", "detail")
                                         st.success("✅ RAG 기반 정답 생성 완료! 아래 정답 JSON 편집 영역에서 확인하세요.")
                                         # 탭 상태 유지
@@ -1658,8 +1730,10 @@ def render_answer_editor_tab():
                                             result_json["items"] = []
                                         
                                         # 세션 상태에 저장 (정답 JSON 편집 영역에 바로 반영)
+                                        # 위젯이 이미 생성된 상태에서는 직접 수정할 수 없으므로 pending 키 사용
                                         st.session_state[f"rag_result_{current_page}"] = result_json
-                                        st.session_state[f"answer_json_{current_page}"] = json.dumps(result_json, ensure_ascii=False, indent=2)
+                                        answer_json_str = json.dumps(result_json, ensure_ascii=False, indent=2)
+                                        st.session_state[f"answer_json_{current_page}_pending"] = answer_json_str
                                         st.session_state[f"page_role_{current_page}"] = result_json.get("page_role", "detail")
                                         st.success("✅ RAG 기반 정답 생성 완료! 아래 정답 JSON 편집 영역에서 확인하세요.")
                                         # 탭 상태 유지

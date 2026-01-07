@@ -19,6 +19,76 @@ except ImportError:
     ChatOpenAI = None
 
 
+def reorder_json_keys(result_json: Dict[str, Any], reference_json: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """
+    결과 JSON의 키 순서를 REFERENCE_JSON의 키 순서에 맞춰 재정렬
+    
+    Args:
+        result_json: 재정렬할 JSON 딕셔너리
+        reference_json: 참조용 JSON 딕셔너리 (키 순서 기준)
+        
+    Returns:
+        키 순서가 재정렬된 JSON 딕셔너리
+    """
+    if not reference_json:
+        return result_json
+    
+    # 최상위 레벨 키 순서 추출
+    reference_top_keys = list(reference_json.keys())
+    
+    # 결과 JSON의 최상위 키 재정렬
+    reordered_result = {}
+    
+    # 1. REFERENCE_JSON에 있는 키를 순서대로 추가
+    for key in reference_top_keys:
+        if key in result_json:
+            if key == "items" and isinstance(result_json[key], list) and isinstance(reference_json.get(key), list):
+                # items 배열 처리
+                if len(reference_json[key]) > 0:
+                    # items[0]의 키 순서 추출
+                    reference_item_keys = list(reference_json[key][0].keys())
+                    # items 배열 내부 객체들의 키 순서 재정렬
+                    reordered_items = []
+                    for item in result_json[key]:
+                        if isinstance(item, dict):
+                            reordered_item = {}
+                            # REFERENCE_JSON의 키 순서대로 추가
+                            for item_key in reference_item_keys:
+                                if item_key in item:
+                                    reordered_item[item_key] = item[item_key]
+                            # REFERENCE_JSON에 없지만 결과에 있는 키 추가 (순서는 뒤로)
+                            for item_key in item.keys():
+                                if item_key not in reference_item_keys:
+                                    reordered_item[item_key] = item[item_key]
+                            reordered_items.append(reordered_item)
+                        else:
+                            reordered_items.append(item)
+                    reordered_result[key] = reordered_items
+                else:
+                    reordered_result[key] = result_json[key]
+            elif isinstance(result_json[key], dict) and isinstance(reference_json.get(key), dict):
+                # 중첩된 딕셔너리도 재정렬
+                reference_nested_keys = list(reference_json[key].keys())
+                reordered_nested = {}
+                for nested_key in reference_nested_keys:
+                    if nested_key in result_json[key]:
+                        reordered_nested[nested_key] = result_json[key][nested_key]
+                # REFERENCE에 없지만 결과에 있는 키 추가
+                for nested_key in result_json[key].keys():
+                    if nested_key not in reference_nested_keys:
+                        reordered_nested[nested_key] = result_json[key][nested_key]
+                reordered_result[key] = reordered_nested
+            else:
+                reordered_result[key] = result_json[key]
+    
+    # 2. REFERENCE_JSON에 없지만 결과에 있는 키 추가 (순서는 뒤로)
+    for key in result_json.keys():
+        if key not in reference_top_keys:
+            reordered_result[key] = result_json[key]
+    
+    return reordered_result
+
+
 def ask_openai_with_reference(
     ocr_text: str,
     answer_json: dict,
@@ -107,6 +177,10 @@ ANSWER:
         # JSON 추출 (마크다운 코드 블록 제거)
         result_text = result_text.replace('```json', '').replace('```', '').strip()
         result_json = json.loads(result_text)
+        
+        # 키 순서 재정렬 (answer_json을 참조로 사용)
+        result_json = reorder_json_keys(result_json, answer_json)
+        
         return result_json
     
     except json.JSONDecodeError as e:

@@ -38,6 +38,76 @@ def convert_numpy_types(obj: Any) -> Any:
         return obj
 
 
+def reorder_json_keys(result_json: Dict[str, Any], reference_json: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """
+    결과 JSON의 키 순서를 REFERENCE_JSON의 키 순서에 맞춰 재정렬
+    
+    Args:
+        result_json: 재정렬할 JSON 딕셔너리
+        reference_json: 참조용 JSON 딕셔너리 (키 순서 기준)
+        
+    Returns:
+        키 순서가 재정렬된 JSON 딕셔너리
+    """
+    if not reference_json:
+        return result_json
+    
+    # 최상위 레벨 키 순서 추출
+    reference_top_keys = list(reference_json.keys())
+    
+    # 결과 JSON의 최상위 키 재정렬
+    reordered_result = {}
+    
+    # 1. REFERENCE_JSON에 있는 키를 순서대로 추가
+    for key in reference_top_keys:
+        if key in result_json:
+            if key == "items" and isinstance(result_json[key], list) and isinstance(reference_json.get(key), list):
+                # items 배열 처리
+                if len(reference_json[key]) > 0:
+                    # items[0]의 키 순서 추출
+                    reference_item_keys = list(reference_json[key][0].keys())
+                    # items 배열 내부 객체들의 키 순서 재정렬
+                    reordered_items = []
+                    for item in result_json[key]:
+                        if isinstance(item, dict):
+                            reordered_item = {}
+                            # REFERENCE_JSON의 키 순서대로 추가
+                            for item_key in reference_item_keys:
+                                if item_key in item:
+                                    reordered_item[item_key] = item[item_key]
+                            # REFERENCE_JSON에 없지만 결과에 있는 키 추가 (순서는 뒤로)
+                            for item_key in item.keys():
+                                if item_key not in reference_item_keys:
+                                    reordered_item[item_key] = item[item_key]
+                            reordered_items.append(reordered_item)
+                        else:
+                            reordered_items.append(item)
+                    reordered_result[key] = reordered_items
+                else:
+                    reordered_result[key] = result_json[key]
+            elif isinstance(result_json[key], dict) and isinstance(reference_json.get(key), dict):
+                # 중첩된 딕셔너리도 재정렬
+                reference_nested_keys = list(reference_json[key].keys())
+                reordered_nested = {}
+                for nested_key in reference_nested_keys:
+                    if nested_key in result_json[key]:
+                        reordered_nested[nested_key] = result_json[key][nested_key]
+                # REFERENCE에 없지만 결과에 있는 키 추가
+                for nested_key in result_json[key].keys():
+                    if nested_key not in reference_nested_keys:
+                        reordered_nested[nested_key] = result_json[key][nested_key]
+                reordered_result[key] = reordered_nested
+            else:
+                reordered_result[key] = result_json[key]
+    
+    # 2. REFERENCE_JSON에 없지만 결과에 있는 키 추가 (순서는 뒤로)
+    for key in result_json.keys():
+        if key not in reference_top_keys:
+            reordered_result[key] = result_json[key]
+    
+    return reordered_result
+
+
 def extract_json_with_rag(
     ocr_text: str,
     question: Optional[str] = None,
@@ -179,7 +249,10 @@ def extract_json_with_rag(
         example_answer_str = json.dumps(example_answer, ensure_ascii=False, indent=2)
         
         # 프롬프트 템플릿 파일 로드 (버전에 따라)
-        if prompt_version == "v2":
+        if prompt_version == "v3":
+            prompt_template_path = prompts_dir / "rag_with_example_v3.txt"
+            fallback_path = prompts_dir / "rag_with_example_v2.txt"  # v3가 없으면 v2 사용
+        elif prompt_version == "v2":
             prompt_template_path = prompts_dir / "rag_with_example_v2.txt"
             fallback_path = prompts_dir / "rag_with_example.txt"  # v2가 없으면 v1 사용
         else:
@@ -191,10 +264,13 @@ def extract_json_with_rag(
             prompt_template_path = fallback_path
         
         if not prompt_template_path.exists():
-            raise FileNotFoundError(
-                f"프롬프트 파일이 없습니다: {prompt_template_path}\n"
-                f"prompts/rag_with_example{'_v2' if prompt_version == 'v2' else ''}.txt 파일이 필요합니다."
-            )
+            if fallback_path and fallback_path.exists():
+                prompt_template_path = fallback_path
+            else:
+                raise FileNotFoundError(
+                    f"프롬프트 파일이 없습니다: {prompt_template_path}\n"
+                    f"prompts/rag_with_example{'_v' + prompt_version if prompt_version != 'v1' else ''}.txt 파일이 필요합니다."
+                )
         
         with open(prompt_template_path, 'r', encoding='utf-8') as f:
             prompt_template = f.read()
@@ -205,22 +281,25 @@ def extract_json_with_rag(
         )
     else:
         # 예제가 없는 경우: Zero-shot
-        if prompt_version == "v2":
+        if prompt_version == "v3":
+            prompt_template_path = prompts_dir / "rag_zero_shot_v3.txt"
+            fallback_path = prompts_dir / "rag_zero_shot_v2.txt"  # v3가 없으면 v2 사용
+        elif prompt_version == "v2":
             prompt_template_path = prompts_dir / "rag_zero_shot_v2.txt"
             fallback_path = prompts_dir / "rag_zero_shot.txt"  # v2가 없으면 v1 사용
         else:
             prompt_template_path = prompts_dir / "rag_zero_shot.txt"
             fallback_path = None
         
-        # v2 파일이 없으면 v1 파일 사용 (하위 호환성)
-        if not prompt_template_path.exists() and fallback_path and fallback_path.exists():
-            prompt_template_path = fallback_path
-        
+        # fallback 파일이 있으면 사용
         if not prompt_template_path.exists():
-            raise FileNotFoundError(
-                f"프롬프트 파일이 없습니다: {prompt_template_path}\n"
-                f"prompts/rag_zero_shot{'_v2' if prompt_version == 'v2' else ''}.txt 파일이 필요합니다."
-            )
+            if fallback_path and fallback_path.exists():
+                prompt_template_path = fallback_path
+            else:
+                raise FileNotFoundError(
+                    f"프롬프트 파일이 없습니다: {prompt_template_path}\n"
+                    f"prompts/rag_zero_shot{'_v' + prompt_version if prompt_version != 'v1' else ''}.txt 파일이 필요합니다."
+                )
         
         with open(prompt_template_path, 'r', encoding='utf-8') as f:
             prompt_template = f.read()
@@ -326,6 +405,7 @@ def extract_json_with_rag(
             def normalize_nan(obj):
                 import math
                 if isinstance(obj, dict):
+                    # Python 3.7+에서는 dict가 삽입 순서를 보존하므로 items() 순서대로 재생성하면 순서 유지
                     return {k: normalize_nan(v) for k, v in obj.items()}
                 elif isinstance(obj, list):
                     return [normalize_nan(item) for item in obj]
@@ -359,6 +439,48 @@ def extract_json_with_rag(
                             if key in item and isinstance(item[key], float) and (math.isnan(item[key]) or math.isinf(item[key])):
                                 item[key] = None
                                 print(f"  ⚠️ {key}가 NaN이어서 null로 변환했습니다.")
+            
+            # 키 순서 재정렬 (REFERENCE_JSON이 있는 경우)
+            # normalize_nan이 딕셔너리를 재생성하므로 순서가 바뀔 수 있음
+            # 따라서 NaN 정규화 후에 다시 재정렬 필요
+            if similar_examples and len(similar_examples) > 0:
+                example_answer = None
+                example = similar_examples[0]
+                
+                # RAG에서 가져온 answer_json은 키 순서가 바뀔 수 있으므로,
+                # 원본 파일에서 직접 읽어서 키 순서를 가져옴
+                metadata = example.get("metadata", {})
+                pdf_name = metadata.get("pdf_name")
+                page_num_ref = metadata.get("page_num")
+                
+                if pdf_name and page_num_ref:
+                    # 원본 answer.json 파일 경로 구성
+                    project_root = get_project_root()
+                    img_dir = project_root / "img"
+                    
+                    # PDF 이름으로 폴더 찾기
+                    pdf_folders = list(img_dir.glob(f"*/{pdf_name}"))
+                    if not pdf_folders:
+                        # PDF 이름이 폴더명에 포함된 경우
+                        pdf_folders = [d for d in img_dir.iterdir() if d.is_dir() and pdf_name in d.name]
+                    
+                    if pdf_folders:
+                        pdf_folder = pdf_folders[0]
+                        answer_json_path = pdf_folder / f"Page{page_num_ref}_answer.json"
+                        
+                        if answer_json_path.exists():
+                            try:
+                                with open(answer_json_path, 'r', encoding='utf-8') as f:
+                                    example_answer = json.load(f)
+                            except Exception:
+                                pass
+                
+                # 원본 파일을 읽지 못한 경우 RAG에서 가져온 것 사용
+                if example_answer is None:
+                    example_answer = example.get("answer_json")
+                
+                if example_answer:
+                    result_json = reorder_json_keys(result_json, example_answer)
             
             # 디버깅: 파싱된 JSON 저장
             if debug_dir and page_num:
