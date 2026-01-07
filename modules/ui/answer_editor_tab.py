@@ -90,6 +90,25 @@ def filter_answer_json(answer_json: dict) -> dict:
     return filtered
 
 
+def ensure_type_in_items(answer_json: dict) -> dict:
+    """
+    detail 페이지와 summary 페이지의 items에 'タイプ' 키가 없으면 기본값 '販促金請求' 추가
+    
+    Args:
+        answer_json: JSON 딕셔너리
+        
+    Returns:
+        수정된 JSON 딕셔너리
+    """
+    page_role = answer_json.get("page_role")
+    if page_role in ["detail", "summary"] and "items" in answer_json:
+        items = answer_json.get("items", [])
+        for item in items:
+            if isinstance(item, dict) and "タイプ" not in item:
+                item["タイプ"] = "販促金請求"
+    return answer_json
+
+
 def get_answer_json_path(pdf_img_dir: Path, page_num: int, version: str = "v2") -> Path:
     """
     정답지 JSON 파일 경로 생성
@@ -123,6 +142,329 @@ def get_prompt_file_path(version: str = "v1", use_example: bool = True) -> Path:
         return prompts_dir / f"rag_with_example_{version}.txt"
     else:
         return prompts_dir / f"rag_zero_shot_{version}.txt"
+
+
+def parse_amount(amount_str):
+    """
+    金額 문자열을 정수로 변환 (예: "324,000" -> 324000)
+    
+    Args:
+        amount_str: 금액 문자열 (예: "324,000", "1,070,673")
+        
+    Returns:
+        정수 금액 (변환 실패 시 0)
+    """
+    if not amount_str or pd.isna(amount_str):
+        return 0
+    if isinstance(amount_str, (int, float)):
+        return int(amount_str)
+    # 쉼표 제거 후 정수 변환
+    try:
+        return int(str(amount_str).replace(",", "").strip())
+    except (ValueError, AttributeError):
+        return 0
+
+
+def aggregate_detail_by_customer(detail_pages, tax_rate=None, item_type=None):
+    """
+    detail 페이지들의 金額을 得意先名/得意先コード별로 집계 (세율별, 타입별 필터링 가능)
+    
+    Args:
+        detail_pages: detail 페이지 JSON 딕셔너리 리스트
+        tax_rate: 필터링할 세율 (8 또는 10, None이면 전체)
+        item_type: 필터링할 타입 ("販促金請求" 또는 "役務提供", None이면 전체)
+        
+    Returns:
+        딕셔너리: {("得意先名", "得意先コード"): 총액, ...}
+    """
+    customer_totals = {}
+    for page_data in detail_pages:
+        items = page_data.get("items", [])
+        for item in items:
+            customer_name = item.get("得意先名") or item.get("customer")
+            customer_code = item.get("得意先コード")
+            amount_str = item.get("金額")
+            tax_rate_str = item.get("消費税率") or item.get("税率")
+            item_type_str = item.get("タイプ") or item.get("type")
+            
+            if customer_name and amount_str:
+                # 타입 필터링
+                if item_type is not None:
+                    if item_type_str != item_type:
+                        continue  # 해당 타입이 아니면 건너뛰기
+                
+                # 세율 필터링
+                if tax_rate is not None:
+                    item_tax_rate = None
+                    if tax_rate_str:
+                        tax_rate_match = re.search(r'(\d+)', str(tax_rate_str))
+                        if tax_rate_match:
+                            item_tax_rate = int(tax_rate_match.group(1))
+                    if item_tax_rate != tax_rate:
+                        continue  # 해당 세율이 아니면 건너뛰기
+                
+                key = (customer_name, customer_code)
+                amount = parse_amount(amount_str)
+                customer_totals[key] = customer_totals.get(key, 0) + amount
+    
+    return customer_totals
+
+
+def aggregate_detail_by_tax_rate(detail_pages):
+    """
+    detail 페이지들의 金額을 소비세율(8%, 10%)별로 집계
+    
+    Args:
+        detail_pages: detail 페이지 JSON 딕셔너리 리스트
+        
+    Returns:
+        딕셔너리: {"8%": 총액, "10%": 총액}
+    """
+    tax_totals = {"8%": 0, "10%": 0}
+    
+    for page_data in detail_pages:
+        items = page_data.get("items", [])
+        for item in items:
+            tax_rate_str = item.get("消費税率") or item.get("税率")
+            amount_str = item.get("金額")
+            
+            if tax_rate_str and amount_str:
+                amount = parse_amount(amount_str)
+                # 세율 문자열에서 숫자 추출 (예: "8.00%", "8%", "※8.0%" -> 8)
+                tax_rate_match = re.search(r'(\d+)', str(tax_rate_str))
+                if tax_rate_match:
+                    tax_rate_num = int(tax_rate_match.group(1))
+                    if tax_rate_num == 8:
+                        tax_totals["8%"] += amount
+                    elif tax_rate_num == 10:
+                        tax_totals["10%"] += amount
+    
+    return tax_totals
+
+
+def calculate_detail_tax_excluded_and_tax(detail_pages):
+    """
+    detail 페이지들의 販促金請求 타입 항목의 金額을 세금 제외 금액으로 가정하고, 세금 제외 금액과 세금을 계산
+    
+    Args:
+        detail_pages: detail 페이지 JSON 딕셔너리 리스트
+        
+    Returns:
+        딕셔너리: {"8%": {"税抜": 금액, "消費税": 금액}, "10%": {"税抜": 금액, "消費税": 금액}}
+    """
+    totals = {"8%": {"税抜": 0, "消費税": 0}, "10%": {"税抜": 0, "消費税": 0}}
+    
+    for page_data in detail_pages:
+        items = page_data.get("items", [])
+        for item in items:
+            # タイプ이 役務提供이면 건너뛰기 (販促金請求만 처리)
+            item_type = item.get("タイプ") or item.get("type")
+            if item_type == "役務提供":
+                continue
+            
+            tax_rate_str = item.get("消費税率") or item.get("税率")
+            amount_str = item.get("金額")
+            
+            if tax_rate_str and amount_str:
+                amount = parse_amount(amount_str)  # 세금 제외 금액으로 가정
+                # 세율 문자열에서 숫자 추출 (예: "8.00%", "8%", "※8.0%" -> 8)
+                tax_rate_match = re.search(r'(\d+)', str(tax_rate_str))
+                if tax_rate_match:
+                    tax_rate_num = int(tax_rate_match.group(1))
+                    if tax_rate_num == 8:
+                        totals["8%"]["税抜"] += amount
+                        # 세금 계산 (정수 단위로 반올림)
+                        tax = round(amount * 0.08)
+                        totals["8%"]["消費税"] += tax
+                    elif tax_rate_num == 10:
+                        totals["10%"]["税抜"] += amount
+                        # 세금 계산 (정수 단위로 반올림)
+                        tax = round(amount * 0.10)
+                        totals["10%"]["消費税"] += tax
+    
+    return totals
+
+
+def calculate_detail_service_tax_excluded_and_tax(detail_pages):
+    """
+    detail 페이지들의 役務提供 타입 항목의 金額을 세금 제외 금액으로 가정하고, 세금 제외 금액과 세금을 계산
+    役務提供은 일반적으로 10% 세율 사용
+    
+    Args:
+        detail_pages: detail 페이지 JSON 딕셔너리 리스트
+        
+    Returns:
+        딕셔너리: {"税抜": 금액, "消費税": 금액, "合計": 금액}
+    """
+    totals = {"税抜": 0, "消費税": 0, "合計": 0}
+    
+    for page_data in detail_pages:
+        items = page_data.get("items", [])
+        for item in items:
+            # タイプ이 役務提供인 항목만 처리
+            item_type = item.get("タイプ") or item.get("type")
+            if item_type != "役務提供":
+                continue
+            
+            tax_rate_str = item.get("消費税率") or item.get("税率")
+            amount_str = item.get("金額")
+            
+            if amount_str:
+                amount = parse_amount(amount_str)  # 세금 제외 금액으로 가정
+                totals["税抜"] += amount
+                
+                # 세율 확인 (기본값 10%)
+                tax_rate = 10
+                if tax_rate_str:
+                    tax_rate_match = re.search(r'(\d+)', str(tax_rate_str))
+                    if tax_rate_match:
+                        tax_rate = int(tax_rate_match.group(1))
+                
+                # 세금 계산 (정수 단위로 반올림)
+                tax = round(amount * (tax_rate / 100))
+                totals["消費税"] += tax
+                totals["合計"] = totals["税抜"] + totals["消費税"]
+    
+    return totals
+
+
+def extract_summary_by_customer(summary_pages, tax_rate=None, item_type=None):
+    """
+    summary 페이지에서 得意先名/得意先コード별 집계 정보 추출 (세율별, 타입별 필터링 가능)
+    
+    Args:
+        summary_pages: summary 페이지 JSON 딕셔너리 리스트
+        tax_rate: 필터링할 세율 (8 또는 10, None이면 전체)
+        item_type: 필터링할 타입 ("販促金請求" 또는 "役務提供", None이면 전체)
+        
+    Returns:
+        딕셔너리: {("得意先名", "得意先コード"): 총액, ...}
+    """
+    customer_totals = {}
+    for page_data in summary_pages:
+        items = page_data.get("items", [])
+        for item in items:
+            customer_name = item.get("得意先名") or item.get("customer")
+            customer_code = item.get("得意先コード")
+            amount_str = item.get("金額")
+            tax_rate_str = item.get("消費税率") or item.get("税率")
+            item_type_str = item.get("タイプ") or item.get("type")
+            
+            if customer_name and amount_str:
+                # 타입 필터링
+                if item_type is not None:
+                    if item_type_str != item_type:
+                        continue  # 해당 타입이 아니면 건너뛰기
+                
+                # 세율 필터링
+                if tax_rate is not None:
+                    item_tax_rate = None
+                    if tax_rate_str:
+                        tax_rate_match = re.search(r'(\d+)', str(tax_rate_str))
+                        if tax_rate_match:
+                            item_tax_rate = int(tax_rate_match.group(1))
+                    if item_tax_rate != tax_rate:
+                        continue  # 해당 세율이 아니면 건너뛰기
+                
+                key = (customer_name, customer_code)
+                amount = parse_amount(amount_str)
+                customer_totals[key] = customer_totals.get(key, 0) + amount
+    
+    return customer_totals
+
+
+def extract_cover_totals(cover_pages):
+    """
+    cover 페이지에서 판촉금과 용역비를 분리하여 총액 정보 추출
+    
+    Args:
+        cover_pages: cover 페이지 JSON 딕셔너리 리스트
+        
+    Returns:
+        딕셔너리: {
+            "販促金請求": {"8%": {"税抜": 금액, "消費税": 금액}, "10%": {"税抜": 금액, "消費税": 금액}, "合計": 금액, "今回請求金額合計": 금액},
+            "役務提供": {"税抜金額": 금액, "消費税": 금액, "合計": 금액, "今回請求金額合計": 금액}
+        }
+    """
+    promo_totals = {"8%": {"税抜": 0, "消費税": 0}, "10%": {"税抜": 0, "消費税": 0}, "合計": 0, "今回請求金額合計": 0}
+    service_totals = {"税抜金額": 0, "消費税": 0, "合計": 0, "今回請求金額合計": 0}
+    
+    for page_data in cover_pages:
+        totals_section = page_data.get("totals", {})
+        
+        # totals.明細 배열 형식 확인 (판촉금으로 간주)
+        if "明細" in totals_section:
+            for item in totals_section["明細"]:
+                tax_rate_str = item.get("税率")
+                tax_excluded = item.get("税抜金額")
+                tax_amount = item.get("消費税金額")
+                tax_included = item.get("税込金額")
+                
+                if tax_rate_str:
+                    # 세율 문자열에서 숫자 추출 (예: "※8.0%" -> 8)
+                    tax_rate_match = re.search(r'(\d+)', str(tax_rate_str))
+                    if tax_rate_match:
+                        tax_rate_num = int(tax_rate_match.group(1))
+                        if tax_rate_num == 8:
+                            if tax_excluded:
+                                promo_totals["8%"]["税抜"] += parse_amount(tax_excluded)
+                            if tax_amount:
+                                promo_totals["8%"]["消費税"] += parse_amount(tax_amount)
+                        elif tax_rate_num == 10:
+                            if tax_excluded:
+                                promo_totals["10%"]["税抜"] += parse_amount(tax_excluded)
+                            if tax_amount:
+                                promo_totals["10%"]["消費税"] += parse_amount(tax_amount)
+                
+                # 합계 행 처리
+                if item.get("件名") == "合計" and tax_included:
+                    promo_totals["合計"] = parse_amount(tax_included)
+        
+        # totals.販促金請求 형식 확인
+        if "販促金請求" in totals_section:
+            promo_section = totals_section["販促金請求"]
+            if "当月請求額" in promo_section:
+                monthly = promo_section["当月請求額"]
+                if "8％対象金額" in monthly:
+                    tax8 = monthly["8％対象金額"]
+                    if "税抜" in tax8:
+                        promo_totals["8%"]["税抜"] += parse_amount(tax8["税抜"])
+                    if "消費税" in tax8:
+                        promo_totals["8%"]["消費税"] += parse_amount(tax8["消費税"])
+                if "10％対象金額" in monthly:
+                    tax10 = monthly["10％対象金額"]
+                    if "税抜" in tax10:
+                        promo_totals["10%"]["税抜"] += parse_amount(tax10["税抜"])
+                    if "消費税" in tax10:
+                        promo_totals["10%"]["消費税"] += parse_amount(tax10["消費税"])
+                if "合計（税込）" in monthly:
+                    promo_totals["合計"] = parse_amount(monthly["合計（税込）"])
+            # 今回請求金額合計 추출
+            if "今回請求金額合計" in promo_section:
+                promo_totals["今回請求金額合計"] = parse_amount(promo_section["今回請求金額合計"])
+        
+        # totals.役務提供 형식 확인 (용역비는 별도로 분리)
+        if "役務提供" in totals_section:
+            service_section = totals_section["役務提供"]
+            if "当月請求額" in service_section:
+                monthly = service_section["当月請求額"]
+                # 税抜金額 추출
+                if "税抜金額" in monthly:
+                    service_totals["税抜金額"] += parse_amount(monthly["税抜金額"])
+                # 消費税（10％） 추출
+                if "消費税（10％）" in monthly:
+                    service_totals["消費税"] += parse_amount(monthly["消費税（10％）"])
+                # 合計（税込） 추출
+                if "合計（税込）" in monthly:
+                    service_totals["合計"] = parse_amount(monthly["合計（税込）"])
+            # 今回請求金額合計 추출
+            if "今回請求金額合計" in service_section:
+                service_totals["今回請求金額合計"] = parse_amount(service_section["今回請求金額合計"])
+    
+    return {
+        "販促金請求": promo_totals,
+        "役務提供": service_totals
+    }
 
 
 
@@ -1020,6 +1362,253 @@ def render_answer_editor_tab():
 
             st.divider()
 
+            # 검증 섹션: cover와 summary 페이지를 활용한 검증
+            # 모든 페이지의 JSON 로드 (공통)
+            try:
+                all_pages_data = []
+                detail_pages = []
+                summary_pages = []
+                cover_pages = []
+                
+                for page_num in range(1, total_pages + 1):
+                    page_info = pdf_info["pages"][page_num - 1]
+                    answer_json_path = page_info["answer_json_path"]
+                    
+                    page_data = None
+                    # session_state에서 우선 로드 시도
+                    if f"answer_json_{page_num}" in st.session_state:
+                        try:
+                            page_data = json.loads(st.session_state[f"answer_json_{page_num}"])
+                        except:
+                            pass
+                    
+                    # 파일에서 로드 시도
+                    if page_data is None and os.path.exists(answer_json_path):
+                        try:
+                            with open(answer_json_path, "r", encoding="utf-8") as f:
+                                page_data = json.load(f)
+                        except:
+                            pass
+                    
+                    if page_data:
+                        all_pages_data.append((page_num, page_data))
+                        page_role = page_data.get("page_role", "detail")
+                        if page_role == "detail":
+                            detail_pages.append(page_data)
+                        elif page_role == "summary":
+                            summary_pages.append(page_data)
+                        elif page_role == "cover":
+                            cover_pages.append(page_data)
+                
+                # 거래처별 검증 (summary와 비교)
+                with st.expander("📊 得意先名/得意先コード別集計比較 (summary比較)", expanded=False):
+                    if detail_pages and summary_pages:
+                        st.caption("ℹ️ タイプの区分なく、得意先基準のみで合計した金額です。")
+                        
+                        # 販促金請求 검증
+                        st.write("**販促金請求:**")
+                        detail_promo_by_customer = aggregate_detail_by_customer(detail_pages, tax_rate=None, item_type="販促金請求")
+                        summary_promo_by_customer = extract_summary_by_customer(summary_pages, tax_rate=None, item_type="販促金請求")
+                        
+                        comparison_data_promo = []
+                        all_customers_promo = set(list(detail_promo_by_customer.keys()) + list(summary_promo_by_customer.keys()))
+                        
+                        for customer_key in sorted(all_customers_promo):
+                            customer_name, customer_code = customer_key
+                            detail_amount = detail_promo_by_customer.get(customer_key, 0)
+                            summary_amount = summary_promo_by_customer.get(customer_key, 0)
+                            diff = detail_amount - summary_amount
+                            match = abs(diff) < 1  # 1원 이하 차이는 일치로 간주
+                            
+                            comparison_data_promo.append({
+                                "得意先名": customer_name or "",
+                                "得意先コード": customer_code or "",
+                                "計算金額": f"{detail_amount:,}",
+                                "実際金額": f"{summary_amount:,}",
+                                "差額": f"{diff:,}",
+                                "状態": "✅ 一致" if match else "❌ 不一致"
+                            })
+                        
+                        if comparison_data_promo:
+                            comparison_df_promo = pd.DataFrame(comparison_data_promo)
+                            st.dataframe(comparison_df_promo, use_container_width=True, hide_index=True)
+                        else:
+                            st.info("販促金請求の比較データがありません。")
+                        
+                        # 役務提供 검증
+                        detail_service_by_customer = aggregate_detail_by_customer(detail_pages, tax_rate=None, item_type="役務提供")
+                        summary_service_by_customer = extract_summary_by_customer(summary_pages, tax_rate=None, item_type="役務提供")
+                        
+                        if detail_service_by_customer or summary_service_by_customer:
+                            st.write("**役務提供:**")
+                            comparison_data_service = []
+                            all_customers_service = set(list(detail_service_by_customer.keys()) + list(summary_service_by_customer.keys()))
+                            
+                            for customer_key in sorted(all_customers_service):
+                                customer_name, customer_code = customer_key
+                                detail_amount = detail_service_by_customer.get(customer_key, 0)
+                                summary_amount = summary_service_by_customer.get(customer_key, 0)
+                                diff = detail_amount - summary_amount
+                                match = abs(diff) < 1  # 1원 이하 차이는 일치로 간주
+                                
+                                comparison_data_service.append({
+                                    "得意先名": customer_name or "",
+                                    "得意先コード": customer_code or "",
+                                    "計算金額": f"{detail_amount:,}",
+                                    "実際金額": f"{summary_amount:,}",
+                                    "差額": f"{diff:,}",
+                                    "状態": "✅ 一致" if match else "❌ 不一致"
+                                })
+                            
+                            if comparison_data_service:
+                                comparison_df_service = pd.DataFrame(comparison_data_service)
+                                st.dataframe(comparison_df_service, use_container_width=True, hide_index=True)
+                            else:
+                                st.info("役務提供の比較データがありません。")
+                    elif not detail_pages:
+                        st.info("ℹ️ detailページがないため検証できません。")
+                    elif not summary_pages:
+                        st.warning("⚠️ summaryページが見つかりません。")
+                
+                # 소비세율별 검증 (cover와 비교)
+                with st.expander("💰 消費税率別総額比較 (cover比較)", expanded=False):
+                    if detail_pages and cover_pages:
+                        cover_totals = extract_cover_totals(cover_pages)
+                        promo_totals = cover_totals.get("販促金請求", {})
+                        service_totals = cover_totals.get("役務提供", {})
+                        
+                        # detail의 세금 제외 금액 계산 (판촉금만 비교)
+                        detail_tax_breakdown = calculate_detail_tax_excluded_and_tax(detail_pages)
+                        
+                        # detail의 세금 제외 금액 추출
+                        detail_8_tax_excluded = detail_tax_breakdown["8%"].get("税抜", 0)
+                        detail_10_tax_excluded = detail_tax_breakdown["10%"].get("税抜", 0)
+                        
+                        # detail의 役務提供 금액 계산
+                        detail_service_breakdown = calculate_detail_service_tax_excluded_and_tax(detail_pages)
+                        detail_service_tax_excluded = detail_service_breakdown.get("税抜", 0)
+                        detail_service_tax = detail_service_breakdown.get("消費税", 0)
+                        detail_service_total = detail_service_breakdown.get("合計", 0)
+                        
+                        # cover 판촉금 정보 (용역비 제외)
+                        cover_promo_8_tax_excluded = promo_totals.get("8%", {}).get("税抜", 0)
+                        cover_promo_8_tax = promo_totals.get("8%", {}).get("消費税", 0)
+                        cover_promo_8_total = cover_promo_8_tax_excluded + cover_promo_8_tax
+                        
+                        cover_promo_10_tax_excluded = promo_totals.get("10%", {}).get("税抜", 0)
+                        cover_promo_10_tax = promo_totals.get("10%", {}).get("消費税", 0)
+                        cover_promo_10_total = cover_promo_10_tax_excluded + cover_promo_10_tax
+                        
+                        # cover 役務提供 정보
+                        cover_service_tax_excluded = service_totals.get("税抜金額", 0)
+                        cover_service_tax = service_totals.get("消費税", 0)
+                        cover_service_total = service_totals.get("合計", 0)
+                        cover_service_request_total = service_totals.get("今回請求金額合計", 0)
+                        
+                        # 판촉금 검증: 8% 대상
+                        st.write("**販促金請求 - 8% 対象金額:**")
+                        detail_8_tax_calculated = round(detail_8_tax_excluded * 0.08)
+                        detail_8_total_calculated = detail_8_tax_excluded + detail_8_tax_calculated
+                        
+                        comparison_data_8 = []
+                        comparison_data_8.append({
+                            "区分": "税抜",
+                            "計算金額": f"{detail_8_tax_excluded:,}",
+                            "実際金額": f"{cover_promo_8_tax_excluded:,}",
+                            "差額": f"{detail_8_tax_excluded - cover_promo_8_tax_excluded:,}",
+                            "状態": "✅ 一致" if abs(detail_8_tax_excluded - cover_promo_8_tax_excluded) < 1 else "❌ 不一致"
+                        })
+                        comparison_data_8.append({
+                            "区分": "消費税",
+                            "計算金額": f"{detail_8_tax_calculated:,}",
+                            "実際金額": f"{cover_promo_8_tax:,}",
+                            "差額": f"{detail_8_tax_calculated - cover_promo_8_tax:,}",
+                            "状態": "✅ 一致" if abs(detail_8_tax_calculated - cover_promo_8_tax) < 1 else "❌ 不一致"
+                        })
+                        comparison_data_8.append({
+                            "区分": "合計 (税抜+消費税)",
+                            "計算金額": f"{detail_8_total_calculated:,}",
+                            "実際金額": f"{cover_promo_8_total:,}",
+                            "差額": f"{detail_8_total_calculated - cover_promo_8_total:,}",
+                            "状態": "✅ 一致" if abs(detail_8_total_calculated - cover_promo_8_total) < 1 else "❌ 不一致"
+                        })
+                        
+                        comparison_df_8 = pd.DataFrame(comparison_data_8)
+                        st.dataframe(comparison_df_8, use_container_width=True, hide_index=True)
+                        
+                        # 판촉금 검증: 10% 대상
+                        if detail_10_tax_excluded > 0 or cover_promo_10_tax_excluded > 0:
+                            detail_10_tax_calculated = round(detail_10_tax_excluded * 0.10)
+                            detail_10_total_calculated = detail_10_tax_excluded + detail_10_tax_calculated
+                            
+                            st.write("**販促金請求 - 10% 対象金額:**")
+                            comparison_data_10 = []
+                            comparison_data_10.append({
+                                "区分": "税抜",
+                                "計算金額": f"{detail_10_tax_excluded:,}",
+                                "実際金額": f"{cover_promo_10_tax_excluded:,}",
+                                "差額": f"{detail_10_tax_excluded - cover_promo_10_tax_excluded:,}",
+                                "状態": "✅ 一致" if abs(detail_10_tax_excluded - cover_promo_10_tax_excluded) < 1 else "❌ 不一致"
+                            })
+                            comparison_data_10.append({
+                                "区分": "消費税",
+                                "計算金額": f"{detail_10_tax_calculated:,}",
+                                "実際金額": f"{cover_promo_10_tax:,}",
+                                "差額": f"{detail_10_tax_calculated - cover_promo_10_tax:,}",
+                                "状態": "✅ 一致" if abs(detail_10_tax_calculated - cover_promo_10_tax) < 1 else "❌ 不一致"
+                            })
+                            comparison_data_10.append({
+                                "区分": "合計 (税抜+消費税)",
+                                "計算金額": f"{detail_10_total_calculated:,}",
+                                "実際金額": f"{cover_promo_10_total:,}",
+                                "差額": f"{detail_10_total_calculated - cover_promo_10_total:,}",
+                                "状態": "✅ 一致" if abs(detail_10_total_calculated - cover_promo_10_total) < 1 else "❌ 不一致"
+                            })
+                            
+                            comparison_df_10 = pd.DataFrame(comparison_data_10)
+                            st.dataframe(comparison_df_10, use_container_width=True, hide_index=True)
+                        
+                        # 役務提供 검증
+                        if detail_service_tax_excluded > 0 or cover_service_tax_excluded > 0:
+                            st.write("**役務提供:**")
+                            detail_service_tax_calculated = round(detail_service_tax_excluded * 0.10)  # 役務提供은 일반적으로 10% 세율
+                            detail_service_total_calculated = detail_service_tax_excluded + detail_service_tax_calculated
+                            
+                            comparison_data_service = []
+                            comparison_data_service.append({
+                                "区分": "税抜金額",
+                                "計算金額": f"{detail_service_tax_excluded:,}",
+                                "実際金額": f"{cover_service_tax_excluded:,}",
+                                "差額": f"{detail_service_tax_excluded - cover_service_tax_excluded:,}",
+                                "状態": "✅ 一致" if abs(detail_service_tax_excluded - cover_service_tax_excluded) < 1 else "❌ 不一致"
+                            })
+                            comparison_data_service.append({
+                                "区分": "消費税",
+                                "計算金額": f"{detail_service_tax_calculated:,}",
+                                "実際金額": f"{cover_service_tax:,}",
+                                "差額": f"{detail_service_tax_calculated - cover_service_tax:,}",
+                                "状態": "✅ 一致" if abs(detail_service_tax_calculated - cover_service_tax) < 1 else "❌ 不一致"
+                            })
+                            comparison_data_service.append({
+                                "区分": "合計（税込）",
+                                "計算金額": f"{detail_service_total_calculated:,}",
+                                "実際金額": f"{cover_service_total:,}",
+                                "差額": f"{detail_service_total_calculated - cover_service_total:,}",
+                                "状態": "✅ 一致" if abs(detail_service_total_calculated - cover_service_total) < 1 else "❌ 不一致"
+                            })
+                            
+                            comparison_df_service = pd.DataFrame(comparison_data_service)
+                            st.dataframe(comparison_df_service, use_container_width=True, hide_index=True)
+                    elif not detail_pages:
+                        st.info("ℹ️ detailページがないため検証できません。")
+                    elif not cover_pages:
+                        st.warning("⚠️ coverページが見つかりません。")
+                        
+            except Exception as e:
+                st.error(f"❌ 検証中にエラーが発生しました: {e}")
+                with st.expander("詳細エラー情報"):
+                    st.code(traceback.format_exc())
+
             if "_answer_editor_page_backup" in st.session_state:
                 st.session_state.answer_editor_selected_page = st.session_state["_answer_editor_page_backup"]
                 del st.session_state["_answer_editor_page_backup"]
@@ -1096,6 +1685,8 @@ def render_answer_editor_tab():
                         loaded_json = json.load(f)
                         # 전체 JSON 로드 (필터링하지 않음)
                         default_answer_json = loaded_json
+                        # detail 페이지의 items에 'タイプ' 키가 없으면 추가
+                        default_answer_json = ensure_type_in_items(default_answer_json)
                 except Exception as e:
                     st.warning(f"기존 정답 JSON 로드 실패: {e}")
 
@@ -1111,6 +1702,8 @@ def render_answer_editor_tab():
                 if f"answer_json_{current_page}" in st.session_state:
                     try:
                         full_answer_json = json.loads(st.session_state[f"answer_json_{current_page}"])
+                        # detail 페이지의 items에 'タイプ' 키가 없으면 추가
+                        full_answer_json = ensure_type_in_items(full_answer_json)
                     except json.JSONDecodeError:
                         full_answer_json = default_answer_json
                 else:
@@ -1119,6 +1712,8 @@ def render_answer_editor_tab():
                         try:
                             with open(answer_json_path, "r", encoding="utf-8") as f:
                                 full_answer_json = json.load(f)
+                                # detail 페이지의 items에 'タイプ' 키가 없으면 추가
+                                full_answer_json = ensure_type_in_items(full_answer_json)
                         except Exception:
                             full_answer_json = default_answer_json
                     else:
@@ -1272,6 +1867,22 @@ def render_answer_editor_tab():
                                                 for col in df.columns:
                                                     if col == 'No':
                                                         gb.configure_column(col, header_name=col, editable=False, width=60, pinned='left')
+                                                    elif col == 'タイプ':
+                                                        # 'タイプ' 컬럼은 selectbox로 설정
+                                                        type_options = ["販促金請求", "役務提供"]
+                                                        # DataFrame에 있는 고유값도 옵션에 추가
+                                                        if col in df.columns:
+                                                            existing_values = df[col].dropna().unique().tolist()
+                                                            for val in existing_values:
+                                                                if val not in type_options:
+                                                                    type_options.append(str(val))
+                                                        gb.configure_column(
+                                                            col,
+                                                            header_name=col,
+                                                            editable=True,
+                                                            cellEditor='agSelectCellEditor',
+                                                            cellEditorParams={'values': type_options}
+                                                        )
                                                     else:
                                                         gb.configure_column(col, header_name=col)
                                                 
@@ -1640,6 +2251,9 @@ def render_answer_editor_tab():
                                         if not isinstance(result_json.get("items"), list):
                                             result_json["items"] = []
                                         
+                                        # detail 페이지의 items에 'タイプ' 키가 없으면 추가
+                                        result_json = ensure_type_in_items(result_json)
+                                        
                                         # 세션 상태에 저장 (정답 JSON 편집 영역에 바로 반영)
                                         # 위젯이 이미 생성된 상태에서는 직접 수정할 수 없으므로 pending 키 사용
                                         st.session_state[f"rag_result_{current_page}"] = result_json
@@ -1729,6 +2343,9 @@ def render_answer_editor_tab():
                                         if not isinstance(result_json.get("items"), list):
                                             result_json["items"] = []
                                         
+                                        # detail 페이지의 items에 'タイプ' 키가 없으면 추가
+                                        result_json = ensure_type_in_items(result_json)
+                                        
                                         # 세션 상태에 저장 (정답 JSON 편집 영역에 바로 반영)
                                         # 위젯이 이미 생성된 상태에서는 직접 수정할 수 없으므로 pending 키 사용
                                         st.session_state[f"rag_result_{current_page}"] = result_json
@@ -1763,6 +2380,9 @@ def render_answer_editor_tab():
                         
                         # page_role은 JSON에서 직접 읽어옴 (별도 UI 없음)
                         
+                        # detail 페이지의 items에 'タイプ' 키가 없으면 추가
+                        answer_json = ensure_type_in_items(answer_json)
+                        
                         # 탭에서 수정한 데이터 반영 (각 키별로, items 포함)
                         top_level_keys = [k for k in answer_json.keys() if k != "page_role"]
                         for key in top_level_keys:
@@ -1796,6 +2416,9 @@ def render_answer_editor_tab():
                                         answer_json[key] = updated_data
                                 else:
                                     answer_json[key] = updated_data
+                        
+                        # 저장 전에 detail 페이지의 items에 'タイプ' 키가 없으면 추가
+                        answer_json = ensure_type_in_items(answer_json)
 
                         # 파일 저장 (전체 JSON 저장)
                         if not answer_json_path:
