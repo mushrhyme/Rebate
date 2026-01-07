@@ -1,0 +1,167 @@
+{
+  "items": [
+    {
+      "management_id": "3006519079",
+      "customer": "株式会社サンベルクス",
+      "product_name": "農心 辛ラーメン3食 360G",
+      "units_per_case": 12,
+      "case_count": 367,
+      "bara_count": NaN,
+      "amount": 691428
+    },
+    {
+      "management_id": "3006519079",
+      "customer": "株式会社サンベルクス",
+      "product_name": "農心 ノグリラーメン 120G",
+      "units_per_case": 30,
+      "case_count": 21,
+      "bara_count": 10.0,
+      "amount": 25600
+    },
+    {
+      "management_id": "3006519079",
+      "customer": "株式会社サンベルクス",
+      "product_name": "農心 辛カップラーメン 68G",
+      "units_per_case": 24,
+      "case_count": 89,
+      "bara_count": NaN,
+      "amount": 112140
+    },
+    {
+      "management_id": "3006519079",
+      "customer": "株式会社サンベルクス",
+      "product_name": "農心 辛ラーメンキムチ3食 360G",
+      "units_per_case": 12,
+      "case_count": 111,
+      "bara_count": NaN,
+      "amount": 209124
+    },
+    {
+      "management_id": "3006519079",
+      "customer": "株式会社サンベルクス",
+      "product_name": "農心 辛ラーメン焼きそばカップ 103G",
+      "units_per_case": 24,
+      "case_count": 2,
+      "bara_count": 12.0,
+      "amount": 2160
+    },
+    {
+      "management_id": "3006519079",
+      "customer": "株式会社サンベルクス",
+      "product_name": "農心 コリコレ鍋Sプデチゲ 200G",
+      "units_per_case": 36,
+      "case_count": 3,
+      "bara_count": 12.0,
+      "amount": 8880
+    },
+    {
+      "management_id": "3006519079",
+      "customer": "株式会社サンベルクス",
+      "product_name": "農心 コリコレ鍋Sキムチチゲ 210G",
+      "units_per_case": 36,
+      "case_count": 2,
+      "bara_count": 6.0,
+      "amount": 5772
+    },
+    {
+      "management_id": "3006519079",
+      "customer": "株式会社サンベルクス",
+      "product_name": "農心 イワシカルグクス 98",
+      "units_per_case": 40,
+      "case_count": 2,
+      "bara_count": 20.0,
+      "amount": 2000
+    },
+    {
+      "management_id": "3006519080",
+      "customer": "株式会社ドン・キホーテ",
+      "product_name": "農心 コリコレ鍋Sプデチゲ 200G",
+      "units_per_case": 36,
+      "case_count": 1,
+      "bara_count": 24.0,
+      "amount": 10140
+    },
+    {
+      "management_id": "3006519080",
+      "customer": "株式会社ドン・キホーテ",
+      "product_name": "農心 コリコレ鍋Sキムチチゲ 210G",
+      "units_per_case": 36,
+      "case_count": 1,
+      "bara_count": 24.0,
+      "amount": 10140
+    },
+    {
+      "management_id": "3006519081",
+      "customer": "株式会社ヒーロー＜茨城＞",
+      "product_name": "農心 辛ラーメン3食 360G",
+      "units_per_case": 12,
+      "case_count": 65,
+      "bara_count": NaN,
+      "amount": 105300
+    },
+    {
+      "management_id": "3006519081",
+      "customer": "株式会社ヒーロー＜茨城＞",
+      "product_name": "農心 辛カップラーメン 68G",
+      "units_per_case": 24,
+      "case_count": 10,
+      "bara_count": NaN,
+      "amount": 12720
+    },
+    {
+      "management_id": "3006519081",
+      "customer": "株式会社ヒーロー＜茨城＞",
+      "product_name": "農心 辛ラーメンキムチ3食 360G",
+      "units_per_case": 12,
+      "case_count": 13,
+      "bara_count": NaN,
+      "amount": 21060
+    },
+    {
+      "management_id": "3006519082",
+      "customer": "カネカ村市株式会社",
+      "product_name": "農心 辛ラーメン3食 360G",
+      "units_per_case": 12,
+      "case_count": 1,
+      "bara_count": NaN,
+      "amount": 360
+    },
+    {
+      "management_id": "3006519082",
+      "customer": "カネカ村市株式会社",
+      "product_name": "農心 辛カップラーメン 68G",
+      "units_per_case": 24,
+      "case_count": 1,
+      "bara_count": NaN,
+      "amount": 600
+    },
+    {
+      "management_id": "3006519083",
+      "customer": "株式会社マルサンシステム",
+      "product_name": "農心 辛ラーメン3食 360G",
+      "units_per_case": 12,
+      "case_count": 2,
+      "bara_count": NaN,
+      "amount": 3264
+    },
+    {
+      "management_id": "3006519083",
+      "customer": "株式会社マルサンシステム",
+      "product_name": "農心 辛カップラーメン 68G",
+      "units_per_case": 24,
+      "case_count": 1,
+      "bara_count": 12.0,
+      "amount": 1296
+    },
+    {
+      "management_id": "3006519083",
+      "customer": "株式会社マルサンシステム",
+      "product_name": "農心 辛ラーメンキムチカップ 68G",
+      "units_per_case": 24,
+      "case_count": 1,
+      "bara_count": NaN,
+      "amount": 864
+    }
+  ],
+  "page_role": "detail"
+}

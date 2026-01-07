@@ -1,0 +1,85 @@
+{
+  "page_role": "detail",
+  "items": [
+    {
+      "management_id": "3006544677",
+      "product_name": "農心 辛ラーメン３食 360G",
+      "quantity": 36,
+      "case_count": 3,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 4608,
+      "customer": "株式会社フレイン"
+    },
+    {
+      "management_id": "3006544677",
+      "product_name": "農心 ノグリラーメン 120G",
+      "quantity": 10,
+      "case_count": null,
+      "bara_count": 10,
+      "units_per_case": 30,
+      "amount": 380,
+      "customer": "株式会社フレイン"
+    },
+    {
+      "management_id": "3006544677",
+      "product_name": "農心 辛カップラーメン 68G",
+      "quantity": 48,
+      "case_count": 2,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 2016,
+      "customer": "株式会社フレイン"
+    },
+    {
+      "management_id": "3006544677",
+      "product_name": "農心 辛ラーメンキムチカップ 68G",
+      "quantity": 48,
+      "case_count": 2,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 2016,
+      "customer": "株式会社フレイン"
+    },
+    {
+      "management_id": "3006544677",
+      "product_name": "農心 辛ラーメンキムチ３食 360G",
+      "quantity": 12,
+      "case_count": 1,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 1536,
+      "customer": "株式会社フレイン"
+    },
+    {
+      "management_id": "3006544678",
+      "product_name": "農心 辛ラーメン３食 360G",
+      "quantity": 72,
+      "case_count": 6,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 9216,
+      "customer": "株式会社フレイン"
+    },
+    {
+      "management_id": "3006544678",
+      "product_name": "農心 辛カップラーメン 68G",
+      "quantity": 72,
+      "case_count": 3,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 3024,
+      "customer": "株式会社フレイン"
+    },
+    {
+      "management_id": "3006544678",
+      "product_name": "農心 辛ラーメンキムチ３食 360G",
+      "quantity": 24,
+      "case_count": 2,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 4096,
+      "customer": "株式会社フレイン"
+    }
+  ]
+}

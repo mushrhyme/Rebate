@@ -1,0 +1,110 @@
+{
+  "items": [
+    {
+      "management_id": "2024015201",
+      "customer": "(株)ロピア",
+      "product_name": "農心 辛ラーメン ブラック ３食 390G",
+      "quantity": 96,
+      "amount": 11328
+    },
+    {
+      "management_id": "2024015201",
+      "customer": "(株)ロピア",
+      "product_name": "農心 辛ラーメン キムチ 袋 ３Ｐ 120GX3",
+      "quantity": 1020,
+      "amount": 128520
+    },
+    {
+      "management_id": "2024015218",
+      "customer": "(株)ロピア",
+      "product_name": "農心 辛ラーメン キムチ 袋 ３Ｐ 120GX3",
+      "quantity": 1020,
+      "amount": 29580
+    },
+    {
+      "management_id": "2024015201",
+      "customer": "(株)ロピア",
+      "product_name": "農心 辛ラーメン ３食 120GX3",
+      "quantity": 6672,
+      "amount": 840672
+    },
+    {
+      "management_id": "2024015218",
+      "customer": "(株)ロピア",
+      "product_name": "農心 辛ラーメン ３食 120GX3",
+      "quantity": 6672,
+      "amount": 193488
+    },
+    {
+      "management_id": "2024015201",
+      "customer": "(株)ロピア",
+      "product_name": "農心 いかチャンポン 124G",
+      "quantity": 210,
+      "amount": 8190
+    },
+    {
+      "management_id": "2024015201",
+      "customer": "(株)ロピア",
+      "product_name": "農心 辛ラーメン バケツ カップ 114G",
+      "quantity": 108,
+      "amount": 2268
+    },
+    {
+      "management_id": "2024015201",
+      "customer": "(株)ロピア",
+      "product_name": "農心 辛ラーメン カップ 68G",
+      "quantity": 3492,
+      "amount": 160632
+    },
+    {
+      "management_id": "2024015218",
+      "customer": "(株)ロピア",
+      "product_name": "農心 辛ラーメン カップ 68G",
+      "quantity": 3492,
+      "amount": 24444
+    },
+    {
+      "management_id": "2024015201",
+      "customer": "(株)ロピア",
+      "product_name": "農心 辛ラーメン キムチカップ 68G",
+      "quantity": 96,
+      "amount": 4416
+    },
+    {
+      "management_id": "2024015218",
+      "customer": "(株)ロピア",
+      "product_name": "農心 辛ラーメン キムチカップ 68G",
+      "quantity": 96,
+      "amount": 672
+    },
+    {
+      "management_id": "2024015201",
+      "customer": "(株)ロピア",
+      "product_name": "農心 辛ラーメン 激辛カップ 68G",
+      "quantity": 108,
+      "amount": 4968
+    },
+    {
+      "management_id": "2024015218",
+      "customer": "(株)ロピア",
+      "product_name": "農心 辛ラーメン 激辛カップ 68G",
+      "quantity": 108,
+      "amount": 756
+    },
+    {
+      "management_id": "2024015201",
+      "customer": "(株)ロピア",
+      "product_name": "農心 辛ラーメン 焼きそばチーズ カップ 105G",
+      "quantity": 84,
+      "amount": 3108
+    },
+    {
+      "management_id": "2024015218",
+      "customer": "(株)ロピア",
+      "product_name": "農心 辛ラーメン 焼きそばチーズ カップ 105G",
+      "quantity": 84,
+      "amount": 1764
+    }
+  ],
+  "page_role": "detail"
+}

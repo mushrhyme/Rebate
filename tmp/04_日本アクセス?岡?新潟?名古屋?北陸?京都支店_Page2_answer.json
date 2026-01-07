@@ -1,0 +1,141 @@
+{
+  "page_role": "detail",
+  "items": [
+    {
+      "management_id": "1402059",
+      "customer": "（株）マキヤ",
+      "product_name": "農心 辛ラーメン 袋 120g",
+      "units_per_case": 30,
+      "quantity": 270,
+      "amount": 5400
+    },
+    {
+      "management_id": "1402059",
+      "customer": "（株）マキヤ",
+      "product_name": "農心 辛ラーメン 120g×3",
+      "units_per_case": 12,
+      "quantity": 2256,
+      "amount": 11880
+    },
+    {
+      "management_id": "1402059",
+      "customer": "（株）マキヤ",
+      "product_name": "農心 ノグリラーメン 120g",
+      "units_per_case": 30,
+      "quantity": 440,
+      "amount": 924
+    },
+    {
+      "management_id": "1402059",
+      "customer": "（株）マキヤ",
+      "product_name": "農心 辛ラーメン ミニカップ 49g",
+      "units_per_case": 24,
+      "quantity": 168,
+      "amount": 4250
+    },
+    {
+      "management_id": "1402059",
+      "customer": "（株）マキヤ",
+      "product_name": "農心 本場韓国コムタンラーメン 袋 111g",
+      "units_per_case": 20,
+      "quantity": 170,
+      "amount": 33936
+    },
+    {
+      "management_id": "1402059",
+      "customer": "（株）マキヤ",
+      "product_name": "農心 辛カップラーメン 68g",
+      "units_per_case": 12,
+      "quantity": 1212,
+      "amount": 313574
+    },
+    {
+      "management_id": "1402060",
+      "customer": "（株）マキヤ",
+      "product_name": "農心 カムジャ麺 袋 100g",
+      "units_per_case": 20,
+      "quantity": 200,
+      "amount": 6600
+    },
+    {
+      "management_id": "1402060",
+      "customer": "（株）マキヤ",
+      "product_name": "農心 辛ラーメン キムチ カップ 68g",
+      "units_per_case": 12,
+      "quantity": 24,
+      "amount": 1840
+    },
+    {
+      "management_id": "1402060",
+      "customer": "（株）マキヤ",
+      "product_name": "農心 辛ラーメン ブラック 130g",
+      "units_per_case": 20,
+      "quantity": 80,
+      "amount": 840
+    },
+    {
+      "management_id": "1402060",
+      "customer": "（株）マキヤ",
+      "product_name": "農心 辛ラーメン 激辛 カップ 68g",
+      "units_per_case": 12,
+      "quantity": 24,
+      "amount": 2800
+    },
+    {
+      "management_id": "1402060",
+      "customer": "（株）マキヤ",
+      "product_name": "農心 辛ラーメン キムチ 袋 120g",
+      "units_per_case": 30,
+      "quantity": 140,
+      "amount": 23256
+    },
+    {
+      "management_id": "1402060",
+      "customer": "（株）マキヤ",
+      "product_name": "農心 辛ラーメン キムチ 袋 120g×3",
+      "units_per_case": 12,
+      "quantity": 204,
+      "amount": 36176
+    },
+    {
+      "management_id": "1402061",
+      "customer": "（株）マキヤ",
+      "product_name": "農心 チャパゲティー 140g",
+      "units_per_case": 30,
+      "quantity": 440,
+      "amount": 8800
+    },
+    {
+      "management_id": "1402061",
+      "customer": "（株）マキヤ",
+      "product_name": "農心 チャパグリカップ 114g",
+      "units_per_case": 12,
+      "quantity": 132,
+      "amount": 4416
+    },
+    {
+      "management_id": "1402061",
+      "customer": "（株）マキヤ",
+      "product_name": "農心 甘辛ヤンニョムチキンビビン麺 カップ 122g",
+      "units_per_case": 12,
+      "quantity": 192,
+      "amount": 4140
+    },
+    {
+      "management_id": "1402061",
+      "customer": "（株）マキヤ",
+      "product_name": "農心 辛ラーメン 焼きそば カップ 103g",
+      "units_per_case": 12,
+      "quantity": 180,
+      "amount": 460
+    },
+    {
+      "management_id": "1402061",
+      "customer": "（株）マキヤ",
+      "product_name": "農心 辛ラーメン 焼きそば 袋 131g",
+      "units_per_case": 20,
+      "quantity": 20,
+      "amount": 20852
+    }
+  ]
+}

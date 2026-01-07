@@ -1,0 +1,175 @@
+{
+  "page_role": "detail",
+  "items": [
+    {
+      "management_id": "2000320860",
+      "product_name": "農心 辛ラーメン 120G 袋",
+      "quantity": 1,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 60,
+      "amount": 1920,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "2000320860",
+      "product_name": "農心 辛ラーメン 120G 袋",
+      "quantity": 10,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 60,
+      "amount": 320,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "2000320860",
+      "product_name": "農心 辛ラーメン 3食パック 120GX3P",
+      "quantity": 16,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 23040,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "2000320860",
+      "product_name": "農心 辛カップラーメン 68Gカップ",
+      "quantity": 8,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 9600,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "2000320860",
+      "product_name": "農心 辛カップラーメン 68Gカップ",
+      "quantity": 12,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 600,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "2000320860",
+      "product_name": "農心 カムジャ麺 100G袋",
+      "quantity": 1,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 40,
+      "amount": 1640,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "2000320860",
+      "product_name": "農心 辛ラーメンキムチ カップ 68Gカップ",
+      "quantity": 1,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 1200,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "2000320860",
+      "product_name": "農心 辛ラーメンキムチ カップ 68Gカップ",
+      "quantity": 12,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 600,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "2000320860",
+      "product_name": "農心 ふるる冷麺 ビビン麺 159G袋",
+      "quantity": 5,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 20,
+      "amount": 325,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "250101011",
+      "product_name": "農心 辛ラーメン キムチ 3食パック 120GX3",
+      "quantity": 1,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 1440,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "250101011",
+      "product_name": "農心 辛ラーメン 3食パック 120GX3P",
+      "quantity": 12,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 17280,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "250101011",
+      "product_name": "農心 旨辛海鮮ちゃんぽん 130G袋",
+      "quantity": 5,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 40,
+      "amount": 150,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "250101011",
+      "product_name": "農心 辛ラーメン 120G 袋",
+      "quantity": 1,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 60,
+      "amount": 1920,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "250101011",
+      "product_name": "農心 辛ラーメン 120G 袋",
+      "quantity": 30,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 60,
+      "amount": 960,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "250101011",
+      "product_name": "農心 辛ラーメンキムチ カップ 68Gカップ",
+      "quantity": 1,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 1200,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "250101011",
+      "product_name": "農心 ノグリラーメン 120G袋",
+      "quantity": 25,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 30,
+      "amount": 925,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "250101011",
+      "product_name": "農心 辛カップラーメン 68Gカップ",
+      "quantity": 11,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 13200,
+      "customer": "（株）サンリブ"
+    }
+  ]
+}

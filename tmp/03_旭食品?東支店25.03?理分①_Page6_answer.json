@@ -1,0 +1,194 @@
+{
+  "items": [
+    {
+      "management_id": "3006519090",
+      "customer": "ＴＨＤ関東株サンユーストアー",
+      "product_name": "農心 辛ラーメン3食 360G",
+      "units_per_case": 12,
+      "case_count": 14,
+      "bara_count": NaN,
+      "amount": 13440
+    },
+    {
+      "management_id": "3006519090",
+      "customer": "ＴＨＤ関東株サンユーストアー",
+      "product_name": "農心 辛カップラーメン 68G",
+      "units_per_case": 24,
+      "case_count": 7,
+      "bara_count": NaN,
+      "amount": 4368
+    },
+    {
+      "management_id": "3006519090",
+      "customer": "ＴＨＤ関東株サンユーストアー",
+      "product_name": "農心 辛ラーメンキムチカップ 68G",
+      "units_per_case": 24,
+      "case_count": 2,
+      "bara_count": NaN,
+      "amount": 1248
+    },
+    {
+      "management_id": "3006519091",
+      "customer": "株式会社ベルク",
+      "product_name": "農心 辛ラーメン3食 360G",
+      "units_per_case": 12,
+      "case_count": 1320,
+      "bara_count": 6.0,
+      "amount": 111318
+    },
+    {
+      "management_id": "3006519091",
+      "customer": "株式会社ベルク",
+      "product_name": "農心 ユッケジャンラーメン 86G",
+      "units_per_case": 24,
+      "case_count": 81,
+      "bara_count": 12.0,
+      "amount": 5086
+    },
+    {
+      "management_id": "3006519091",
+      "customer": "株式会社ベルク",
+      "product_name": "농심 본場韓国コムタンラーメン 75G",
+      "units_per_case": 24,
+      "case_count": 15,
+      "bara_count": NaN,
+      "amount": 891
+    },
+    {
+      "management_id": "3006519091",
+      "customer": "株式会社ベルク",
+      "product_name": "農心 ノグリラーメン 120G",
+      "units_per_case": 30,
+      "case_count": 86,
+      "bara_count": 20.0,
+      "amount": 6994
+    },
+    {
+      "management_id": "3006519091",
+      "customer": "株式会社ベルク",
+      "product_name": "農心 本場韓国コムタンラーメン3 333G",
+      "units_per_case": 12,
+      "case_count": 42,
+      "bara_count": NaN,
+      "amount": 4158
+    },
+    {
+      "management_id": "3006519091",
+      "customer": "株式会社ベルク",
+      "product_name": "農心 辛カップラーメン 68G",
+      "units_per_case": 24,
+      "case_count": 596,
+      "bara_count": NaN,
+      "amount": 35402
+    },
+    {
+      "management_id": "3006519091",
+      "customer": "株式会社ベルク",
+      "product_name": "農心 旨辛海鮮ちゃんぽん 130G",
+      "units_per_case": 40,
+      "case_count": 13,
+      "bara_count": 10.0,
+      "amount": 2080
+    },
+    {
+      "management_id": "3006519091",
+      "customer": "株式会社ベルク",
+      "product_name": "農心 辛ラーメンキムチカップ 68G",
+      "units_per_case": 24,
+      "case_count": 17,
+      "bara_count": 12.0,
+      "amount": 1040
+    },
+    {
+      "management_id": "3006519091",
+      "customer": "株式会社ベルク",
+      "product_name": "農心 辛ラーメンブラック3食 130GX3",
+      "units_per_case": 12,
+      "case_count": 56,
+      "bara_count": NaN,
+      "amount": 7694
+    },
+    {
+      "management_id": "3006519091",
+      "customer": "株式会社ベルク",
+      "product_name": "農心 辛ラーメン激辛カップ 68G",
+      "units_per_case": 24,
+      "case_count": 14,
+      "bara_count": NaN,
+      "amount": 832
+    },
+    {
+      "management_id": "3006519091",
+      "customer": "株式会社ベルク",
+      "product_name": "農心 辛ラーメンキムチ3食 360G",
+      "units_per_case": 12,
+      "case_count": 154,
+      "bara_count": NaN,
+      "amount": 12982
+    },
+    {
+      "management_id": "3006519091",
+      "customer": "株式会社ベルク",
+      "product_name": "農心 チャパゲティ 140G",
+      "units_per_case": 30,
+      "case_count": 60,
+      "bara_count": 10.0,
+      "amount": 4842
+    },
+    {
+      "management_id": "3006519091",
+      "customer": "株式会社ベルク",
+      "product_name": "農心 チャパグリカップ 114G",
+      "units_per_case": 24,
+      "case_count": 17,
+      "bara_count": NaN,
+      "amount": 1775
+    },
+    {
+      "management_id": "3006519091",
+      "customer": "株式会社ベルク",
+      "product_name": "農心 甘辛ヤンニョムチキンビビン 122G",
+      "units_per_case": 24,
+      "case_count": 9,
+      "bara_count": NaN,
+      "amount": 940
+    },
+    {
+      "management_id": "3006519091",
+      "customer": "株式会社ベルク",
+      "product_name": "農心 辛ラーメン焼きそばカップ 103G",
+      "units_per_case": 24,
+      "case_count": 18,
+      "bara_count": NaN,
+      "amount": 1879
+    },
+    {
+      "management_id": "3006519091",
+      "customer": "株式会社ベルク",
+      "product_name": "農心 辛ラーメン焼きそば袋 131G",
+      "units_per_case": 40,
+      "case_count": 11,
+      "bara_count": 10.0,
+      "amount": 1856
+    },
+    {
+      "management_id": "3006519091",
+      "customer": "株式会社ベルク",
+      "product_name": "農心 ノグリラーメンカップ 62G",
+      "units_per_case": 24,
+      "case_count": 12,
+      "bara_count": NaN,
+      "amount": 713
+    },
+    {
+      "management_id": "3006519091",
+      "customer": "株式会社ベルク",
+      "product_name": "農心 辛ラーメンバケツカップ 114G",
+      "units_per_case": 24,
+      "case_count": 21,
+      "bara_count": NaN,
+      "amount": 2192
+    }
+  ],
+  "page_role": "detail"
+}

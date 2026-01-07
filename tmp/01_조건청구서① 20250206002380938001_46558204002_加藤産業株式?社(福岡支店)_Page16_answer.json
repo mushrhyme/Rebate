@@ -1,0 +1,59 @@
+{
+  "items": [
+    {
+      "management_id": "00760497",
+      "customer": "ダイレックス(株)",
+      "product_name": "農心ヅ ャパ ン 辛カップ ラーメン 6 8 G",
+      "units_per_case": 24,
+      "quantity": 2592.0,
+      "amount": 22291,
+      "spot": NaN
+    },
+    {
+      "management_id": "00760598",
+      "customer": "イオン琉球(株)",
+      "product_name": "改装半値導入 8%",
+      "units_per_case": 1,
+      "quantity": NaN,
+      "amount": 19246,
+      "spot": "True"
+    },
+    {
+      "management_id": "00760607",
+      "customer": "ダイレックス(株)",
+      "product_name": "農心ヅ ャパ ン 辛カップ ラーメン 6 8 G",
+      "units_per_case": 24,
+      "quantity": 600.0,
+      "amount": 5160,
+      "spot": NaN
+    },
+    {
+      "management_id": "00760850",
+      "customer": "イオンウエルシア九州 (株)",
+      "product_name": "改装半値導入 8%",
+      "units_per_case": 1,
+      "quantity": 1.0,
+      "amount": 6610,
+      "spot": "True"
+    },
+    {
+      "management_id": "00760985",
+      "customer": "イオンウエルシア九州 (株)",
+      "product_name": "改装半値導入 8%",
+      "units_per_case": 1,
+      "quantity": 1.0,
+      "amount": 6365,
+      "spot": "True"
+    },
+    {
+      "management_id": "00761172",
+      "customer": "イオンウエルシア九州 (株)",
+      "product_name": "改装半値導入 8%",
+      "units_per_case": 1,
+      "quantity": 1.0,
+      "amount": 4900,
+      "spot": "True"
+    }
+  ],
+  "page_role": "detail"
+}

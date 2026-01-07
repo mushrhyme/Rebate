@@ -1,0 +1,149 @@
+{
+  "page_role": "detail",
+  "items": [
+    {
+      "management_id": "2000643321",
+      "customer": "三角商事（株）",
+      "product_name": "農心 旨辛海鮮ちゃんぽん 130G袋",
+      "units_per_case": 40,
+      "quantity": 2,
+      "amount": 2160
+    },
+    {
+      "management_id": "2000643321",
+      "customer": "三角商事（株）",
+      "product_name": "農心 旨辛海鮮ちゃんぽん 130G袋",
+      "units_per_case": 40,
+      "quantity": 20,
+      "amount": 540
+    },
+    {
+      "management_id": "2000643321",
+      "customer": "三角商事（株）",
+      "product_name": "農心 辛ラーメン 5食パック 120G X 5食袋",
+      "units_per_case": 8,
+      "quantity": 444,
+      "amount": 831168
+    },
+    {
+      "management_id": "2000643321",
+      "customer": "三角商事（株）",
+      "product_name": "農心 チャパゲッティ 140G袋",
+      "units_per_case": 30,
+      "quantity": 26,
+      "amount": 31980
+    },
+    {
+      "management_id": "2000643321",
+      "customer": "三角商事（株）",
+      "product_name": "農心 チャパゲッティ 140G袋",
+      "units_per_case": 30,
+      "quantity": 20,
+      "amount": 820
+    },
+    {
+      "management_id": "2000643321",
+      "customer": "三角商事（株）",
+      "product_name": "農心 ノグリラーメンカップ 62Gカップ",
+      "units_per_case": 24,
+      "quantity": 2,
+      "amount": 2160
+    },
+    {
+      "management_id": "2000643321",
+      "customer": "三角商事（株）",
+      "product_name": "農心 ノグリラーメンカップ 62Gカップ",
+      "units_per_case": 24,
+      "quantity": 12,
+      "amount": 540
+    },
+    {
+      "management_id": "2000643321",
+      "customer": "三角商事（株）",
+      "product_name": "農心 チャパグリカップ 114Gカップ",
+      "units_per_case": 24,
+      "quantity": 3,
+      "amount": 1224
+    },
+    {
+      "management_id": "2000643321",
+      "customer": "三角商事（株）",
+      "product_name": "農心 ユッケジャンラーメンカップ 86Gカップ",
+      "units_per_case": 24,
+      "quantity": 7,
+      "amount": 504
+    },
+    {
+      "management_id": "2000643321",
+      "customer": "三角商事（株）",
+      "product_name": "農心 ユッケジャンラーメンカップ 86Gカップ",
+      "units_per_case": 24,
+      "quantity": 12,
+      "amount": 36
+    },
+    {
+      "management_id": "2000643321",
+      "customer": "三角商事（株）",
+      "product_name": "農心 辛ラーメン 焼きそば 袋 131G袋",
+      "units_per_case": 40,
+      "quantity": 1,
+      "amount": 1400
+    },
+    {
+      "management_id": "2000643321",
+      "customer": "三角商事（株）",
+      "product_name": "農心 辛ラーメン 焼きそば 袋 131G袋",
+      "units_per_case": 40,
+      "quantity": 20,
+      "amount": 700
+    },
+    {
+      "management_id": "2000643321",
+      "customer": "三角商事（株）",
+      "product_name": "農心 辛ラーメン焼きそばカップ 103Gカップ",
+      "units_per_case": 24,
+      "quantity": 5,
+      "amount": 2040
+    },
+    {
+      "management_id": "2000643321",
+      "customer": "三角商事（株）",
+      "product_name": "農心 辛ラーメン焼きそばカップ 103Gカップ",
+      "units_per_case": 24,
+      "quantity": 12,
+      "amount": 204
+    },
+    {
+      "management_id": "2000643321",
+      "customer": "三角商事（株）",
+      "product_name": "農心 本場韓国コムタンラーメン 袋 111G袋",
+      "units_per_case": 40,
+      "quantity": 5,
+      "amount": 8200
+    },
+    {
+      "management_id": "2000643321",
+      "customer": "三角商事（株）",
+      "product_name": "農心 本場韓国コムタンラーメン 袋 111G袋",
+      "units_per_case": 40,
+      "quantity": 35,
+      "amount": 1435
+    },
+    {
+      "management_id": "2000643321",
+      "customer": "三角商事（株）",
+      "product_name": "農心 辛ラーメン MINI 49Gカップ",
+      "units_per_case": 24,
+      "quantity": 17,
+      "amount": 8160
+    },
+    {
+      "management_id": "2000643321",
+      "customer": "三角商事（株）",
+      "product_name": "農心 辛ラーメン MINI 49Gカップ",
+      "units_per_case": 24,
+      "quantity": 12,
+      "amount": 240
+    }
+  ]
+}

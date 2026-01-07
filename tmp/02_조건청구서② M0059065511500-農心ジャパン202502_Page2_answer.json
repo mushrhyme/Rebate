@@ -1,0 +1,173 @@
+{
+  "items": [
+    {
+      "management_id": "2023012972",
+      "customer": "(株)スーパーバリュー",
+      "product_name": "農心本場韓国コムタンラーメン 111G",
+      "quantity": 180,
+      "amount": 8640
+    },
+    {
+      "management_id": "2023012972",
+      "customer": "(株)スーパーバリュー",
+      "product_name": "農心カムジャ麺 100G",
+      "quantity": 140,
+      "amount": 4900
+    },
+    {
+      "management_id": "2023012972",
+      "customer": "(株)スーパーバリュー",
+      "product_name": "農心 旨辛海鮮ちゃんぽん 130G",
+      "quantity": 180,
+      "amount": 6300
+    },
+    {
+      "management_id": "2023012972",
+      "customer": "(株)スーパーバリュー",
+      "product_name": "農心辛ラーメンブラック 3食 390G",
+      "quantity": 48,
+      "amount": 5664
+    },
+    {
+      "management_id": "2023012972",
+      "customer": "(株)スーパーバリュー",
+      "product_name": "農心辛ラーメンキムチ袋 3P 120GX3",
+      "quantity": 288,
+      "amount": 36288
+    },
+    {
+      "management_id": "2023030776",
+      "customer": "(株)スーパーバリュー",
+      "product_name": "農心辛ラーメンキムチ袋 3P 120GX3",
+      "quantity": 288,
+      "amount": 8352
+    },
+    {
+      "management_id": "2023012972",
+      "customer": "(株)スーパーバリュー",
+      "product_name": "農心辛ラーメン焼きそば袋 131G",
+      "quantity": 20,
+      "amount": 920
+    },
+    {
+      "management_id": "2023012972",
+      "customer": "(株)スーパーバリュー",
+      "product_name": "農心辛ラーメン袋 120G",
+      "quantity": 240,
+      "amount": 11040
+    },
+    {
+      "management_id": "2023012972",
+      "customer": "(株)スーパーバリュー",
+      "product_name": "農心辛ラーメン 3食 120GX3",
+      "quantity": 5172,
+      "amount": 651672
+    },
+    {
+      "management_id": "2023030776",
+      "customer": "(株)スーパーバリュー",
+      "product_name": "農心辛ラーメン 3食 120GX3",
+      "quantity": 5172,
+      "amount": 149988
+    },
+    {
+      "management_id": "2023012972",
+      "customer": "(株)スーパーバリュー",
+      "product_name": "農心ノグリラーメン 120G",
+      "quantity": 540,
+      "amount": 14040
+    },
+    {
+      "management_id": "2023012972",
+      "customer": "(株)スーパーバリュー",
+      "product_name": "農心チャパゲティ 140G",
+      "quantity": 570,
+      "amount": 27360
+    },
+    {
+      "management_id": "2023012972",
+      "customer": "(株)スーパーバリュー",
+      "product_name": "農心安城湯麺 125G",
+      "quantity": 40,
+      "amount": 1040
+    },
+    {
+      "management_id": "2023012972",
+      "customer": "(株)スーパーバリュー",
+      "product_name": "農心辛ラーメンミニ 49G",
+      "quantity": 48,
+      "amount": 624
+    },
+    {
+      "management_id": "2023012972",
+      "customer": "(株)スーパーバリュー",
+      "product_name": "農心辛ラーメンカップ 68G",
+      "quantity": 900,
+      "amount": 41400
+    },
+    {
+      "management_id": "2023030776",
+      "customer": "(株)スーパーバリュー",
+      "product_name": "農心辛ラーメンカップ 68G",
+      "quantity": 900,
+      "amount": 6300
+    },
+    {
+      "management_id": "2023012972",
+      "customer": "(株)スーパーバリュー",
+      "product_name": "農心辛ラーメンキムチカップ 68G",
+      "quantity": 120,
+      "amount": 5520
+    },
+    {
+      "management_id": "2023030776",
+      "customer": "(株)スーパーバリュー",
+      "product_name": "農心辛ラーメンキムチカップ 68G",
+      "quantity": 120,
+      "amount": 840
+    },
+    {
+      "management_id": "2023012972",
+      "customer": "(株)スーパーバリュー",
+      "product_name": "農心辛ラーメン激辛カップ 68G",
+      "quantity": 72,
+      "amount": 3312
+    },
+    {
+      "management_id": "2023030776",
+      "customer": "(株)スーパーバリュー",
+      "product_name": "農心辛ラーメン激辛カップ 68G",
+      "quantity": 72,
+      "amount": 504
+    },
+    {
+      "management_id": "2023012972",
+      "customer": "(株)スーパーバリュー",
+      "product_name": "農心辛ラーメン焼きそばカップ 103G",
+      "quantity": 96,
+      "amount": 2016
+    },
+    {
+      "management_id": "2023030776",
+      "customer": "(株)スーパーバリュー",
+      "product_name": "農心辛ラーメン焼きそばカップ 103G",
+      "quantity": 96,
+      "amount": 1536
+    },
+    {
+      "management_id": "2023012972",
+      "customer": "(株)スーパーバリュー",
+      "product_name": "農心辛ラーメン焼きそばチーズカップ 105G",
+      "quantity": 84,
+      "amount": 1764
+    },
+    {
+      "management_id": "2023030776",
+      "customer": "(株)スーパーバリュー",
+      "product_name": "農心辛ラーメン焼きそばチーズカップ 105G",
+      "quantity": 84,
+      "amount": 1344
+    }
+  ],
+  "page_role": "detail"
+}

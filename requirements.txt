@@ -10,6 +10,8 @@ Pillow>=10.0.0
 
 # PDF 처리
 PyMuPDF>=1.23.0
+pdfplumber>=0.10.0  # PDF 테이블 추출용 (엑셀 변환)
+tabula-py>=2.8.0  # PDF 테이블 추출용 (선택적, Java 필요)
 
 # Gemini API
 google-generativeai>=0.3.0

@@ -1,0 +1,125 @@
+{
+  "items": [
+    {
+      "management_id": "00754939",
+      "customer": "イオン九州(株)",
+      "product_name": "農心 辛ラーメン キムチ 3P",
+      "units_per_case": 12,
+      "quantity": 1500,
+      "amount": 202500
+    },
+    {
+      "management_id": "00754939",
+      "customer": "イオン九州(株)",
+      "product_name": "農心 安城湯麺 125G",
+      "units_per_case": 40,
+      "quantity": 740,
+      "amount": 31820
+    },
+    {
+      "management_id": "00754939",
+      "customer": "イオン九州(株)",
+      "product_name": "農心 チャパグリカップ 114g",
+      "units_per_case": 24,
+      "quantity": 480,
+      "amount": 14400
+    },
+    {
+      "management_id": "00754940",
+      "customer": "イオン九州(株)",
+      "product_name": "農心ジャパン バナナキック 45g",
+      "units_per_case": 20,
+      "quantity": 40,
+      "amount": 1400
+    },
+    {
+      "management_id": "00754940",
+      "customer": "イオン九州(株)",
+      "product_name": "甘辛ヤンニョムチキンビビン麺 カップ 122g",
+      "units_per_case": 24,
+      "quantity": 60,
+      "amount": 1800
+    },
+    {
+      "management_id": "00754940",
+      "customer": "イオン九州(株)",
+      "product_name": "農心ジャパン ノグリラーメン カップ",
+      "units_per_case": 24,
+      "quantity": 720,
+      "amount": 36000
+    },
+    {
+      "management_id": "00754940",
+      "customer": "イオン九州(株)",
+      "product_name": "辛ラーメン焼きそばカップ",
+      "units_per_case": 24,
+      "quantity": 396,
+      "amount": 11880
+    },
+    {
+      "management_id": "00754940",
+      "customer": "イオン九州(株)",
+      "product_name": "辛ラーメン焼きそば袋 131g",
+      "units_per_case": 40,
+      "quantity": 420,
+      "amount": 13440
+    },
+    {
+      "management_id": "00754940",
+      "customer": "イオン九州(株)",
+      "product_name": "農心 ベホンドンビビン麺 1P 136g",
+      "units_per_case": 40,
+      "quantity": 390,
+      "amount": 10140
+    },
+    {
+      "management_id": "00754941",
+      "customer": "イオン九州(株)",
+      "product_name": "農心 辛ラーメン バケツカップ 114g",
+      "units_per_case": 24,
+      "quantity": 1740,
+      "amount": 88740
+    },
+    {
+      "management_id": "00754941",
+      "customer": "イオン九州(株)",
+      "product_name": "辛ラーメン焼きそばチーズ カップ",
+      "units_per_case": 24,
+      "quantity": 372,
+      "amount": 11160
+    },
+    {
+      "management_id": "00754941",
+      "customer": "イオン九州(株)",
+      "product_name": "辛ラーメン焼きそばチーズ 袋 136g",
+      "units_per_case": 40,
+      "quantity": 440,
+      "amount": 14080
+    },
+    {
+      "management_id": "00754941",
+      "customer": "イオン九州(株)",
+      "product_name": "農心ジャパン キムチサバルカップ 86g",
+      "units_per_case": 24,
+      "quantity": 180,
+      "amount": 2520
+    },
+    {
+      "management_id": "00754941",
+      "customer": "イオン九州(株)",
+      "product_name": "辛ラーメン バケツカップ スパイシーチキン",
+      "units_per_case": 24,
+      "quantity": 132,
+      "amount": 3960
+    },
+    {
+      "management_id": "00754941",
+      "customer": "イオン九州(株)",
+      "product_name": "辛ラーメン バケツカップ スパイシーチキン",
+      "units_per_case": 24,
+      "quantity": 5952,
+      "amount": 303552
+    }
+  ],
+  "page_role": "detail"
+}

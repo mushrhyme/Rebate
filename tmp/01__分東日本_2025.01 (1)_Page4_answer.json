@@ -1,0 +1,165 @@
+{
+  "items": [
+    {
+      "management_id": "365402TA",
+      "product_name": "農心 ノグリラーメン 120g",
+      "quantity": 3925,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 30,
+      "amount": 147265,
+      "customer": "(株) マルエツ"
+    },
+    {
+      "management_id": "365402TA",
+      "product_name": "農心ジャパン 辛カップラーメン 68g",
+      "quantity": 12828,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 378426,
+      "customer": "(株) マルエツ"
+    },
+    {
+      "management_id": "365402TA",
+      "product_name": "農心 旨辛海鮮ちゃんぽん 130g",
+      "quantity": 225,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 40,
+      "amount": 6300,
+      "customer": "(株) マルエツ"
+    },
+    {
+      "management_id": "365402TA",
+      "product_name": "農心ジャパン 辛ラーメン キムチ カップ 68g",
+      "quantity": 24,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 708,
+      "customer": "(株) マルエツ"
+    },
+    {
+      "management_id": "365402TA",
+      "product_name": "農心ジャパン 辛ラーメン 激辛カップ",
+      "quantity": 24,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 708,
+      "customer": "(株) マルエツ"
+    },
+    {
+      "management_id": "365402TA",
+      "product_name": "農心 辛ラーメン キムチ 120g X 3",
+      "quantity": 1762,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 227298,
+      "customer": "(株) マルエツ"
+    },
+    {
+      "management_id": "365402TA",
+      "product_name": "農心ジャパン チャパゲティ 140g",
+      "quantity": 25,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 30,
+      "amount": 825,
+      "customer": "(株) マルエツ"
+    },
+    {
+      "management_id": "365402TA",
+      "product_name": "農心ジャパン チャパゲティ 140g",
+      "quantity": 155,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 30,
+      "amount": 5115,
+      "customer": "(株) マルエツ"
+    },
+    {
+      "management_id": "365402TA",
+      "product_name": "農心ジャパン ノグリラーメン マイルド 120g",
+      "quantity": 90,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 30,
+      "amount": 3376,
+      "customer": "(株) マルエツ"
+    },
+    {
+      "management_id": "365402TA",
+      "product_name": "消費税金額 8%",
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": null,
+      "amount": 253925,
+      "customer": "(株) マルエツ"
+    },
+    {
+      "management_id": "365400NB",
+      "product_name": "農心 辛ラーメン 120g X 3",
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 41157,
+      "customer": "(株) マルエツ"
+    },
+    {
+      "management_id": "365400NB",
+      "product_name": "農心 辛ラーメン 120g X 3",
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 132568,
+      "customer": "(株) マルエツ"
+    },
+    {
+      "management_id": "365400NB",
+      "product_name": "農心 辛ラーメン 120g X 3",
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 606,
+      "customer": "(株) マルエツ"
+    },
+    {
+      "management_id": "365400NB",
+      "product_name": "消費税金額 8%",
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": null,
+      "amount": 13946,
+      "customer": "(株) マルエツ"
+    },
+    {
+      "management_id": "365698NB",
+      "product_name": "統計別商品 (農心 食品 (軽)",
+      "quantity": 1,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 1,
+      "amount": 10000,
+      "customer": "スポット口座"
+    },
+    {
+      "management_id": "365698NB",
+      "product_name": "消費税金額 10%",
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": null,
+      "amount": 1000,
+      "customer": "スポット口座"
+    }
+  ],
+  "page_role": "detail"
+}

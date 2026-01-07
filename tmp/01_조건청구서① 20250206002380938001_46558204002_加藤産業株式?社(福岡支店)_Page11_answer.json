@@ -1,0 +1,125 @@
+{
+  "items": [
+    {
+      "management_id": "00755563",
+      "customer": "イオン九州(株)MV",
+      "product_name": "辛ラーメン焼きそばカップ",
+      "units_per_case": 24,
+      "quantity": 36,
+      "amount": 1080
+    },
+    {
+      "management_id": "00755563",
+      "customer": "イオン九州(株)MV",
+      "product_name": "辛ラーメン焼きそばカップ",
+      "units_per_case": 24,
+      "quantity": 3600,
+      "amount": 212400
+    },
+    {
+      "management_id": "00755563",
+      "customer": "イオン九州(株)MV",
+      "product_name": "辛ラーメン焼きそば袋 131g",
+      "units_per_case": 40,
+      "quantity": 200,
+      "amount": 6400
+    },
+    {
+      "management_id": "00755563",
+      "customer": "イオン九州(株)MV",
+      "product_name": "農心辛ラーメン バケツカップ 114g",
+      "units_per_case": 24,
+      "quantity": 24,
+      "amount": 1224
+    },
+    {
+      "management_id": "00755563",
+      "customer": "イオン九州(株)MV",
+      "product_name": "農心辛ラーメン バケツカップ 114g",
+      "units_per_case": 24,
+      "quantity": 3600,
+      "amount": 212400
+    },
+    {
+      "management_id": "00755563",
+      "customer": "イオン九州(株)MV",
+      "product_name": "辛ラーメン焼きそばチーズカップ",
+      "units_per_case": 24,
+      "quantity": 24,
+      "amount": 720
+    },
+    {
+      "management_id": "00755564",
+      "customer": "イオン九州(株)MV",
+      "product_name": "コリコレ鍋セット プデチゲ 200g",
+      "units_per_case": 36,
+      "quantity": 18,
+      "amount": 2124
+    },
+    {
+      "management_id": "00755564",
+      "customer": "イオン九州(株)MV",
+      "product_name": "農心ジャパン キムチサバルカップ 86g",
+      "units_per_case": 24,
+      "quantity": 276,
+      "amount": 4968
+    },
+    {
+      "management_id": "00755564",
+      "customer": "イオン九州(株)MV",
+      "product_name": "農心ジャパン イワシカルグクス 98g",
+      "units_per_case": 40,
+      "quantity": 60,
+      "amount": 1920
+    },
+    {
+      "management_id": "00755565",
+      "customer": "(株)アレス",
+      "product_name": "農心 辛ラーメン 3P",
+      "units_per_case": 12,
+      "quantity": 420,
+      "amount": 50400
+    },
+    {
+      "management_id": "00755565",
+      "customer": "(株)アレス",
+      "product_name": "農心 辛ラーメン 3P",
+      "units_per_case": 12,
+      "quantity": 1080,
+      "amount": 170640
+    },
+    {
+      "management_id": "00755565",
+      "customer": "(株)アレス",
+      "product_name": "農心ジャパン ユッケジャンラーメン 86g",
+      "units_per_case": 24,
+      "quantity": 336,
+      "amount": 1680
+    },
+    {
+      "management_id": "00755565",
+      "customer": "(株)アレス",
+      "product_name": "農心 ノグリラーメン 120g",
+      "units_per_case": 30,
+      "quantity": 530,
+      "amount": 18550
+    },
+    {
+      "management_id": "00755565",
+      "customer": "(株)アレス",
+      "product_name": "農心ジャパン 辛カップラーメン 68g",
+      "units_per_case": 24,
+      "quantity": 900,
+      "amount": 45000
+    },
+    {
+      "management_id": "00755565",
+      "customer": "(株)アレス",
+      "product_name": "農心ジャパン カムジャ麺 袋 100g",
+      "units_per_case": 40,
+      "quantity": 250,
+      "amount": 12500
+    }
+  ],
+  "page_role": "detail"
+}

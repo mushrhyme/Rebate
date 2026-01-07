@@ -19,15 +19,21 @@ from modules.utils.config import get_project_root
 from modules.utils.hash_utils import compute_page_hash, get_page_key, compute_file_fingerprint
 from modules.utils.db_manifest_manager import DBManifestManager
 from modules.utils.pdf_utils import PdfTextExtractor
+from modules.utils.pdf_to_excel import PdfToExcelConverter
 
 
-def find_pdf_pages(img_dir: Path, form_folder: Optional[str] = None) -> List[Dict[str, Any]]:
+def find_pdf_pages(
+    img_dir: Path,
+    form_folder: Optional[str] = None,
+    version: str = "v1"
+) -> List[Dict[str, Any]]:
     """
     img 폴더의 양식별 폴더(01, 02 등) 안의 하위 폴더에서 모든 PDF 페이지 데이터를 찾습니다.
     
     Args:
         img_dir: img 폴더 경로
         form_folder: 양식 폴더명 (예: "01", "02"). None이면 모든 양식 폴더를 순회
+        version: 정답지 버전 ("v1", "v2", 또는 "all")
         
     Returns:
         [page_data, ...] 리스트
@@ -67,14 +73,11 @@ def find_pdf_pages(img_dir: Path, form_folder: Optional[str] = None) -> List[Dic
             if not pdf_file.exists():
                 print(f"  ⚠️ PDF 파일 없음: {pdf_name}")
                 continue
-            
-            # v1과 v2 정답지 파일 모두 찾기
-            answer_files_v1 = sorted(pdf_folder.glob("Page*_answer.json"))
-            answer_files_v2 = sorted(pdf_folder.glob("Page*_answer_v2.json"))
-            answer_files = answer_files_v1 + answer_files_v2  # v1과 v2 모두 포함
-            
+
+            answer_files = sorted(pdf_folder.glob(f"Page*_answer_{version}.json"))
+
             if not answer_files:
-                print(f"  ⚠️ {pdf_name}: answer.json 파일이 없습니다 (v1 또는 v2)")
+                print(f"  ⚠️ {pdf_name}: answer.json 파일이 없습니다 (version: {version})")
                 continue
             
             try:
@@ -89,12 +92,9 @@ def find_pdf_pages(img_dir: Path, form_folder: Optional[str] = None) -> List[Dic
             
             for answer_file in answer_files:
                 try:
-                    # v1: Page{num}_answer.json, v2: Page{num}_answer_v2.json
+                    # Page{num}_answer.json 형식
                     stem = answer_file.stem
-                    if stem.endswith("_v2"):
-                        page_num_str = stem.replace("Page", "").replace("_answer_v2", "")
-                    else:
-                        page_num_str = stem.replace("Page", "").replace("_answer", "")
+                    page_num_str = stem.replace("Page", "").replace("_answer", "")
                     page_num = int(page_num_str)
                     
                     if page_num < 1 or page_num > page_count:
@@ -132,7 +132,8 @@ def load_answer_json(answer_path: Optional[Path]) -> Dict[str, Any]:
 def diff_pages_with_manifest(
     pages: List[Dict[str, Any]],
     manifest: DBManifestManager,
-    text_extractor: PdfTextExtractor
+    text_extractor: PdfTextExtractor,
+    text_extraction_method: str = "pymupdf"  # "pymupdf" 또는 "excel"
 ) -> List[Dict[str, Any]]:
     """
     manifest와 비교하여 새로운 페이지 또는 변경된 페이지만 필터링합니다.
@@ -171,7 +172,18 @@ def diff_pages_with_manifest(
             continue
         
         # 2단계: 실제 텍스트 추출 및 hash 계산
-        ocr_text = text_extractor.extract_text(pdf_path, page_num)
+        if text_extraction_method == "excel":
+            # 엑셀 변환 방법 사용
+            try:
+                excel_converter = PdfToExcelConverter(method="pdfplumber")
+                ocr_text = excel_converter.convert_to_text_for_llm(pdf_path, page_num)
+            except Exception as e:
+                print(f"⚠️ 엑셀 변환 실패, PyMuPDF로 폴백 ({pdf_name}, 페이지 {page_num}): {e}")
+                ocr_text = text_extractor.extract_text(pdf_path, page_num)
+        else:
+            # 기본 PyMuPDF 방법 사용
+            ocr_text = text_extractor.extract_text(pdf_path, page_num)
+        
         if not ocr_text:
             continue
         
@@ -244,7 +256,13 @@ def detect_deleted_pages(
     return deleted_pages
 
 
-def build_faiss_db(img_dir: Path = None, form_folder: Optional[str] = None, auto_merge: bool = False) -> None:
+def build_faiss_db(
+    img_dir: Path = None, 
+    form_folder: Optional[str] = None, 
+    auto_merge: bool = False, 
+    version: str = "v1",
+    text_extraction_method: str = "pymupdf"  # "pymupdf" 또는 "excel"
+) -> None:
     """
     img 폴더의 데이터를 FAISS 벡터 DB로 변환합니다 (증분 shard + merge 구조).
     
@@ -252,6 +270,10 @@ def build_faiss_db(img_dir: Path = None, form_folder: Optional[str] = None, auto
         img_dir: img 폴더 경로 (None이면 프로젝트 루트/img)
         form_folder: 양식 폴더명 (예: "01", "02"). None이면 모든 양식 폴더를 순회
         auto_merge: shard 생성 후 자동으로 merge할지 여부
+        version: 정답지 버전 ("v1" 또는 "v2")
+        text_extraction_method: 텍스트 추출 방법 ("pymupdf" 또는 "excel")
+            - "pymupdf": PyMuPDF로 텍스트 추출 (기본값)
+            - "excel": pdfplumber로 테이블 추출 후 엑셀 형식 텍스트로 변환
     """
     if img_dir is None:
         project_root = get_project_root()
@@ -266,7 +288,7 @@ def build_faiss_db(img_dir: Path = None, form_folder: Optional[str] = None, auto
     else:
         print(f"📂 img 폴더의 모든 양식 폴더 스캔 중: {img_dir}")
     
-    pages = find_pdf_pages(img_dir, form_folder)
+    pages = find_pdf_pages(img_dir, form_folder, version=version)
     if not pages:
         print("❌ 처리할 페이지를 찾을 수 없습니다.")
         return
@@ -302,8 +324,8 @@ def build_faiss_db(img_dir: Path = None, form_folder: Optional[str] = None, auto
             manifest.mark_pages_deleted(deleted_pages)
         
         # manifest와 비교하여 변경분만 필터링
-        print("🔍 Manifest와 비교하여 변경분 확인 중...")
-        new_pages = diff_pages_with_manifest(pages, manifest, text_extractor)
+        print(f"🔍 Manifest와 비교하여 변경분 확인 중... (텍스트 추출 방법: {text_extraction_method})")
+        new_pages = diff_pages_with_manifest(pages, manifest, text_extractor, text_extraction_method)
         
         if not new_pages:
             print("✅ 변경된 페이지가 없습니다. 모든 페이지가 최신 상태입니다.\n")
@@ -410,5 +432,10 @@ if __name__ == "__main__":
         form_folder = sys.argv[1]
         print(f"📁 지정된 양식 폴더: {form_folder}\n")
     
-    build_faiss_db(form_folder=form_folder, auto_merge=True)  # 자동 merge 활성화
+    build_faiss_db(
+        form_folder=form_folder, 
+        auto_merge=True, 
+        version="v2",  # v2 버전 사용
+        text_extraction_method="excel"  # 기본 PyMuPDF 방법 (엑셀 변환은 "excel")
+    )
     print("\n✅ 완료!")

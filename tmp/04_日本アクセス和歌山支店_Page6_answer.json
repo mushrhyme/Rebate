@@ -1,0 +1,13 @@
+{
+  "items": [
+    {
+      "amount": 200,
+      "customer": "エバグリーン廣甚（株）",
+      "quantity": 200,
+      "product_name": "農心 辛カップラーメン 68g",
+      "management_id": "8141602",
+      "units_per_case": 12
+    }
+  ],
+  "page_role": "detail"
+}

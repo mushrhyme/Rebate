@@ -1,0 +1,19 @@
+{
+  "items": [
+    {
+      "management_id": "2023064347",
+      "customer": "サカガミＧ",
+      "product_name": "農心 辛ラーメン カップ 68G",
+      "quantity": 36,
+      "amount": 1620
+    },
+    {
+      "management_id": "2023064347",
+      "customer": "サカガミＧ",
+      "product_name": "農心 辛ラーメン ３食 120GX3",
+      "quantity": 24,
+      "amount": 3480
+    }
+  ],
+  "page_role": "detail"
+}

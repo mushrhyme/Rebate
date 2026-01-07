@@ -1,0 +1,55 @@
+{
+  "page_role": "detail",
+  "items": [
+    {
+      "management_id": "250101238",
+      "product_name": "農心 安城湯麺 アンソンタンメン 125G袋",
+      "quantity": 19,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 40,
+      "amount": 33440,
+      "customer": "三角商事（株）"
+    },
+    {
+      "management_id": "250101238",
+      "product_name": "農心 辛カップラーメン 68Gカップ",
+      "quantity": 99,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 102168,
+      "customer": "三角商事（株）"
+    },
+    {
+      "management_id": "250101323",
+      "product_name": "農心 辛ラーメン 120G 袋",
+      "quantity": 7,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 60,
+      "amount": 11760,
+      "customer": "（株）川食"
+    },
+    {
+      "management_id": "250101323",
+      "product_name": "農心 辛カップラーメン 68Gカップ",
+      "quantity": 12,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 9792,
+      "customer": "（株）川食"
+    },
+    {
+      "management_id": "250101323",
+      "product_name": "農心 辛カップラーメン 68Gカップ",
+      "quantity": 12,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 408,
+      "customer": "（株）川食"
+    }
+  ]
+}

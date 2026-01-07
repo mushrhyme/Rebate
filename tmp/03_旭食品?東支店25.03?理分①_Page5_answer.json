@@ -1,0 +1,230 @@
+{
+  "items": [
+    {
+      "management_id": null,
+      "customer": "株式会社クスリのアオキ",
+      "product_name": "農心 辛ラーメンキムチカップ 68G",
+      "units_per_case": 24,
+      "case_count": 192.0,
+      "bara_count": NaN,
+      "amount": 317030
+    },
+    {
+      "management_id": null,
+      "customer": "株式会社クスリのアオキ",
+      "product_name": "農心 辛ラーメンキムチカップ 68G",
+      "units_per_case": 24,
+      "case_count": 123.0,
+      "bara_count": NaN,
+      "amount": 203098
+    },
+    {
+      "management_id": null,
+      "customer": "株式会社クスリのアオキ",
+      "product_name": "農心 辛ラーメンキムチ3食 360G",
+      "units_per_case": 12,
+      "case_count": 171.0,
+      "bara_count": NaN,
+      "amount": 346788
+    },
+    {
+      "management_id": null,
+      "customer": "株式会社クスリのアオキ",
+      "product_name": "農心 チャパゲティ 140G",
+      "units_per_case": 30,
+      "case_count": 11.0,
+      "bara_count": NaN,
+      "amount": 13860
+    },
+    {
+      "management_id": null,
+      "customer": "株式会社クスリのアオキ",
+      "product_name": "農心 チャパゲティ 140G",
+      "units_per_case": 30,
+      "case_count": 17.0,
+      "bara_count": NaN,
+      "amount": 21420
+    },
+    {
+      "management_id": null,
+      "customer": "株式会社クスリのアオキ",
+      "product_name": "農心 チャパグリカップ 114G",
+      "units_per_case": 24,
+      "case_count": 6.0,
+      "bara_count": NaN,
+      "amount": 1728
+    },
+    {
+      "management_id": null,
+      "customer": "株式会社クスリのアオキ",
+      "product_name": "農心 チャパグリカップ 114G",
+      "units_per_case": 24,
+      "case_count": 12.0,
+      "bara_count": NaN,
+      "amount": 3456
+    },
+    {
+      "management_id": null,
+      "customer": "株式会社クスリのアオキ",
+      "product_name": "農心 チャパグリカップ 114G",
+      "units_per_case": 24,
+      "case_count": 6.0,
+      "bara_count": NaN,
+      "amount": 4608
+    },
+    {
+      "management_id": null,
+      "customer": "株式会社クスリのアオキ",
+      "product_name": "農心 チャパグリカップ 114G",
+      "units_per_case": 24,
+      "case_count": 12.0,
+      "bara_count": NaN,
+      "amount": 9216
+    },
+    {
+      "management_id": null,
+      "customer": "株式会社クスリのアオキ",
+      "product_name": "農心 ノグリラーメンマイルド 120G",
+      "units_per_case": 30,
+      "case_count": 5.0,
+      "bara_count": NaN,
+      "amount": 7050
+    },
+    {
+      "management_id": null,
+      "customer": "株式会社クスリのアオキ",
+      "product_name": "農心 ノグリラーメンマイルド 120G",
+      "units_per_case": 30,
+      "case_count": 4.0,
+      "bara_count": NaN,
+      "amount": 5640
+    },
+    {
+      "management_id": null,
+      "customer": "株式会社クスリのアオキ",
+      "product_name": "農心 甘辛ヤンニョムチキンビビン 122G",
+      "units_per_case": 24,
+      "case_count": 1.0,
+      "bara_count": NaN,
+      "amount": 768
+    },
+    {
+      "management_id": null,
+      "customer": "株式会社クスリのアオキ",
+      "product_name": "農心 甘辛ヤンニョムチキンビビン 122G",
+      "units_per_case": 24,
+      "case_count": 1.0,
+      "bara_count": NaN,
+      "amount": 768
+    },
+    {
+      "management_id": null,
+      "customer": "株式会社クスリのアオキ",
+      "product_name": "農心 安城湯麺 125G",
+      "units_per_case": 40,
+      "case_count": 4.0,
+      "bara_count": NaN,
+      "amount": 7520
+    },
+    {
+      "management_id": null,
+      "customer": "株式会社クスリのアオキ",
+      "product_name": "農心 安城湯麺 125G",
+      "units_per_case": 40,
+      "case_count": 8.0,
+      "bara_count": NaN,
+      "amount": 15040
+    },
+    {
+      "management_id": null,
+      "customer": "株式会社クスリのアオキ",
+      "product_name": "農心 辛ラーメン焼きそばカップ 103G",
+      "units_per_case": 24,
+      "case_count": 8.0,
+      "bara_count": NaN,
+      "amount": 2304
+    },
+    {
+      "management_id": null,
+      "customer": "株式会社クスリのアオキ",
+      "product_name": "農心 辛ラーメン焼きそばカップ 103G",
+      "units_per_case": 24,
+      "case_count": 7.0,
+      "bara_count": NaN,
+      "amount": 2016
+    },
+    {
+      "management_id": null,
+      "customer": "株式会社クスリのアオキ",
+      "product_name": "農心 辛ラーメン焼きそばカップ 103G",
+      "units_per_case": 24,
+      "case_count": 7.0,
+      "bara_count": NaN,
+      "amount": 5376
+    },
+    {
+      "management_id": null,
+      "customer": "株式会社クスリのアオキ",
+      "product_name": "農心 辛ラーメン焼きそばカップ 103G",
+      "units_per_case": 24,
+      "case_count": 8.0,
+      "bara_count": NaN,
+      "amount": 6144
+    },
+    {
+      "management_id": null,
+      "customer": "株式会社クスリのアオキ",
+      "product_name": "農心 ノグリラーメンカップ 62G",
+      "units_per_case": 24,
+      "case_count": 1.0,
+      "bara_count": NaN,
+      "amount": 1344
+    },
+    {
+      "management_id": "3006519087",
+      "customer": "株式会社ワッツ",
+      "product_name": "農心 辛ラーメン3食 360G",
+      "units_per_case": 12,
+      "case_count": 145.0,
+      "bara_count": NaN,
+      "amount": 268830
+    },
+    {
+      "management_id": "3006519087",
+      "customer": "株式会社ワッツ",
+      "product_name": "農心 辛カップラーメン 68G",
+      "units_per_case": 24,
+      "case_count": 100.0,
+      "bara_count": NaN,
+      "amount": 133200
+    },
+    {
+      "management_id": "3006519087",
+      "customer": "株式会社ワッツ",
+      "product_name": "農心 辛ラーメンキムチ3食 360G",
+      "units_per_case": 12,
+      "case_count": 21.0,
+      "bara_count": NaN,
+      "amount": 39564
+    },
+    {
+      "management_id": "3006519088",
+      "customer": "ＴＨＤ関東株式会社葵商事",
+      "product_name": "農心 辛カップラーメン 68G",
+      "units_per_case": 24,
+      "case_count": 1.0,
+      "bara_count": NaN,
+      "amount": 1176
+    },
+    {
+      "management_id": "3006519089",
+      "customer": "ＴＨＤ関東株式会社葵商事",
+      "product_name": "農心 辛カップラーメン 68G",
+      "units_per_case": 24,
+      "case_count": NaN,
+      "bara_count": 12.0,
+      "amount": 396
+    }
+  ],
+  "page_role": "detail"
+}

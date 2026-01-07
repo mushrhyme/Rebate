@@ -1,0 +1,185 @@
+{
+  "items": [
+    {
+      "management_id": "2501001137",
+      "customer": "野嵩商会",
+      "product_name": "ノウシン 辛ラーメン3食",
+      "units_per_case": 12,
+      "case_count": 125,
+      "bara_count": NaN,
+      "amount": 229500
+    },
+    {
+      "management_id": "2501001137",
+      "customer": "野嵩商会",
+      "product_name": "農心 NEW辛ラーメンカップ 68g",
+      "units_per_case": 12,
+      "case_count": 194,
+      "bara_count": NaN,
+      "amount": 128040
+    },
+    {
+      "management_id": "2501001137",
+      "customer": "野嵩商会",
+      "product_name": "辛ラーメンBLACK3食",
+      "units_per_case": 12,
+      "case_count": 1,
+      "bara_count": NaN,
+      "amount": 1176
+    },
+    {
+      "management_id": "2501001137",
+      "customer": "野嵩商会",
+      "product_name": "辛ラーメンキムチ3食",
+      "units_per_case": 12,
+      "case_count": 26,
+      "bara_count": NaN,
+      "amount": 47736
+    },
+    {
+      "management_id": "2501001137",
+      "customer": "野嵩商会",
+      "product_name": "辛ラーメン焼きそば 103g",
+      "units_per_case": 12,
+      "case_count": 24,
+      "bara_count": NaN,
+      "amount": 8640
+    },
+    {
+      "management_id": "2501001137",
+      "customer": "野嵩商会",
+      "product_name": "農心 いかチャンポン 124g",
+      "units_per_case": 30,
+      "case_count": 1,
+      "bara_count": NaN,
+      "amount": 1050
+    },
+    {
+      "management_id": "2501001138",
+      "customer": "コープおきなわ",
+      "product_name": "ノウシン 辛ラーメン3食",
+      "units_per_case": 12,
+      "case_count": 17,
+      "bara_count": 6.0,
+      "amount": 28980
+    },
+    {
+      "management_id": "2501001138",
+      "customer": "コープおきなわ",
+      "product_name": "農心 NEW辛ラーメンカップ 68g",
+      "units_per_case": 12,
+      "case_count": 17,
+      "bara_count": NaN,
+      "amount": 10200
+    },
+    {
+      "management_id": "2501001138",
+      "customer": "コープおきなわ",
+      "product_name": "農心辛ラーメンキムチカップ 68g",
+      "units_per_case": 12,
+      "case_count": 8,
+      "bara_count": NaN,
+      "amount": 4800
+    },
+    {
+      "management_id": "2501001138",
+      "customer": "コープおきなわ",
+      "product_name": "辛ラーメンバケツカップ 114g",
+      "units_per_case": 12,
+      "case_count": 3,
+      "bara_count": NaN,
+      "amount": 792
+    },
+    {
+      "management_id": "2501001139",
+      "customer": "株式会社ツルハ",
+      "product_name": "ノウシン 辛ラーメン3食",
+      "units_per_case": 12,
+      "case_count": 1,
+      "bara_count": NaN,
+      "amount": 1656
+    },
+    {
+      "management_id": "2501001139",
+      "customer": "株式会社ツルハ",
+      "product_name": "農心 NEW辛ラーメンカップ 68g",
+      "units_per_case": 12,
+      "case_count": 1,
+      "bara_count": NaN,
+      "amount": 600
+    },
+    {
+      "management_id": "2501001140",
+      "customer": "株式会社ダイコク",
+      "product_name": "農心 NEW辛ラーメンカップ 68g",
+      "units_per_case": 12,
+      "case_count": 5,
+      "bara_count": NaN,
+      "amount": 3000
+    },
+    {
+      "management_id": "2501001140",
+      "customer": "株式会社ダイコク",
+      "product_name": "農心辛ラーメンキムチカップ 68g",
+      "units_per_case": 12,
+      "case_count": 1,
+      "bara_count": NaN,
+      "amount": 600
+    },
+    {
+      "management_id": "2501001141",
+      "customer": "(株)ふく薬品",
+      "product_name": "ノウシン 辛ラーメン3食",
+      "units_per_case": 12,
+      "case_count": 12,
+      "bara_count": NaN,
+      "amount": 19872
+    },
+    {
+      "management_id": "2501001141",
+      "customer": "(株)ふく薬品",
+      "product_name": "農心 NEW辛ラーメンカップ 68g",
+      "units_per_case": 12,
+      "case_count": 20,
+      "bara_count": NaN,
+      "amount": 12000
+    },
+    {
+      "management_id": "2501001141",
+      "customer": "(株)ふく薬品",
+      "product_name": "農心辛ラーメンキムチカップ 68g",
+      "units_per_case": 12,
+      "case_count": 16,
+      "bara_count": NaN,
+      "amount": 9600
+    },
+    {
+      "management_id": "2501001141",
+      "customer": "(株)ふく薬品",
+      "product_name": "辛ラーメン激辛 68g",
+      "units_per_case": 12,
+      "case_count": 2,
+      "bara_count": NaN,
+      "amount": 1104
+    },
+    {
+      "management_id": "2501001141",
+      "customer": "(株)ふく薬品",
+      "product_name": "辛ラーメン焼そばチーズカップ105g",
+      "units_per_case": 12,
+      "case_count": 1,
+      "bara_count": NaN,
+      "amount": 264
+    },
+    {
+      "management_id": "2501001141",
+      "customer": "(株)ふく薬品",
+      "product_name": "辛ラーメンバケツカップスパイシーチキン",
+      "units_per_case": 12,
+      "case_count": 10,
+      "bara_count": NaN,
+      "amount": 2880
+    }
+  ],
+  "page_role": "detail"
+}

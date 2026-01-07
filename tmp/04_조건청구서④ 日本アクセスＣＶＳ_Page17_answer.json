@@ -1,0 +1,85 @@
+{
+  "items": [
+    {
+      "management_id": "1559719",
+      "customer": "(株) ファミリーマート",
+      "product_name": "農心 辛ラーメンカップ 68g",
+      "units_per_case": 24,
+      "quantity": 14424,
+      "amount": 53369
+    },
+    {
+      "management_id": "1559720",
+      "customer": "(株) ファミリーマート",
+      "product_name": "農心 辛ラーメン ミニカップ 49g",
+      "units_per_case": 24,
+      "quantity": 2472,
+      "amount": 24720
+    },
+    {
+      "management_id": "1559720",
+      "customer": "(株) ファミリーマート",
+      "product_name": "農心 辛ラーメン 袋 120g",
+      "units_per_case": 60,
+      "quantity": 7340,
+      "amount": 308280
+    },
+    {
+      "management_id": "1559721",
+      "customer": "(株) ファミリーマート",
+      "product_name": "農心 辛ラーメンカップ 68g",
+      "units_per_case": 24,
+      "quantity": 360,
+      "amount": 1332
+    },
+    {
+      "management_id": "1559722",
+      "customer": "(株) ファミリーマート",
+      "product_name": "農心 辛ラーメンカップ 68g",
+      "units_per_case": 24,
+      "quantity": 4344,
+      "amount": 16073
+    },
+    {
+      "management_id": "1559723",
+      "customer": "(株) ファミリーマート",
+      "product_name": "農心 辛ラーメン ミニカップ 49g",
+      "units_per_case": 24,
+      "quantity": 558,
+      "amount": 5580
+    },
+    {
+      "management_id": "1559723",
+      "customer": "(株) ファミリーマート",
+      "product_name": "農心 辛ラーメン 袋 120g",
+      "units_per_case": 60,
+      "quantity": 4665,
+      "amount": 195930
+    },
+    {
+      "management_id": "1559724",
+      "customer": "(株) ファミリーマート",
+      "product_name": "農心 辛ラーメンカップ 68g",
+      "units_per_case": 24,
+      "quantity": 5400,
+      "amount": 19980
+    },
+    {
+      "management_id": "1559725",
+      "customer": "(株) ファミリーマート",
+      "product_name": "農心 辛ラーメン ミニカップ 49g",
+      "units_per_case": 24,
+      "quantity": 936,
+      "amount": 9360
+    },
+    {
+      "management_id": "1559725",
+      "customer": "(株) ファミリーマート",
+      "product_name": "農心 辛ラーメン 袋 120g",
+      "units_per_case": 60,
+      "quantity": 6160,
+      "amount": 258720
+    }
+  ],
+  "page_role": "detail"
+}

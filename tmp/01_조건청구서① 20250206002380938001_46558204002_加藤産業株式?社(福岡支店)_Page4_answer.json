@@ -1,0 +1,125 @@
+{
+  "items": [
+    {
+      "management_id": "00753640",
+      "customer": "(株)丸喜",
+      "product_name": "農心 辛カップラーメン 68G",
+      "units_per_case": 24,
+      "quantity": 324,
+      "amount": 15876
+    },
+    {
+      "management_id": "00753641",
+      "customer": "(株)丸喜",
+      "product_name": "農心 辛ラーメン 激辛カップ 68g",
+      "units_per_case": 24,
+      "quantity": 24,
+      "amount": 1176
+    },
+    {
+      "management_id": "00753641",
+      "customer": "(株)丸喜",
+      "product_name": "農心 辛ラーメン焼きそばカップ",
+      "units_per_case": 24,
+      "quantity": 24,
+      "amount": 960
+    },
+    {
+      "management_id": "00753641",
+      "customer": "(株)丸喜",
+      "product_name": "農心 辛ラーメン焼きそば袋 131g",
+      "units_per_case": 40,
+      "quantity": 40,
+      "amount": 1360
+    },
+    {
+      "management_id": "00753642",
+      "customer": "コープやまぐち",
+      "product_name": "農心 辛ラーメン 3P",
+      "units_per_case": 12,
+      "quantity": 62,
+      "amount": 6262
+    },
+    {
+      "management_id": "00753642",
+      "customer": "コープやまぐち",
+      "product_name": "農心 辛カップラーメン 68G",
+      "units_per_case": 24,
+      "quantity": 48,
+      "amount": 2016
+    },
+    {
+      "management_id": "00753642",
+      "customer": "コープやまぐち",
+      "product_name": "農心 辛ラーメン バケツカップ 114g",
+      "units_per_case": 24,
+      "quantity": 36,
+      "amount": 1224
+    },
+    {
+      "management_id": "00753642",
+      "customer": "コープやまぐち",
+      "product_name": "コリコレ鍋セット プデチゲ 200g",
+      "units_per_case": 36,
+      "quantity": 12,
+      "amount": 1140
+    },
+    {
+      "management_id": "00753642",
+      "customer": "コープやまぐち",
+      "product_name": "コリコレ鍋セット キムチチゲ 210g",
+      "units_per_case": 36,
+      "quantity": 6,
+      "amount": 570
+    },
+    {
+      "management_id": "00754936",
+      "customer": "イオン九州(株)",
+      "product_name": "農心 辛ラーメン 3P",
+      "units_per_case": 12,
+      "quantity": 4452,
+      "amount": 601020
+    },
+    {
+      "management_id": "00754936",
+      "customer": "イオン九州(株)",
+      "product_name": "農心 ユッケジャンラーメン 86g",
+      "units_per_case": 24,
+      "quantity": 648,
+      "amount": 9072
+    },
+    {
+      "management_id": "00754936",
+      "customer": "イオン九州(株)",
+      "product_name": "農心 本場韓国コムタンラーメン 75G",
+      "units_per_case": 24,
+      "quantity": 216,
+      "amount": 10800
+    },
+    {
+      "management_id": "00754936",
+      "customer": "イオン九州(株)",
+      "product_name": "農心 ノグリラーメン 120G",
+      "units_per_case": 30,
+      "quantity": 1310,
+      "amount": 56330
+    },
+    {
+      "management_id": "00754936",
+      "customer": "イオン九州(株)",
+      "product_name": "農心 ノグリラーメン 120G",
+      "units_per_case": 30,
+      "quantity": 10,
+      "amount": 480
+    },
+    {
+      "management_id": "00754936",
+      "customer": "イオン九州(株)",
+      "product_name": "農心 ハニーツイストスナック 75G",
+      "units_per_case": 20,
+      "quantity": 180,
+      "amount": 6300
+    }
+  ],
+  "page_role": "detail"
+}

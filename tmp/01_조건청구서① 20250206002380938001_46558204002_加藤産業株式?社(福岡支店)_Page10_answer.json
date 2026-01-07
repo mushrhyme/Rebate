@@ -1,0 +1,133 @@
+{
+  "items": [
+    {
+      "management_id": "00755560",
+      "customer": "イオン九州(株)MV",
+      "product_name": "農心 ノグリラーメン 120G",
+      "units_per_case": 30,
+      "quantity": 1000,
+      "amount": 43000
+    },
+    {
+      "management_id": "00755560",
+      "customer": "イオン九州(株)MV",
+      "product_name": "農心 本場韓国コムタンラーメン 袋 3P",
+      "units_per_case": 12,
+      "quantity": 36,
+      "amount": 5580
+    },
+    {
+      "management_id": "00755560",
+      "customer": "イオン九州(株)MV",
+      "product_name": "農心 ふるる冷麺 (水冷麺) 155G",
+      "units_per_case": 20,
+      "quantity": 110,
+      "amount": 7700
+    },
+    {
+      "management_id": "00755560",
+      "customer": "イオン九州(株)MV",
+      "product_name": "農心 ふるる冷麺 (ビビン冷麺) 159G",
+      "units_per_case": 20,
+      "quantity": 100,
+      "amount": 7000
+    },
+    {
+      "management_id": "00755561",
+      "customer": "イオン九州(株)MV",
+      "product_name": "農心 カムジャ麺 袋 100G",
+      "units_per_case": 40,
+      "quantity": 650,
+      "amount": 37700
+    },
+    {
+      "management_id": "00755561",
+      "customer": "イオン九州(株)MV",
+      "product_name": "農心 チャーワン麺 134g",
+      "units_per_case": 40,
+      "quantity": 20,
+      "amount": 1080
+    },
+    {
+      "management_id": "00755561",
+      "customer": "イオン九州(株)MV",
+      "product_name": "農心 旨辛海鮮ちゃんぽん 130G",
+      "units_per_case": 40,
+      "quantity": 270,
+      "amount": 14580
+    },
+    {
+      "management_id": "00755561",
+      "customer": "イオン九州(株)MV",
+      "product_name": "農心 辛ラーメンブラック 130g",
+      "units_per_case": 40,
+      "quantity": 170,
+      "amount": 5440
+    },
+    {
+      "management_id": "00755561",
+      "customer": "イオン九州(株)MV",
+      "product_name": "農心 チャパゲティ 140g",
+      "units_per_case": 30,
+      "quantity": 670,
+      "amount": 33500
+    },
+    {
+      "management_id": "00755561",
+      "customer": "イオン九州(株)MV",
+      "product_name": "農心 いかチャンポン 124g",
+      "units_per_case": 30,
+      "quantity": 30,
+      "amount": 1410
+    },
+    {
+      "management_id": "00755562",
+      "customer": "イオン九州(株)MV",
+      "product_name": "農心 ノグリラーメン マイルド",
+      "units_per_case": 30,
+      "quantity": 280,
+      "amount": 12040
+    },
+    {
+      "management_id": "00755562",
+      "customer": "イオン九州(株)MV",
+      "product_name": "農心 辛ラーメン キムチ 3P",
+      "units_per_case": 12,
+      "quantity": 624,
+      "amount": 84240
+    },
+    {
+      "management_id": "00755562",
+      "customer": "イオン九州(株)MV",
+      "product_name": "農心 安城湯麺 125G",
+      "units_per_case": 40,
+      "quantity": 320,
+      "amount": 13760
+    },
+    {
+      "management_id": "00755562",
+      "customer": "イオン九州(株)MV",
+      "product_name": "農心 チャパグリ カップ 114g",
+      "units_per_case": 24,
+      "quantity": 96,
+      "amount": 2880
+    },
+    {
+      "management_id": "00755562",
+      "customer": "イオン九州(株)MV",
+      "product_name": "甘辛ヤンニョムチキン ビビン麺 カップ 122g",
+      "units_per_case": 24,
+      "quantity": 36,
+      "amount": 1836
+    },
+    {
+      "management_id": "00755562",
+      "customer": "イオン九州(株)MV",
+      "product_name": "農心 ノグリラーメン カップ 62g",
+      "units_per_case": 24,
+      "quantity": 252,
+      "amount": 12600
+    }
+  ],
+  "page_role": "detail"
+}

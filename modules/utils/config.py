@@ -50,6 +50,7 @@ class RAGConfig:
     """
     # PDF 변환 설정
     dpi: int = 300  # PDF를 이미지로 변환할 때의 DPI
+    text_extraction_method: str = "excel"  # 텍스트 추출 방법: "pymupdf" 또는 "excel"
     
     # RAG 검색 설정
     top_k: int = 3 # 벡터 DB에서 검색할 예제 수

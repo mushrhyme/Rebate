@@ -1,0 +1,61 @@
+{
+  "page_role": "detail",
+  "items": [
+    {
+      "management_id": "1477224",
+      "customer": "（株）アイスコ",
+      "product_name": "農心ジャパン 辛カップラーメン 68G",
+      "units_per_case": 24,
+      "quantity": 12,
+      "amount": 576
+    },
+    {
+      "management_id": "1477224",
+      "customer": "（株）アイスコ",
+      "product_name": "農心ジャパン 辛ラーメン キムチ カップ 68G",
+      "units_per_case": 24,
+      "quantity": 12,
+      "amount": 576
+    },
+    {
+      "management_id": "1477224",
+      "customer": "（株）アイスコ",
+      "product_name": "農心 辛ラーメン 3食入 120G×3",
+      "units_per_case": 12,
+      "quantity": 1,
+      "amount": 1560
+    },
+    {
+      "management_id": "1477225",
+      "customer": "（株）フードウェイ",
+      "product_name": "農心ジャパン 辛カップラーメン 68G",
+      "units_per_case": 24,
+      "quantity": 276,
+      "amount": 11868
+    },
+    {
+      "management_id": "1477225",
+      "customer": "（株）フードウェイ",
+      "product_name": "農心 辛ラーメンキムチ3個パック 120G×3",
+      "units_per_case": 12,
+      "quantity": 78,
+      "amount": 10218
+    },
+    {
+      "management_id": "1477225",
+      "customer": "（株）フードウェイ",
+      "product_name": "農心 辛ラーメン 3食入 120G×3",
+      "units_per_case": 12,
+      "quantity": 6,
+      "amount": 9432
+    },
+    {
+      "management_id": "1477225",
+      "customer": "（株）フードウェイ",
+      "product_name": "農心 辛ラーメン 3食入 120G×3",
+      "units_per_case": 12,
+      "quantity": 23,
+      "amount": 36156
+    }
+  ]
+}

@@ -1,0 +1,149 @@
+{
+  "items": [
+    {
+      "management_id": "3006542754",
+      "customer": "株式会社トライアルカンパニー",
+      "product_name": "農心 ノグリラーメンマイルド 120G",
+      "units_per_case": 30,
+      "case_count": 6.0,
+      "bara_count": NaN,
+      "amount": 8460
+    },
+    {
+      "management_id": "3006542754",
+      "customer": "株式会社トライアルカンパニー",
+      "product_name": "農心 安城湯麺 125G",
+      "units_per_case": 40,
+      "case_count": 2.0,
+      "bara_count": NaN,
+      "amount": 3760
+    },
+    {
+      "management_id": "3006542754",
+      "customer": "株式会社トライアルカンパニー",
+      "product_name": "農心 辛ラーメン焼きそばカップ 103G",
+      "units_per_case": 24,
+      "case_count": 8.0,
+      "bara_count": NaN,
+      "amount": 2304
+    },
+    {
+      "management_id": "3006542754",
+      "customer": "株式会社トライアルカンパニー",
+      "product_name": "農心 辛ラーメン焼きそばカップ 103G",
+      "units_per_case": 24,
+      "case_count": 8.0,
+      "bara_count": NaN,
+      "amount": 6144
+    },
+    {
+      "management_id": "3006542755",
+      "customer": "ＴＨＤ中国株式会社ユアーズ・Ｖ",
+      "product_name": "農心 辛ラーメン3食 360G",
+      "units_per_case": 12,
+      "case_count": 1.0,
+      "bara_count": NaN,
+      "amount": 972
+    },
+    {
+      "management_id": "3006542755",
+      "customer": "ＴＨＤ中国株式会社ユアーズ・Ｖ",
+      "product_name": "農心 辛カップラーメン 68G",
+      "units_per_case": 24,
+      "case_count": NaN,
+      "bara_count": 12.0,
+      "amount": 360
+    },
+    {
+      "management_id": "3006542755",
+      "customer": "ＴＨＤ中国株式会社ユアーズ・Ｖ",
+      "product_name": "農心 辛ラーメン焼そばチーズ袋 136G",
+      "units_per_case": 40,
+      "case_count": 3.0,
+      "bara_count": NaN,
+      "amount": 9360
+    },
+    {
+      "management_id": "6000615197",
+      "customer": "株式会社丸久",
+      "product_name": "株農心ジャパン 大陳料10%",
+      "units_per_case": 1,
+      "case_count": NaN,
+      "bara_count": NaN,
+      "amount": 20000
+    },
+    {
+      "management_id": "3006542756",
+      "customer": "株式会社丸久",
+      "product_name": "農心 辛ラーメン袋 120G",
+      "units_per_case": 60,
+      "case_count": 25.0,
+      "bara_count": 40.0,
+      "amount": 8808
+    },
+    {
+      "management_id": "3006542756",
+      "customer": "株式会社丸久",
+      "product_name": "農心 辛ラーメン3食 360G",
+      "units_per_case": 12,
+      "case_count": 120.0,
+      "bara_count": NaN,
+      "amount": 23026
+    },
+    {
+      "management_id": "3006542756",
+      "customer": "株式会社丸久",
+      "product_name": "農心 辛カップラーメン 68G",
+      "units_per_case": 24,
+      "case_count": 68.0,
+      "bara_count": NaN,
+      "amount": 9334
+    },
+    {
+      "management_id": "3006542756",
+      "customer": "株式会社丸久",
+      "product_name": "農心 辛ラーメンキムチ袋 120G",
+      "units_per_case": 60,
+      "case_count": 1.0,
+      "bara_count": NaN,
+      "amount": 343
+    },
+    {
+      "management_id": "3006542756",
+      "customer": "株式会社丸久",
+      "product_name": "農心 辛ラーメンキムチ3食 360G",
+      "units_per_case": 12,
+      "case_count": 13.0,
+      "bara_count": NaN,
+      "amount": 2494
+    },
+    {
+      "management_id": "3006542756",
+      "customer": "株式会社丸久",
+      "product_name": "農心 チャパゲティ 140G",
+      "units_per_case": 30,
+      "case_count": 1.0,
+      "bara_count": 20.0,
+      "amount": 384
+    },
+    {
+      "management_id": "3006542756",
+      "customer": "株式会社丸久",
+      "product_name": "農心 辛ラーメン焼きそば袋 131G",
+      "units_per_case": 40,
+      "case_count": 13.0,
+      "bara_count": 30.0,
+      "amount": 5040
+    },
+    {
+      "management_id": "3006542756",
+      "customer": "株式会社丸久",
+      "product_name": "農心 コリコレ鍋Sプデチゲ 200G",
+      "units_per_case": 36,
+      "case_count": NaN,
+      "bara_count": 6.0,
+      "amount": 107
+    }
+  ],
+  "page_role": "detail"
+}

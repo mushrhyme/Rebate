@@ -1,0 +1,21 @@
+{
+  "page_role": "detail",
+  "items": [
+    {
+      "management_id": "1473892",
+      "customer": "（株）籠島",
+      "product_name": "農心ジャパン 辛カップラーメン 68G",
+      "units_per_case": 24,
+      "quantity": 33600,
+      "amount": 672
+    },
+    {
+      "management_id": "1473892",
+      "customer": "（株）籠島",
+      "product_name": "農心 辛ラーメン 3食入 120G×3",
+      "units_per_case": 12,
+      "quantity": 90720,
+      "amount": 1814
+    }
+  ]
+}

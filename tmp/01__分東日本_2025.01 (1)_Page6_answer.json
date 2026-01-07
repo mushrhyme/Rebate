@@ -1,0 +1,165 @@
+{
+  "items": [
+    {
+      "management_id": "367870SA",
+      "product_name": "農心 ノグリラーメン 120g",
+      "quantity": 300,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 30,
+      "amount": 12000,
+      "customer": "(株) G7リコスストアズ"
+    },
+    {
+      "management_id": "367870SA",
+      "product_name": "農心ジャパン 辛ラーメン ミニカップ 49g",
+      "quantity": 210,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 2310,
+      "customer": "(株) G7リコスストアズ"
+    },
+    {
+      "management_id": "367870SA",
+      "product_name": "農心ジャパン 辛カップラーメン 68g",
+      "quantity": 2124,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 112572,
+      "customer": "(株) G7リコスストアズ"
+    },
+    {
+      "management_id": "367870SA",
+      "product_name": "農心 辛ラーメン キムチ 120g X 3",
+      "quantity": 450,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 65700,
+      "customer": "(株) G7リコスストアズ"
+    },
+    {
+      "management_id": "367870SA",
+      "product_name": "農心ジャパン チャパゲティ 140g",
+      "quantity": 230,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 30,
+      "amount": 9200,
+      "customer": "(株) G7リコスストアズ"
+    },
+    {
+      "management_id": "367870SA",
+      "product_name": "農心 ユッケジャンラーメン カップ 86g",
+      "quantity": 1752,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 15768,
+      "customer": "(株) G7リコスストアズ"
+    },
+    {
+      "management_id": "367870SA",
+      "product_name": "農心ジャパン 辛ラーメン焼きそばチーズC 105g",
+      "quantity": 576,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 23040,
+      "customer": "(株) G7リコスストアズ"
+    },
+    {
+      "management_id": "367870SA",
+      "product_name": "農心ジャパン キムチサバルカップ 86g",
+      "quantity": 1224,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 11016,
+      "customer": "(株) G7リコスストアズ"
+    },
+    {
+      "management_id": "367870SA",
+      "product_name": "消費税金額 8%",
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": null,
+      "amount": 41713,
+      "customer": "(株) G7リコスストアズ"
+    },
+    {
+      "management_id": "368533SA",
+      "product_name": "農心 辛ラーメン 袋 (農心) 120g",
+      "quantity": 510,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 60,
+      "amount": 9945,
+      "customer": "富士シティオ (株)"
+    },
+    {
+      "management_id": "368533SA",
+      "product_name": "農心 辛ラーメン 120g X 3",
+      "quantity": 1587,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 91412,
+      "customer": "富士シティオ (株)"
+    },
+    {
+      "management_id": "368533SA",
+      "product_name": "農心ジャパン 辛カップラーメン 68g",
+      "quantity": 909,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 9090,
+      "customer": "富士シティオ (株)"
+    },
+    {
+      "management_id": "368533SA",
+      "product_name": "農心 旨辛海鮮ちゃんぽん 130g",
+      "quantity": 5,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 40,
+      "amount": 455,
+      "customer": "富士シティオ (株)"
+    },
+    {
+      "management_id": "368533SA",
+      "product_name": "農心 旨辛海鮮ちゃんぽん 130g",
+      "quantity": 35,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 40,
+      "amount": 301,
+      "customer": "富士シティオ (株)"
+    },
+    {
+      "management_id": "368533SA",
+      "product_name": "消費税金額 8%",
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": null,
+      "amount": 8896,
+      "customer": "富士シティオ (株)"
+    },
+    {
+      "management_id": "368534TA",
+      "product_name": "農心ジャパン コリコレ鍋セット プデチゲ 200g",
+      "quantity": 18,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 36,
+      "amount": 684,
+      "customer": "富士シティオ (株)"
+    }
+  ],
+  "page_role": "detail"
+}

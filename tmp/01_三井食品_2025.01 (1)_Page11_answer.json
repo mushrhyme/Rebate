@@ -1,0 +1,133 @@
+{
+  "page_role": "detail",
+  "items": [
+    {
+      "management_id": "1477222",
+      "customer": "（株）成城石井",
+      "product_name": "農心ジャパン　辛カップラーメン　６８Ｇ",
+      "units_per_case": 24,
+      "quantity": 804,
+      "amount": 20904
+    },
+    {
+      "management_id": "1477222",
+      "customer": "（株）成城石井",
+      "product_name": "農心　辛ラーメン　３食入　１２０Ｇ×３",
+      "units_per_case": 12,
+      "quantity": 78,
+      "amount": 9126
+    },
+    {
+      "management_id": "1477223",
+      "customer": "（株）ビックライズ",
+      "product_name": "農心　辛ラーメン焼きそばチーズ　１０５Ｇ",
+      "units_per_case": 24,
+      "quantity": 1,
+      "amount": 1440
+    },
+    {
+      "management_id": "1477223",
+      "customer": "（株）ビックライズ",
+      "product_name": "農心ジャパン　ノグリラーメンカップ　６２Ｇ",
+      "units_per_case": 24,
+      "quantity": 12,
+      "amount": 12960
+    },
+    {
+      "management_id": "1477223",
+      "customer": "（株）ビックライズ",
+      "product_name": "農心　辛ラーメンチーズ焼そば　１３６Ｇ",
+      "units_per_case": 40,
+      "quantity": 90,
+      "amount": 3240
+    },
+    {
+      "management_id": "1477223",
+      "customer": "（株）ビックライズ",
+      "product_name": "農心ジャパン　チャパグリカップ　１１４Ｇ",
+      "units_per_case": 24,
+      "quantity": 276,
+      "amount": 8280
+    },
+    {
+      "management_id": "1477223",
+      "customer": "（株）ビックライズ",
+      "product_name": "農心ジャパン　辛ラーメン　激辛カップ　６８Ｇ",
+      "units_per_case": 24,
+      "quantity": 132,
+      "amount": 5940
+    },
+    {
+      "management_id": "1477223",
+      "customer": "（株）ビックライズ",
+      "product_name": "農心ジャパン　ノグリラーメン　１２０Ｇ",
+      "units_per_case": 30,
+      "quantity": 41,
+      "amount": 61500
+    },
+    {
+      "management_id": "1477223",
+      "customer": "（株）ビックライズ",
+      "product_name": "農心　辛ラーメン　袋　１２０Ｇ",
+      "units_per_case": 60,
+      "quantity": 170,
+      "amount": 7140
+    },
+    {
+      "management_id": "1477223",
+      "customer": "（株）ビックライズ",
+      "product_name": "農心ジャパン　辛ラーメン焼きそばカップ　１０３Ｇ",
+      "units_per_case": 24,
+      "quantity": 4,
+      "amount": 2880
+    },
+    {
+      "management_id": "1477223",
+      "customer": "（株）ビックライズ",
+      "product_name": "農心ジャパン　辛カップラーメン　６８Ｇ",
+      "units_per_case": 24,
+      "quantity": 39,
+      "amount": 42120
+    },
+    {
+      "management_id": "1477223",
+      "customer": "（株）ビックライズ",
+      "product_name": "農心　辛ラーメン焼きそば　袋　１３１Ｇ",
+      "units_per_case": 40,
+      "quantity": 11,
+      "amount": 15840
+    },
+    {
+      "management_id": "1477223",
+      "customer": "（株）ビックライズ",
+      "product_name": "農心ジャパン　辛ラーメン　キムチ　カップ　６８Ｇ",
+      "units_per_case": 24,
+      "quantity": 300,
+      "amount": 13500
+    },
+    {
+      "management_id": "1477223",
+      "customer": "（株）ビックライズ",
+      "product_name": "農心　チャパゲティ　１４０Ｇ",
+      "units_per_case": 30,
+      "quantity": 20,
+      "amount": 25200
+    },
+    {
+      "management_id": "1477223",
+      "customer": "（株）ビックライズ",
+      "product_name": "農心　辛ラーメン　３食入　１２０Ｇ×３",
+      "units_per_case": 12,
+      "quantity": 217,
+      "amount": 322896
+    },
+    {
+      "management_id": "1477224",
+      "customer": "（株）アイスコ　　　　　スーパーマーケッ",
+      "product_name": "農心　辛ラーメン　袋　１２０Ｇ",
+      "units_per_case": 60,
+      "quantity": 3,
+      "amount": 5580
+    }
+  ]
+}

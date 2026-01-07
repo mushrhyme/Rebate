@@ -1,0 +1,65 @@
+{
+  "items": [
+    {
+      "management_id": "0002",
+      "product_name": "農心ジャパン コリコレ鍋セットキムチチゲ 210g",
+      "quantity": 38,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 36,
+      "amount": 342,
+      "customer": "富士シティオ (株)"
+    },
+    {
+      "management_id": "0003",
+      "product_name": "農心 辛ラーメン 袋 120g",
+      "quantity": 510,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 60,
+      "amount": 15300,
+      "customer": "富士シティオ (株)"
+    },
+    {
+      "management_id": "0004",
+      "product_name": "農心 辛ラーメン 120g X 3",
+      "quantity": 1587,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 139656,
+      "customer": "富士シティオ (株)"
+    },
+    {
+      "management_id": "0005",
+      "product_name": "農心ジャパン 辛カップラーメン 68g",
+      "quantity": 909,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 35451,
+      "customer": "富士シティオ (株)"
+    },
+    {
+      "management_id": "0006",
+      "product_name": "農心 旨辛海鮮ちゃんぽん 130g",
+      "quantity": 27,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 40,
+      "amount": 135,
+      "customer": "富士シティオ (株)"
+    },
+    {
+      "management_id": "0007",
+      "product_name": "農心 旨辛海鮮ちゃんぽん 130g",
+      "quantity": 27,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 40,
+      "amount": 945,
+      "customer": "富士シティオ (株)"
+    }
+  ],
+  "page_role": "detail"
+}

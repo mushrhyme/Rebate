@@ -1,0 +1,95 @@
+{
+  "items": [
+    {
+      "management_id": "13120769",
+      "product_name": null,
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": null,
+      "amount": 294575,
+      "customer": "小田急商事 (株) OXストアー"
+    },
+    {
+      "management_id": "13369041",
+      "product_name": null,
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": null,
+      "amount": 615373,
+      "customer": "(株) ウェルパーク"
+    },
+    {
+      "management_id": "13889142",
+      "product_name": null,
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": null,
+      "amount": 4247862,
+      "customer": "(株) マルエツ 新口座"
+    },
+    {
+      "management_id": "91112330",
+      "product_name": null,
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": null,
+      "amount": 11000,
+      "customer": "スポット口座 二営一第三マ"
+    },
+    {
+      "management_id": "13789180",
+      "product_name": null,
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": null,
+      "amount": 710794,
+      "customer": "(株) マルエツ 小型店"
+    },
+    {
+      "management_id": "14090628",
+      "product_name": null,
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": null,
+      "amount": 136171,
+      "customer": "生活協同組合ユーコープ 店舗口座"
+    },
+    {
+      "management_id": "13152440",
+      "product_name": null,
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": null,
+      "amount": 55961,
+      "customer": "大学生活協同組合東京事業連合"
+    },
+    {
+      "management_id": "14021144",
+      "product_name": null,
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": null,
+      "amount": 563127,
+      "customer": "(株) G 7 リコスストアズ"
+    },
+    {
+      "management_id": "14049117",
+      "product_name": null,
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": null,
+      "amount": 328013,
+      "customer": "富士シティオ (株) 口座"
+    }
+  ],
+  "page_role": "detail"
+}

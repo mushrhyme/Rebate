@@ -1,0 +1,68 @@
+{
+  "items": [
+    {
+      "management_id": "2024022719",
+      "customer": "(株)Ｆｉｒｓｔｏ",
+      "product_name": "農心 辛ラーメン ブラック ３食 390G",
+      "quantity": 240,
+      "amount": 28320
+    },
+    {
+      "management_id": "2024022719",
+      "customer": "(株)Ｆｉｒｓｔｏ",
+      "product_name": "農心 辛ラーメン キムチ 袋 ３Ｐ 120GX3",
+      "quantity": 480,
+      "amount": 60480
+    },
+    {
+      "management_id": "2024022799",
+      "customer": "(株)Ｆｉｒｓｔｏ",
+      "product_name": "農心 辛ラーメン キムチ 袋 ３Ｐ 120GX3",
+      "quantity": 480,
+      "amount": 13920
+    },
+    {
+      "management_id": "2024022719",
+      "customer": "(株)Ｆｉｒｓｔｏ",
+      "product_name": "農心 辛ラーメン ３食 120GX3",
+      "quantity": 4296,
+      "amount": 541296
+    },
+    {
+      "management_id": "2024022799",
+      "customer": "(株)Ｆｉｒｓｔｏ",
+      "product_name": "農心 辛ラーメン ３食 120GX3",
+      "quantity": 4296,
+      "amount": 124584
+    },
+    {
+      "management_id": "2024022719",
+      "customer": "(株)Ｆｉｒｓｔｏ",
+      "product_name": "農心 いかチャンポン 124G",
+      "quantity": 60,
+      "amount": 2340
+    },
+    {
+      "management_id": "2024022719",
+      "customer": "(株)Ｆｉｒｓｔｏ",
+      "product_name": "農心 辛ラーメン バケツ カップ 114G",
+      "quantity": 72,
+      "amount": 1512
+    },
+    {
+      "management_id": "2024022719",
+      "customer": "(株)Ｆｉｒｓｔｏ",
+      "product_name": "農心 辛ラーメン カップ 68G",
+      "quantity": 1164,
+      "amount": 53544
+    },
+    {
+      "management_id": "2024022799",
+      "customer": "(株)Ｆｉｒｓｔｏ",
+      "product_name": "農心 辛ラーメン カップ 68G",
+      "quantity": 1164,
+      "amount": 8148
+    }
+  ],
+  "page_role": "detail"
+}

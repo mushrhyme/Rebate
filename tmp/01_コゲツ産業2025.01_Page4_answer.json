@@ -1,0 +1,155 @@
+{
+  "page_role": "detail",
+  "items": [
+    {
+      "management_id": "250101011",
+      "product_name": "農心 カムジャ麺 100G袋",
+      "quantity": 41,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 40,
+      "amount": 205,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "250101011",
+      "product_name": "農心 チャパゲッティ 140G袋",
+      "quantity": 39,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 30,
+      "amount": 780,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "250101061",
+      "product_name": "農心 辛ラーメン 120G 袋",
+      "quantity": 28,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 60,
+      "amount": 840,
+      "customer": "（株）ナフコ"
+    },
+    {
+      "management_id": "250101085",
+      "product_name": "農心 辛カップラーメン 68Gカップ",
+      "quantity": 17,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 408,
+      "customer": "（株）カーニバル"
+    },
+    {
+      "management_id": "250101085",
+      "product_name": "農心 辛ラーメン 120G 袋",
+      "quantity": 32,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 60,
+      "amount": 1120,
+      "customer": "（株）カーニバル"
+    },
+    {
+      "management_id": "250101085",
+      "product_name": "農心 辛カップラーメン 68Gカップ",
+      "quantity": 792,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 792,
+      "customer": "（株）カーニバル"
+    },
+    {
+      "management_id": "250101238",
+      "product_name": "農心 辛ラーメン キムチ 袋 120G袋",
+      "quantity": 2700,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 60,
+      "amount": 59400,
+      "customer": "三角商事（株）"
+    },
+    {
+      "management_id": "250101238",
+      "product_name": "農心 辛ラーメンキムチ カップ 68Gカップ",
+      "quantity": 1248,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 33696,
+      "customer": "三角商事（株）"
+    },
+    {
+      "management_id": "250101238",
+      "product_name": "農心 辛ラーメンキムチ カップ 68Gカップ",
+      "quantity": 52,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 624,
+      "customer": "三角商事（株）"
+    },
+    {
+      "management_id": "250101238",
+      "product_name": "農心 辛ラーメン激辛 カップ 68Gカップ",
+      "quantity": 1320,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 25080,
+      "customer": "三角商事（株）"
+    },
+    {
+      "management_id": "250101238",
+      "product_name": "農心 辛ラーメン チーズ焼きそば 袋 136G 袋",
+      "quantity": 1400,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 40,
+      "amount": 11200,
+      "customer": "三角商事（株）"
+    },
+    {
+      "management_id": "250101238",
+      "product_name": "農心 辛ラーメン チーズ焼きそば 袋 136G 袋",
+      "quantity": 35,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 40,
+      "amount": 700,
+      "customer": "三角商事（株）"
+    },
+    {
+      "management_id": "250101238",
+      "product_name": "農心 辛ラーメン 120G 袋",
+      "quantity": 3127,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 60,
+      "amount": 75048,
+      "customer": "三角商事（株）"
+    },
+    {
+      "management_id": "250101238",
+      "product_name": "農心 ノグリラーメン 120G袋",
+      "quantity": 1320,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 30,
+      "amount": 99000,
+      "customer": "三角商事（株）"
+    },
+    {
+      "management_id": "250101238",
+      "product_name": "農心 ノグリラーメン 120G袋",
+      "quantity": 44,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 30,
+      "amount": 88,
+      "customer": "三角商事（株）"
+    }
+  ]
+}

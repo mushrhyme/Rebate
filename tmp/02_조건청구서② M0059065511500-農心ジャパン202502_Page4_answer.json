@@ -1,0 +1,95 @@
+{
+  "items": [
+    {
+      "management_id": "2024015201",
+      "product_name": "農心辛ラーメンブラック 3食 390G",
+      "quantity": 96,
+      "amount": 11328
+    },
+    {
+      "management_id": "2024015201",
+      "product_name": "農心辛ラーメンキムチ袋 3 P 120GX3",
+      "quantity": 1020,
+      "amount": 128520
+    },
+    {
+      "management_id": "2024015218",
+      "product_name": "農心辛ラーメンキムチ袋 3 P 120GX3",
+      "quantity": 1020,
+      "amount": 29580
+    },
+    {
+      "management_id": "2024015201",
+      "product_name": "農心辛ラーメン 3食 120GX3",
+      "quantity": 6672,
+      "amount": 840672
+    },
+    {
+      "management_id": "2024015218",
+      "product_name": "農心辛ラーメン 3食 120GX3",
+      "quantity": 6672,
+      "amount": 193488
+    },
+    {
+      "management_id": "2024015201",
+      "product_name": "農心いかチャンポン 124G",
+      "quantity": 210,
+      "amount": 8190
+    },
+    {
+      "management_id": "2024015201",
+      "product_name": "農心辛ラーメンパケツカップ114G",
+      "quantity": 108,
+      "amount": 2268
+    },
+    {
+      "management_id": "2024015201",
+      "product_name": "農心辛ラーメンカップ68G",
+      "quantity": 3492,
+      "amount": 160632
+    },
+    {
+      "management_id": "2024015218",
+      "product_name": "農心辛ラーメンカップ68G",
+      "quantity": 3492,
+      "amount": 24444
+    },
+    {
+      "management_id": "2024015201",
+      "product_name": "農心辛ラーメンキムチカップ68G",
+      "quantity": 96,
+      "amount": 4416
+    },
+    {
+      "management_id": "2024015218",
+      "product_name": "農心辛ラーメンキムチカップ68G",
+      "quantity": 96,
+      "amount": 672
+    },
+    {
+      "management_id": "2024015201",
+      "product_name": "農心辛ラーメン激辛カップ68G",
+      "quantity": 108,
+      "amount": 4968
+    },
+    {
+      "management_id": "2024015218",
+      "product_name": "農心辛ラーメン激辛カップ68G",
+      "quantity": 108,
+      "amount": 756
+    },
+    {
+      "management_id": "2024015201",
+      "product_name": "農心・辛ラーメン焼きそばチーズカップ105G",
+      "quantity": 84,
+      "amount": 3108
+    },
+    {
+      "management_id": "2024015218",
+      "product_name": "農心・辛ラーメン焼きそばチーズカップ105G",
+      "quantity": 84,
+      "amount": 1764
+    }
+  ],
+  "page_role": "detail"
+}

@@ -1,0 +1,203 @@
+{
+  "items": [
+    {
+      "management_id": "2501001132",
+      "customer": "（株）リウボウストアー",
+      "product_name": "ノウシン 辛ラーメン3食",
+      "units_per_case": 12,
+      "case_count": 58.0,
+      "bara_count": 6.0,
+      "amount": 96876
+    },
+    {
+      "management_id": "2501001132",
+      "customer": "（株）リウボウストアー",
+      "product_name": "農心 NEW辛ラーメンカップ 68g",
+      "units_per_case": 12,
+      "case_count": 67.0,
+      "bara_count": NaN,
+      "amount": 40200
+    },
+    {
+      "management_id": "2501001132",
+      "customer": "（株）リウボウストアー",
+      "product_name": "農心辛ラーメンキムチカップ 68g",
+      "units_per_case": 12,
+      "case_count": 31.0,
+      "bara_count": NaN,
+      "amount": 18600
+    },
+    {
+      "management_id": "2501001132",
+      "customer": "（株）リウボウストアー",
+      "product_name": "辛ラーメンキムチ3食",
+      "units_per_case": 12,
+      "case_count": 19.0,
+      "bara_count": 1.0,
+      "amount": 31602
+    },
+    {
+      "management_id": "2501001133",
+      "customer": "株式会社丸大",
+      "product_name": "ノウシン 辛ラーメン3食",
+      "units_per_case": 12,
+      "case_count": 25.0,
+      "bara_count": NaN,
+      "amount": 41400
+    },
+    {
+      "management_id": "2501001133",
+      "customer": "株式会社丸大",
+      "product_name": "農心 NEW辛ラーメンカップ 68g",
+      "units_per_case": 12,
+      "case_count": 37.0,
+      "bara_count": NaN,
+      "amount": 22200
+    },
+    {
+      "management_id": "2501001133",
+      "customer": "株式会社丸大",
+      "product_name": "辛ラーメンバケツカップ 114g",
+      "units_per_case": 12,
+      "case_count": 10.0,
+      "bara_count": NaN,
+      "amount": 2640
+    },
+    {
+      "management_id": "2501001134",
+      "customer": "金秀商事株式会社",
+      "product_name": "ノウシン 辛ラーメン3食",
+      "units_per_case": 12,
+      "case_count": 179.0,
+      "bara_count": NaN,
+      "amount": 296424
+    },
+    {
+      "management_id": "2501001134",
+      "customer": "金秀商事株式会社",
+      "product_name": "辛ラーメン ミニカップ 49g",
+      "units_per_case": 24,
+      "case_count": 21.0,
+      "bara_count": NaN,
+      "amount": 7056
+    },
+    {
+      "management_id": "2501001134",
+      "customer": "金秀商事株式会社",
+      "product_name": "農心 NEW辛ラーメンカップ 68g",
+      "units_per_case": 12,
+      "case_count": 236.0,
+      "bara_count": NaN,
+      "amount": 141600
+    },
+    {
+      "management_id": "2501001134",
+      "customer": "金秀商事株式会社",
+      "product_name": "農心辛ラーメンキムチカップ 68g",
+      "units_per_case": 12,
+      "case_count": 69.0,
+      "bara_count": NaN,
+      "amount": 41400
+    },
+    {
+      "management_id": "2501001134",
+      "customer": "金秀商事株式会社",
+      "product_name": "辛ラーメンキムチ3食",
+      "units_per_case": 12,
+      "case_count": 50.0,
+      "bara_count": NaN,
+      "amount": 82800
+    },
+    {
+      "management_id": "2501001134",
+      "customer": "金秀商事株式会社",
+      "product_name": "農心チャパゲッティ 140g",
+      "units_per_case": 30,
+      "case_count": NaN,
+      "bara_count": 6.0,
+      "amount": 246
+    },
+    {
+      "management_id": "2501001135",
+      "customer": "株式会社JAおきなわAコープ",
+      "product_name": "ノウシン 辛ラーメン3食",
+      "units_per_case": 12,
+      "case_count": 6.0,
+      "bara_count": 6.0,
+      "amount": 10764
+    },
+    {
+      "management_id": "2501001135",
+      "customer": "株式会社JAおきなわAコープ",
+      "product_name": "ノウシン 辛ラーメン3食",
+      "units_per_case": 12,
+      "case_count": 12.0,
+      "bara_count": 7.0,
+      "amount": 20838
+    },
+    {
+      "management_id": "2501001135",
+      "customer": "株式会社JAおきなわAコープ",
+      "product_name": "農心 NEW辛ラーメンカップ 68g",
+      "units_per_case": 12,
+      "case_count": 22.0,
+      "bara_count": NaN,
+      "amount": 13200
+    },
+    {
+      "management_id": "2501001135",
+      "customer": "株式会社JAおきなわAコープ",
+      "product_name": "農心辛ラーメンキムチカップ 68g",
+      "units_per_case": 12,
+      "case_count": 12.0,
+      "bara_count": NaN,
+      "amount": 7200
+    },
+    {
+      "management_id": "2501001135",
+      "customer": "株式会社JAおきなわAコープ",
+      "product_name": "辛ラーメンキムチ3食",
+      "units_per_case": 12,
+      "case_count": 1.0,
+      "bara_count": NaN,
+      "amount": 1656
+    },
+    {
+      "management_id": "2501001135",
+      "customer": "株式会社JAおきなわAコープ",
+      "product_name": "辛ラーメンバケツカップ 114g",
+      "units_per_case": 12,
+      "case_count": 7.0,
+      "bara_count": NaN,
+      "amount": 1848
+    },
+    {
+      "management_id": "2501001136",
+      "customer": "ホームセンタータバタ",
+      "product_name": "ノウシン 辛ラーメン3食",
+      "units_per_case": 12,
+      "case_count": 1.0,
+      "bara_count": 4.0,
+      "amount": 2208
+    },
+    {
+      "management_id": "2501001136",
+      "customer": "ホームセンタータバタ",
+      "product_name": "農心 NEW辛ラーメンカップ 68g",
+      "units_per_case": 12,
+      "case_count": 2.0,
+      "bara_count": NaN,
+      "amount": 1200
+    },
+    {
+      "management_id": "2501001136",
+      "customer": "ホームセンタータバタ",
+      "product_name": "農心辛ラーメンキムチカップ 68g",
+      "units_per_case": 12,
+      "case_count": 1.0,
+      "bara_count": NaN,
+      "amount": 600
+    }
+  ],
+  "page_role": "detail"
+}

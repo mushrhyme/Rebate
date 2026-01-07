@@ -1,0 +1,135 @@
+{
+  "page_role": "detail",
+  "items": [
+    {
+      "management_id": "3006544667",
+      "product_name": "農心 辛ラーメン3食 360G",
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 438,
+      "customer": "株式会社スーパーまるまつ"
+    },
+    {
+      "management_id": "3006544667",
+      "product_name": "農心 チャーワン 134G",
+      "quantity": 40,
+      "case_count": 1,
+      "bara_count": null,
+      "units_per_case": 40,
+      "amount": 5080,
+      "customer": "株式会社スーパーまるまつ"
+    },
+    {
+      "management_id": "3006544667",
+      "product_name": "農心 辛ラーメンキムチ袋 120G",
+      "quantity": 60,
+      "case_count": 1,
+      "bara_count": null,
+      "units_per_case": 60,
+      "amount": 4080,
+      "customer": "株式会社スーパーまるまつ"
+    },
+    {
+      "management_id": "3006544668",
+      "product_name": "農心 チャパグリカップ 114G",
+      "quantity": 24,
+      "case_count": 1,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 240,
+      "customer": "寺内株式会社"
+    },
+    {
+      "management_id": "3006544669",
+      "product_name": "農心 辛カップラーメン 68G",
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 240,
+      "customer": "有限会社スーパーほりぐち"
+    },
+    {
+      "management_id": "3006544670",
+      "product_name": "農心 辛カップラーメン 68G",
+      "quantity": 24,
+      "case_count": 1,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 1032,
+      "customer": "有限会社藤丸食品"
+    },
+    {
+      "management_id": "3006544671",
+      "product_name": "農心 辛ラーメン袋 120G",
+      "quantity": 60,
+      "case_count": 1,
+      "bara_count": null,
+      "units_per_case": 60,
+      "amount": 2508,
+      "customer": "麻生芳雄商事株式会社"
+    },
+    {
+      "management_id": "3006544671",
+      "product_name": "農心 辛カップラーメン 68G",
+      "quantity": 72,
+      "case_count": 3,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 2736,
+      "customer": "麻生芳雄商事株式会社"
+    },
+    {
+      "management_id": "3006544672",
+      "product_name": "農心 カムジャ麺 100G",
+      "quantity": 40,
+      "case_count": 1,
+      "bara_count": null,
+      "units_per_case": 40,
+      "amount": 4040,
+      "customer": "有限会社マルメイ"
+    },
+    {
+      "management_id": "3006544672",
+      "product_name": "農心 旨辛海鮮ちゃんぽん 130G",
+      "quantity": 80,
+      "case_count": 2,
+      "bara_count": null,
+      "units_per_case": 40,
+      "amount": 11600,
+      "customer": "有限会社マルメイ"
+    },
+    {
+      "management_id": "3006544672",
+      "product_name": "農心 チャーワン 134G",
+      "quantity": 40,
+      "case_count": 1,
+      "bara_count": null,
+      "units_per_case": 40,
+      "amount": 5800,
+      "customer": "有限会社マルメイ"
+    },
+    {
+      "management_id": "3006544673",
+      "product_name": "農心 ユッケジャンラーメン 86G",
+      "quantity": 72,
+      "case_count": 3,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 144,
+      "customer": "株式会社ベイサイドプレイス博多"
+    },
+    {
+      "management_id": "3006544673",
+      "product_name": "農心 辛カップラーメン 68G",
+      "quantity": 48,
+      "case_count": 2,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 1392,
+      "customer": "株式会社ベイサイドプレイス博多"
+    }
+  ]
+}

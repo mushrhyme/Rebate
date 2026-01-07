@@ -1,5 +1,5 @@
 """
-정답지 편집 탭 - fitz (PyMuPDF) 중심 구조
+정답지 편집 탭 - PDF 텍스트 추출 (PyMuPDF 또는 엑셀 변환)
 """
 
 import os
@@ -20,13 +20,58 @@ from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode
 
 from modules.utils.openai_utils import ask_openai_with_reference
 from src.rag_extractor import extract_json_with_rag
-from src.gemini_extractor import GeminiVisionParser
+# from src.gemini_extractor import GeminiVisionParser  # Gemini Extractor 기능 삭제됨
 from modules.ui.aggrid_utils import AgGridUtils
 import pandas as pd
 from modules.core.rag_manager import get_rag_manager
 from modules.utils.config import get_project_root, get_rag_config
 from modules.utils.session_utils import ensure_session_state_defaults
 from modules.utils.pdf_utils import find_pdf_path, extract_text_from_pdf_page
+
+def flatten_dict(d, parent_key='', sep='_'):
+    """
+    딕셔너리를 평탄화하는 함수
+    
+    Args:
+        d: 평탄화할 딕셔너리
+        parent_key: 부모 키 (재귀 호출 시 사용)
+        sep: 키 구분자
+        
+    Returns:
+        평탄화된 딕셔너리
+    """
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
+
+
+def unflatten_dict(flat_dict, sep='_'):
+    """
+    평탄화된 딕셔너리를 중첩 구조로 복원하는 함수
+    
+    Args:
+        flat_dict: 평탄화된 딕셔너리
+        sep: 키 구분자
+        
+    Returns:
+        중첩된 딕셔너리
+    """
+    result = {}
+    for key, value in flat_dict.items():
+        parts = key.split(sep)
+        d = result
+        for part in parts[:-1]:
+            if part not in d:
+                d[part] = {}
+            d = d[part]
+        d[parts[-1]] = value
+    return result
+
 
 def filter_answer_json(answer_json: dict) -> dict:
     """
@@ -45,22 +90,19 @@ def filter_answer_json(answer_json: dict) -> dict:
     return filtered
 
 
-def get_answer_json_path(pdf_img_dir: Path, page_num: int, version: str = "v1") -> Path:
+def get_answer_json_path(pdf_img_dir: Path, page_num: int, version: str = "v2") -> Path:
     """
-    정답지 JSON 파일 경로를 버전에 따라 생성
+    정답지 JSON 파일 경로 생성
     
     Args:
         pdf_img_dir: PDF 이미지 디렉토리 경로
         page_num: 페이지 번호 (1부터 시작)
-        version: 정답지 버전 ("v1" 또는 "v2")
+        version: 사용하지 않음 (호환성을 위해 유지)
         
     Returns:
-        정답지 JSON 파일 경로
+        정답지 JSON 파일 경로 (Page{num}_answer.json)
     """
-    if version == "v2":
-        return pdf_img_dir / f"Page{page_num}_answer_v2.json"
-    else:  # v1 (기본값)
-        return pdf_img_dir / f"Page{page_num}_answer.json"
+    return pdf_img_dir / f"Page{page_num}_answer.json"
 
 
 def get_prompt_file_path(version: str = "v1", use_example: bool = True) -> Path:
@@ -77,50 +119,12 @@ def get_prompt_file_path(version: str = "v1", use_example: bool = True) -> Path:
     project_root = get_project_root()
     prompts_dir = project_root / "prompts"
     
-    if version == "v2":
-        if use_example:
-            return prompts_dir / "rag_with_example_v2.txt"
-        else:
-            return prompts_dir / "rag_zero_shot_v2.txt"
-    else:  # v1 (기본값)
-        if use_example:
-            return prompts_dir / "rag_with_example.txt"
-        else:
-            return prompts_dir / "rag_zero_shot.txt"
+    if use_example:
+        return prompts_dir / f"rag_with_example_{version}.txt"
+    else:
+        return prompts_dir / f"rag_zero_shot_{version}.txt"
 
-# 컬럼명 일본어 매핑 (공통 상수)
-COLUMN_NAME_MAPPING = {
-    'No': 'No',
-    'management_id': '管理番号',
-    'customer': '取引先',
-    'product_name': '商品名',
-    'units_per_case': 'ケース内入数',
-    'case_count': 'ケース数',
-    'bara_count': 'バラ数',
-    'quantity': '数量',
-    'amount': '金額',
-    '管理番号': '管理番号',
-    '取引先': '取引先',
-    '商品名': '商品名',
-    'ケース内入数': 'ケース内入数',
-    'ケース数': 'ケース数',
-    'バラ数': 'バラ数',
-    '数量': '数量',
-    '金額': '金額'
-}
 
-# 컬럼 순서 정의 (공통 상수)
-DESIRED_COLUMN_ORDER = [
-    'No',
-    'management_id', '管理番号',
-    'customer', '取引先',
-    'product_name', '商品名',
-    'units_per_case', 'ケース内入数',
-    'case_count', 'ケース数',
-    'bara_count', 'バラ数',
-    'quantity', '数量',
-    'amount', '金額'
-]
 
 
 def prepare_dataframe_for_aggrid(items):
@@ -140,17 +144,13 @@ def prepare_dataframe_for_aggrid(items):
     if len(df) == 0:
         return df, None
     
-    # No 컬럼 추가 (1부터 시작)
+    # No 컬럼 추가 (1부터 시작) - AgGrid 표시용
     df.insert(0, 'No', range(1, len(df) + 1))
 
     # 관리번호 컬럼 확인
     mgmt_col = 'management_id' if 'management_id' in df.columns else ('管理番号' if '管理番号' in df.columns else None)
 
-    # 컬럼 순서 재정렬
-    existing_cols = [col for col in DESIRED_COLUMN_ORDER if col in df.columns]
-    remaining_cols = [col for col in df.columns if col not in existing_cols]
-    df = df[existing_cols + remaining_cols]
-    
+    # 컬럼 순서는 JSON 그대로 유지 (재정렬하지 않음)
     # 모든 값이 null인 컬럼 제거 (단, No 컬럼은 유지)
     df = df.dropna(axis=1, how='all')
     
@@ -201,9 +201,12 @@ def create_comparison_dataframe(openai_items, answer_items):
     if len(answer_df) > 0:
         answer_df.insert(0, 'No', range(1, len(answer_df) + 1))
 
-    key_fields = [f for f in DESIRED_COLUMN_ORDER if f != 'No']
-    all_cols = set([col for col in openai_df.columns if col != 'No'] + [col for col in answer_df.columns if col != 'No'])
-    ordered_cols = [f for f in key_fields if f in all_cols] + sorted(all_cols - set(key_fields))
+    # JSON 파일 내 순서 유지 (정답지 컬럼 순서 우선, 없으면 OpenAI 응답 컬럼 순서)
+    answer_cols = [col for col in answer_df.columns if col != 'No'] if len(answer_df) > 0 else []
+    openai_cols = [col for col in openai_df.columns if col != 'No'] if len(openai_df) > 0 else []
+    
+    # 정답지 컬럼 순서를 기준으로 하되, 없는 컬럼은 OpenAI 응답에서 추가
+    ordered_cols = answer_cols + [col for col in openai_cols if col not in answer_cols]
 
     comparison_data = []
     for i in range(max(len(openai_df), len(answer_df))):
@@ -216,7 +219,7 @@ def create_comparison_dataframe(openai_items, answer_items):
             matches = [openai_df.iloc[i][f] == answer_df.iloc[i][f] if f in openai_df.columns and f in answer_df.columns
                       and not (pd.isna(openai_df.iloc[i][f]) or pd.isna(answer_df.iloc[i][f]))
                       else (pd.isna(openai_df.iloc[i][f]) and pd.isna(answer_df.iloc[i][f]))
-                      for f in key_fields if f in openai_df.columns and f in answer_df.columns]
+                      for f in ordered_cols if f in openai_df.columns and f in answer_df.columns]
             row_data["일치율"] = f"{sum(matches)}/{len(matches)}" if matches else "N/A"
             row_data["_match_rate"] = sum(matches) / len(matches) if matches else 0
 
@@ -248,12 +251,10 @@ def render_comparison_grid(comparison_df, current_page):
             gb.configure_column(col, hide=True)
         elif col.startswith("응답_"):
             original_col = col.replace("응답_", "")
-            japanese_name = COLUMN_NAME_MAPPING.get(original_col, original_col)
-            gb.configure_column(col, header_name=f"응답: {japanese_name}")
+            gb.configure_column(col, header_name=f"응답: {original_col}")
         elif col.startswith("정답_"):
             original_col = col.replace("정답_", "")
-            japanese_name = COLUMN_NAME_MAPPING.get(original_col, original_col)
-            gb.configure_column(col, header_name=f"정답: {japanese_name}")
+            gb.configure_column(col, header_name=f"정답: {original_col}")
         else:
             gb.configure_column(col, header_name=col)
 
@@ -435,16 +436,32 @@ def render_answer_editor_tab():
         st.session_state.answer_editor_selected_pdf = None
     if "answer_editor_selected_page" not in st.session_state:
         st.session_state.answer_editor_selected_page = 1
+    # 항상 v2 사용 (버전 선택 옵션 제거)
     if "answer_editor_version" not in st.session_state:
-        st.session_state.answer_editor_version = "v1"  # 기본값: v1
+        st.session_state.answer_editor_version = "v2"
 
-    st.info(
-        "**📌 정답지 편집 가이드**:\n\n"
-        "• PDF 파일을 업로드하면 자동으로 이미지로 변환되고 PyMuPDF로 텍스트를 추출합니다\n\n"
-        "• 각 페이지별로 원문 텍스트, PyMuPDF 추출 결과, 정답 JSON을 편집할 수 있습니다\n\n"
-        "• 정답 JSON은 RAG 학습용 정답지로 사용됩니다",
-        icon="ℹ️"
-    )
+    # 설정에 따라 텍스트 추출 방법 표시
+    from modules.utils.config import get_rag_config
+    import os
+    config = get_rag_config()
+    extraction_method = getattr(config, 'text_extraction_method', 'pymupdf')
+    method_name = "엑셀 변환" if extraction_method == "excel" else "PyMuPDF"
+    keep_excel = os.getenv("KEEP_EXCEL_FILES", "false").lower() == "true"
+    
+    info_text = f"**📌 정답지 편집 가이드**:\n\n"
+    info_text += f"• PDF 파일을 업로드하면 자동으로 이미지로 변환되고 **{method_name}**으로 텍스트를 추출합니다\n\n"
+    
+    if extraction_method == "excel":
+        info_text += f"• **엑셀 변환 방식**: PDF → 엑셀 파일(.xlsx) 생성 → 엑셀 파일 읽기 → 텍스트 변환\n\n"
+        if keep_excel:
+            info_text += "• 엑셀 파일이 PDF와 같은 폴더에 저장됩니다 (KEEP_EXCEL_FILES=true)\n\n"
+        else:
+            info_text += "• 엑셀 파일은 임시로 생성 후 자동 삭제됩니다 (KEEP_EXCEL_FILES=false)\n\n"
+    
+    info_text += "• 각 페이지별로 원문 텍스트, 텍스트 추출 결과, 정답 JSON을 편집할 수 있습니다\n\n"
+    info_text += "• 정답 JSON은 RAG 학습용 정답지로 사용됩니다"
+    
+    st.info(info_text, icon="ℹ️")
 
     # 양식 폴더 목록 확인 (01, 02, 03, 04, 05 등)
     project_root = get_project_root()
@@ -468,16 +485,8 @@ def render_answer_editor_tab():
     else:
         selected_form = "전체"
     
-    # 정답지 버전 선택 UI
-    st.subheader("📝 정답지 버전 선택")
-    selected_version = st.selectbox(
-        "정답지 버전",
-        options=["v1", "v2"],
-        index=0 if st.session_state.answer_editor_version == "v1" else 1,
-        key="answer_editor_version_selector",
-        help="v1: Page{num}_answer.json, v2: Page{num}_answer_v2.json\n선택한 버전에 따라 사용되는 프롬프트 파일도 변경됩니다."
-    )
-    st.session_state.answer_editor_version = selected_version
+    # 정답지 버전 선택 UI 제거 (항상 v2 사용)
+    st.session_state.answer_editor_version = "v2"
     
     # 기존 처리된 PDF 목록 확인 (선택된 양식 폴더 기준)
     existing_pdfs = []
@@ -961,8 +970,8 @@ def render_answer_editor_tab():
                                     try:
                                         with open(answer_json_path, "r", encoding="utf-8") as f:
                                             loaded_json = json.load(f)
-                                            # 불필요한 필드 제거 (page_role과 items만 유지)
-                                            answer_json = filter_answer_json(loaded_json)
+                                            # 전체 JSON 저장 (필터링하지 않음)
+                                            answer_json = loaded_json
                                         
                                         rag_manager.add_example(
                                             ocr_text=ocr_text,
@@ -1047,175 +1056,346 @@ def render_answer_editor_tab():
             col1, col2 = st.columns([1, 1])
 
             page_info = pdf_info["pages"][current_page - 1]
-            with col1:
-                with st.expander("..."):
-                    if os.path.exists(page_info["image_path"]):
-                        st.image(page_info["image_path"], caption=f"Page {current_page}", width='stretch')
+            # with col1:
+                # PDF 원본 이미지 표시 주석처리
+                # with st.expander("..."):
+                #     if os.path.exists(page_info["image_path"]):
+                #         st.image(page_info["image_path"], caption=f"Page {current_page}", width='stretch')
 
-                    # Gemini Extractor 기능 섹션
-                    with st.expander("🔮 Gemini Extractor (이미지 직접 추출)", expanded=False):
-                        st.info("현재 페이지의 이미지를 Gemini Vision API로 직접 추출합니다. RAG 없이 바로 추출합니다.")
-                        
-                        # 프롬프트 버전 선택
-                        prompt_version = st.selectbox(
-                            "프롬프트 버전",
-                            options=["v1", "v2"],
-                            index=0,
-                            key=f"gemini_prompt_version_{current_page}",
-                            help="사용할 프롬프트 파일을 선택하세요 (prompts/prompt_v1.txt 또는 prompt_v2.txt)"
-                        )
-                        
-                        # 모델 선택
-                        gemini_model = st.selectbox(
-                            "Gemini 모델",
-                            options=["gemini-3-pro-preview", "gemini-2.0-flash-exp", "gemini-1.5-pro"],
-                            index=0,
-                            key=f"gemini_model_{current_page}",
-                            help="사용할 Gemini 모델을 선택하세요"
-                        )
-                        
-                        if st.button(
-                            "🚀 Gemini로 이미지 추출",
-                            type="primary",
-                            key=f"gemini_extract_{current_page}",
-                            help="현재 페이지 이미지를 Gemini Vision API로 추출합니다"
-                        ):
-                            if not os.path.exists(page_info["image_path"]):
-                                st.error("❌ 페이지 이미지가 없습니다.")
+                # Gemini Extractor 기능 삭제됨
+                # OpenAI 질문 기능 및 RAG 기반 정답 생성은 JSON 편집창 아래로 이동됨
+                # pass
+
+        # with col2:
+            # 설정에 따라 텍스트 추출 방법 표시
+            from modules.utils.config import get_rag_config
+            config = get_rag_config()
+            extraction_method = getattr(config, 'text_extraction_method', 'pymupdf')
+            
+            if extraction_method == "excel":
+                method_label = "엑셀 변환"
+                method_icon = "📊"
+            else:
+                method_label = "PyMuPDF"
+                method_icon = "📄"
+            
+
+            # JSON 파일 로드 (Gemini 결과 > RAG 결과 > 파일 순으로 우선 사용)
+            answer_json_path = page_info["answer_json_path"]
+            default_answer_json = {
+                "page_role": "detail",
+                "items": []
+            }
+            
+            # RAG 결과가 있으면 우선 사용, 없으면 파일에서 로드
+            if f"rag_result_{current_page}" in st.session_state:
+                default_answer_json = st.session_state[f"rag_result_{current_page}"]
+            elif os.path.exists(answer_json_path):
+                try:
+                    with open(answer_json_path, "r", encoding="utf-8") as f:
+                        loaded_json = json.load(f)
+                        # 전체 JSON 로드 (필터링하지 않음)
+                        default_answer_json = loaded_json
+                except Exception as e:
+                    st.warning(f"기존 정답 JSON 로드 실패: {e}")
+
+            # JSON 편집 expander
+            with st.expander("📝 JSON 편집", expanded=True):
+                # 전체 JSON 로드 (필터링하지 않음)
+                full_answer_json = {}
+                if f"answer_json_{current_page}" in st.session_state:
+                    try:
+                        full_answer_json = json.loads(st.session_state[f"answer_json_{current_page}"])
+                    except json.JSONDecodeError:
+                        full_answer_json = default_answer_json
+                else:
+                    # 파일에서 전체 JSON 로드 시도
+                    if os.path.exists(answer_json_path):
+                        try:
+                            with open(answer_json_path, "r", encoding="utf-8") as f:
+                                full_answer_json = json.load(f)
+                        except Exception:
+                            full_answer_json = default_answer_json
+                    else:
+                        full_answer_json = default_answer_json
+                
+                # 상위 키 목록 추출 (page_role 제외)
+                top_level_keys = [k for k in full_answer_json.keys() if k != "page_role"]
+                
+                if not top_level_keys:
+                    st.info("JSON에 편집 가능한 키가 없습니다.")
+                else:
+                    # 탭 생성
+                    tabs = st.tabs([f"📋 {key}" for key in top_level_keys])
+                    
+                    # 각 탭에 대해 데이터프레임 표시
+                    for idx, key in enumerate(top_level_keys):
+                        with tabs[idx]:
+                            value = full_answer_json.get(key)
+                            
+                            if isinstance(value, dict):
+                                # 딕셔너리인 경우 평탄화하여 데이터프레임으로 표시
+                                flattened = flatten_dict(value)
+                                if flattened:
+                                    df = pd.DataFrame([flattened]).T
+                                    edited_df = st.data_editor(
+                                        df,
+                                        height=400,
+                                        key=f"json_editor_{current_page}_{key}",
+                                        use_container_width=True
+                                    )
+                                    # 수정된 데이터를 다시 딕셔너리로 변환 (간단한 역변환은 어려우므로 전체 JSON 업데이트는 저장 시 수행)
+                                    st.session_state[f"json_data_{current_page}_{key}"] = edited_df.to_dict('records')[0] if len(edited_df) > 0 else {}
+                                else:
+                                    st.info(f"'{key}' 키의 값이 비어있습니다.")
+                            elif isinstance(value, list):
+                                # 리스트인 경우 (items 등)
+                                if not value:
+                                    # 빈 리스트인 경우
+                                    st.info(f"'{key}' 키의 값이 비어있습니다.")
+                                    st.session_state[f"json_data_{current_page}_{key}"] = []
+                                elif isinstance(value[0], dict):
+                                    # 딕셔너리 리스트인 경우
+                                    if key == "items":
+                                        # items인 경우 AgGrid 사용 (색상 구분 포함)
+                                        if not AgGridUtils.is_available():
+                                            st.warning("⚠️ AgGrid가 설치되어 있지 않습니다. `pip install streamlit-aggrid`로 설치하세요.")
+                                            df = pd.DataFrame(value)
+                                            edited_df = st.data_editor(
+                                                df,
+                                                height=400,
+                                                key=f"json_editor_{current_page}_{key}",
+                                                use_container_width=True
+                                            )
+                                            st.session_state[f"json_data_{current_page}_{key}"] = edited_df.to_dict('records')
+                                        else:
+                                            df, mgmt_col = prepare_dataframe_for_aggrid(value)
+                                            
+                                            # GridOptionsBuilder 설정
+                                            if len(df) == 0 or len(df.columns) == 0:
+                                                st.warning(f"⚠️ DataFrame을 생성할 수 없습니다. (items 개수: {len(value)})")
+                                                st.session_state[f"json_data_{current_page}_{key}"] = value
+                                            else:
+                                                # 색상 그룹핑 기준 컬럼 선택
+                                                color_grouping_key = f"color_grouping_col_{current_page}_{key}"
+                                                available_cols = [col for col in df.columns if col != 'No']
+                                                
+                                                # 기본값 설정 (기존 mgmt_col 또는 첫 번째 컬럼)
+                                                default_col = mgmt_col if mgmt_col and mgmt_col in available_cols else (available_cols[0] if available_cols else None)
+                                                
+                                                if default_col:
+                                                    selected_col = st.selectbox(
+                                                        "색상 그룹핑 기준 컬럼",
+                                                        options=["없음"] + available_cols,
+                                                        index=available_cols.index(default_col) + 1 if default_col in available_cols else 0,
+                                                        key=color_grouping_key,
+                                                        help="선택한 컬럼의 값이 같은 행들은 같은 색상으로 표시됩니다."
+                                                    )
+                                                    
+                                                    # 선택한 컬럼으로 색상 그룹핑 (없음 선택 시 None)
+                                                    grouping_col = None if selected_col == "없음" else selected_col
+                                                else:
+                                                    grouping_col = None
+                                                
+                                                gb = GridOptionsBuilder.from_dataframe(df)
+                                                gb.configure_default_column(editable=True, resizable=True)
+                                                
+                                                # 각 컬럼 설정
+                                                for col in df.columns:
+                                                    if col == 'No':
+                                                        gb.configure_column(col, header_name=col, editable=False, width=60, pinned='left')
+                                                    else:
+                                                        gb.configure_column(col, header_name=col)
+                                                
+                                                gb.configure_pagination(enabled=False)
+                                                
+                                                # 선택한 컬럼 기준으로 색상 지정
+                                                get_row_style_code = create_management_color_style(grouping_col, df)
+                                                grid_options = gb.build()
+                                                if get_row_style_code:
+                                                    grid_options['getRowStyle'] = get_row_style_code
+                                                grid_options['pagination'] = False
+                                                
+                                                auto_size_js = JsCode("""
+                                                function(params) {
+                                                    params.api.sizeColumnsToFit();
+                                                    var allColumnIds = [];
+                                                    params.columnApi.getColumns().forEach(function(column) {
+                                                        if (column.colId) allColumnIds.push(column.colId);
+                                                    });
+                                                    params.columnApi.autoSizeColumns(allColumnIds);
+                                                }
+                                                """)
+                                                grid_options['onGridReady'] = auto_size_js
+                                                
+                                                # AG Grid 렌더링
+                                                grid_response = AgGrid(
+                                                    df,
+                                                    gridOptions=grid_options,
+                                                    update_mode=GridUpdateMode.VALUE_CHANGED,
+                                                    data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+                                                    fit_columns_on_grid_load=True,
+                                                    height=400,
+                                                    theme='streamlit',
+                                                    allow_unsafe_jscode=True,
+                                                    hide_index=False,
+                                                    key=f"aggrid_json_{current_page}_{key}"
+                                                )
+                                                
+                                                # 수정된 데이터 가져오기
+                                                updated_df = grid_response['data'] if grid_response.get('data') is not None else pd.DataFrame()
+                                                if len(updated_df) > 0 and 'No' in updated_df.columns:
+                                                    updated_df = updated_df.drop(columns=['No'])
+                                                st.session_state[f"json_data_{current_page}_{key}"] = updated_df.to_dict('records') if len(updated_df) > 0 else value
+                                    else:
+                                        # items가 아닌 다른 리스트는 일반 데이터프레임 편집기 사용
+                                        df = pd.DataFrame(value)
+                                        edited_df = st.data_editor(
+                                            df,
+                                            height=400,
+                                            key=f"json_editor_{current_page}_{key}",
+                                            use_container_width=True
+                                        )
+                                        st.session_state[f"json_data_{current_page}_{key}"] = edited_df.to_dict('records')
+                                else:
+                                    # 단순 리스트인 경우
+                                    st.json(value)
+                                    st.info("리스트는 JSON 형식으로만 표시됩니다. 편집은 JSON 텍스트 영역에서 가능합니다.")
                             else:
-                                with st.spinner("Gemini Vision API 호출 중..."):
-                                    try:
-                                        # 이미지 로드
-                                        image = Image.open(page_info["image_path"])
-                                        
-                                        # Gemini Vision Parser 초기화
-                                        parser = GeminiVisionParser(
-                                            api_key=None,  # 환경변수에서 가져옴
-                                            model_name=gemini_model,
-                                            prompt_version=prompt_version
+                                # 단순 값인 경우
+                                st.text_input(
+                                    f"{key} 값",
+                                    value=str(value) if value is not None else "",
+                                    key=f"json_editor_{current_page}_{key}"
+                                )
+                                st.session_state[f"json_data_{current_page}_{key}"] = st.session_state.get(f"json_editor_{current_page}_{key}", str(value) if value is not None else "")
+                    
+                    st.divider()
+                    
+                    # 전체 JSON 텍스트 편집 영역 (참고용)
+                    st.caption("💡 전체 JSON 텍스트 (참고용)")
+                    answer_json_str_default = json.dumps(full_answer_json, ensure_ascii=False, indent=2)
+                    answer_json_str = st.text_area(
+                        "정답 JSON (전체)",
+                        value=answer_json_str_default,
+                        height=200,
+                        key=f"answer_json_{current_page}"
+                    )
+                    
+                    # JSON 파싱 오류 처리
+                    try:
+                        parsed_json = json.loads(answer_json_str)
+                        # 파싱 성공 (위젯이 이미 세션 상태를 관리하므로 별도 업데이트 불필요)
+                    except json.JSONDecodeError as e:
+                        st.error(f"❌ JSON 파싱 오류: {e}")
+                        
+                    if page_info.get("ocr_text"):
+                        st.text_area(
+                            f"{method_label} OCR 결과",
+                            value=page_info["ocr_text"],
+                            height=200,
+                            key=f"ocr_text_{current_page}",
+                            disabled=True
+                        )
+                    else:
+                        st.warning(f"{method_label} 추출 결과가 없습니다.")
+
+            # OpenAI 질문 기능 및 RAG 기반 정답 생성 (JSON 편집창 아래로 이동)
+            with st.expander("🤖 OpenAI 질문 기능 및 RAG 기반 정답 생성", expanded=False):
+                    # JSON 파일 업로더
+                    uploaded_json_file = st.file_uploader(
+                        "참조용 정답 JSON 파일 업로드",
+                        type=['json'],
+                        key=f"reference_json_uploader_{current_page}",
+                        help="참조용 정답 JSON 파일을 업로드하세요. 이 파일과 현재 페이지의 TXT 파일을 사용하여 OpenAI에 질문합니다."
+                    )
+
+                    # 업로드된 JSON 파일 로드
+                    reference_json = None
+                    if uploaded_json_file:
+                        try:
+                            reference_json = json.load(uploaded_json_file)
+                            st.success(f"✅ JSON 파일 로드 완료: {uploaded_json_file.name}")
+                        except Exception as e:
+                            st.error(f"❌ JSON 파일 로드 실패: {e}")
+
+                    # RAG 검색 및 모델 설정 섹션
+                    question_disabled = not page_info.get("ocr_text")
+                    
+                    # 모델 선택 옵션
+                    config = get_rag_config()
+                    available_models = [
+                        "gpt-4o-2024-11-20",
+                        "gpt-4.1-2025-04-14",
+                        "gpt-5-nano-2025-08-07",
+                        "gpt-5-mini-2025-08-07",
+                        "gpt-5.2-2025-12-11"
+                    ]
+                    selected_model = st.selectbox(
+                        "🤖 사용할 모델 선택",
+                        options=available_models,
+                        index=0 if config.openai_model in available_models else 0,
+                        key=f"model_selector_{current_page}",
+                        help="RAG 기반 정답 생성에 사용할 OpenAI 모델을 선택하세요."
+                    )
+                    
+                    # RAG 검색 버튼 (검색 결과 미리보기)
+                    if st.button(
+                        "🔍 RAG 검색 (참고 문서 확인)",
+                        disabled=question_disabled,
+                        key=f"search_rag_{current_page}"
+                    ):
+                        if not page_info.get("ocr_text"):
+                            st.error("❌ 현재 페이지의 OCR 텍스트가 없습니다.")
+                        else:
+                            with st.spinner("RAG 검색 중..."):
+                                try:
+                                    # PDF 경로 찾기
+                                    pdf_path = img_dir / selected_pdf / f"{selected_pdf}.pdf"
+                                    if not pdf_path.exists():
+                                        session_pdf_path = find_pdf_path(selected_pdf)
+                                        if session_pdf_path:
+                                            pdf_path = Path(session_pdf_path)
+                                    
+                                    # PyMuPDF로 텍스트 추출
+                                    ocr_text = page_info.get("ocr_text", "")
+                                    if not ocr_text and pdf_path.exists():
+                                        ocr_text = extract_text_from_pdf_page(pdf_path, current_page)
+                                    
+                                    if not ocr_text:
+                                        st.error("❌ OCR 텍스트를 추출할 수 없습니다.")
+                                    else:
+                                        # RAG Manager로 검색만 수행
+                                        rag_manager = get_rag_manager()
+                                        similar_examples = rag_manager.search_similar_advanced(
+                                            query_text=ocr_text,
+                                            top_k=config.top_k,
+                                            similarity_threshold=config.similarity_threshold,
+                                            search_method=config.search_method,
+                                            hybrid_alpha=config.hybrid_alpha
                                         )
                                         
-                                        # 이미지 파싱
-                                        result_json = parser.parse_image(image, max_size=1000, timeout=120)
-                                        
-                                        # null 값 정규화
-                                        if result_json.get("items") is None:
-                                            result_json["items"] = []
-                                        if result_json.get("page_role") is None:
-                                            result_json["page_role"] = "detail"
-                                        if not isinstance(result_json.get("items"), list):
-                                            result_json["items"] = []
-                                        
-                                        # 세션 상태에 저장 (정답 JSON 편집 영역에 바로 반영)
-                                        st.session_state[f"gemini_result_{current_page}"] = result_json
-                                        st.session_state[f"answer_json_{current_page}"] = json.dumps(result_json, ensure_ascii=False, indent=2)
-                                        st.session_state[f"page_role_{current_page}"] = result_json.get("page_role", "detail")
-                                        st.success("✅ Gemini 추출 완료! 아래 정답 JSON 편집 영역에서 확인하세요.")
-                                        # 탭 상태 유지
-                                        if "active_tab" not in st.session_state:
-                                            st.session_state.active_tab = "✏️ 정답지 편집"
-                                        st.rerun()
-                                        
-                                    except Exception as e:
-                                        st.error(f"❌ Gemini 추출 실패: {e}")
-                                        st.code(traceback.format_exc())
-
-                    # OpenAI 질문 기능 섹션
-                    with st.expander("🤖 OpenAI 질문 기능", expanded=False):
-                        # JSON 파일 업로더
-                        uploaded_json_file = st.file_uploader(
-                            "참조용 정답 JSON 파일 업로드",
-                            type=['json'],
-                            key=f"reference_json_uploader_{current_page}",
-                            help="참조용 정답 JSON 파일을 업로드하세요. 이 파일과 현재 페이지의 TXT 파일을 사용하여 OpenAI에 질문합니다."
-                        )
-
-                        # 업로드된 JSON 파일 로드
-                        reference_json = None
-                        if uploaded_json_file:
-                            try:
-                                reference_json = json.load(uploaded_json_file)
-                                st.success(f"✅ JSON 파일 로드 완료: {uploaded_json_file.name}")
-                            except Exception as e:
-                                st.error(f"❌ JSON 파일 로드 실패: {e}")
-
-                        # RAG 검색 및 모델 설정 섹션
-                        question_disabled = not page_info.get("ocr_text")
-                        
-                        # 모델 선택 옵션
-                        config = get_rag_config()
-                        available_models = [
-                            "gpt-4o-2024-11-20",
-                            "gpt-4.1-2025-04-14",
-                            "gpt-5-nano-2025-08-07",
-                            "gpt-5-mini-2025-08-07",
-                            "gpt-5.2-2025-12-11"
-                        ]
-                        selected_model = st.selectbox(
-                            "🤖 사용할 모델 선택",
-                            options=available_models,
-                            index=0 if config.openai_model in available_models else 0,
-                            key=f"model_selector_{current_page}",
-                            help="RAG 기반 정답 생성에 사용할 OpenAI 모델을 선택하세요."
-                        )
-                        
-                        # RAG 검색 버튼 (검색 결과 미리보기)
-                        if st.button(
-                            "🔍 RAG 검색 (참고 문서 확인)",
-                            disabled=question_disabled,
-                            key=f"search_rag_{current_page}"
-                        ):
-                            if not page_info.get("ocr_text"):
-                                st.error("❌ 현재 페이지의 OCR 텍스트가 없습니다.")
-                            else:
-                                with st.spinner("RAG 검색 중..."):
-                                    try:
-                                        # PDF 경로 찾기
-                                        pdf_path = img_dir / selected_pdf / f"{selected_pdf}.pdf"
-                                        if not pdf_path.exists():
-                                            session_pdf_path = find_pdf_path(selected_pdf)
-                                            if session_pdf_path:
-                                                pdf_path = Path(session_pdf_path)
-                                        
-                                        # PyMuPDF로 텍스트 추출
-                                        ocr_text = page_info.get("ocr_text", "")
-                                        if not ocr_text and pdf_path.exists():
-                                            ocr_text = extract_text_from_pdf_page(pdf_path, current_page)
-                                        
-                                        if not ocr_text:
-                                            st.error("❌ OCR 텍스트를 추출할 수 없습니다.")
-                                        else:
-                                            # RAG Manager로 검색만 수행
-                                            rag_manager = get_rag_manager()
+                                        # 검색 결과가 없으면 threshold를 낮춰서 재검색
+                                        if not similar_examples:
                                             similar_examples = rag_manager.search_similar_advanced(
                                                 query_text=ocr_text,
-                                                top_k=config.top_k,
-                                                similarity_threshold=config.similarity_threshold,
+                                                top_k=1,
+                                                similarity_threshold=0.0,
                                                 search_method=config.search_method,
                                                 hybrid_alpha=config.hybrid_alpha
                                             )
-                                            
-                                            # 검색 결과가 없으면 threshold를 낮춰서 재검색
-                                            if not similar_examples:
-                                                similar_examples = rag_manager.search_similar_advanced(
-                                                    query_text=ocr_text,
-                                                    top_k=1,
-                                                    similarity_threshold=0.0,
-                                                    search_method=config.search_method,
-                                                    hybrid_alpha=config.hybrid_alpha
-                                                )
-                                            
-                                            # 검색 결과를 세션 상태에 저장
-                                            st.session_state[f"rag_search_results_{current_page}"] = {
-                                                "similar_examples": similar_examples,
-                                                "ocr_text": ocr_text
-                                            }
-                                            st.success(f"✅ RAG 검색 완료: {len(similar_examples)}개 예제 발견")
-                                            
-                                    except Exception as e:
-                                        st.error(f"❌ RAG 검색 실패: {e}")
-                                        st.code(traceback.format_exc())
-                    
+                                        
+                                        # 검색 결과를 세션 상태에 저장
+                                        st.session_state[f"rag_search_results_{current_page}"] = {
+                                            "similar_examples": similar_examples,
+                                            "ocr_text": ocr_text
+                                        }
+                                        st.success(f"✅ RAG 검색 완료: {len(similar_examples)}개 예제 발견")
+                                        
+                                except Exception as e:
+                                    st.error(f"❌ RAG 검색 실패: {e}")
+                                    st.code(traceback.format_exc())
+                
                     # 검색 결과 표시 및 예제 선택
                     if f"rag_search_results_{current_page}" in st.session_state:
                         search_results = st.session_state[f"rag_search_results_{current_page}"]
@@ -1226,6 +1406,7 @@ def render_answer_editor_tab():
                             
                             # 예제 선택 옵션 생성
                             example_options = []
+                            rag_manager = get_rag_manager()
                             for idx, ex in enumerate(similar_examples):
                                 # 점수 정보 수집
                                 score_info = []
@@ -1234,72 +1415,72 @@ def render_answer_editor_tab():
                                 if 'bm25_score' in ex:
                                     score_info.append(f"BM25: {ex['bm25_score']:.4f}")
                                 score_info.append(f"Similarity: {ex['similarity']:.4f}")
-                                
-                                # 메타데이터에서 PDF 정보 추출
-                                pdf_name = "Unknown"
-                                page_num = "Unknown"
-                                if 'id' in ex:
-                                    doc_id = ex['id']
-                                    all_examples = rag_manager.get_all_examples()
-                                    for example in all_examples:
-                                        if example['id'] == doc_id:
-                                            metadata = example.get('metadata', {})
-                                            pdf_name = metadata.get('pdf_name', 'Unknown')
-                                            page_num = metadata.get('page_num', 'Unknown')
-                                            break
-                                
-                                example_label = f"[{idx+1}] {pdf_name} - Page{page_num} ({', '.join(score_info)})"
-                                example_options.append((idx, example_label, ex))
                             
+                            # 메타데이터에서 PDF 정보 추출
+                            pdf_name = "Unknown"
+                            page_num = "Unknown"
+                            if 'id' in ex:
+                                doc_id = ex['id']
+                                all_examples = rag_manager.get_all_examples()
+                                for example in all_examples:
+                                    if example['id'] == doc_id:
+                                        metadata = example.get('metadata', {})
+                                        pdf_name = metadata.get('pdf_name', 'Unknown')
+                                        page_num = metadata.get('page_num', 'Unknown')
+                                        break
+                            
+                            example_label = f"[{idx+1}] {pdf_name} - Page{page_num} ({', '.join(score_info)})"
+                            example_options.append((idx, example_label, ex))
+                        
                             # 예제 선택 드롭다운
                             selected_example_idx = st.selectbox(
-                                "📌 사용할 참고 예제 선택",
-                                options=[opt[0] for opt in example_options],
-                                format_func=lambda x: example_options[x][1],
-                                key=f"example_selector_{current_page}",
-                                help="검색된 예제 중 하나를 선택하여 RAG 정답 생성에 사용합니다."
-                            )
-                            
+                            "📌 사용할 참고 예제 선택",
+                            options=[opt[0] for opt in example_options],
+                            format_func=lambda x: example_options[x][1],
+                            key=f"example_selector_{current_page}",
+                            help="검색된 예제 중 하나를 선택하여 RAG 정답 생성에 사용합니다."
+                        )
+                        
                             selected_example = example_options[selected_example_idx][2]
                             
                             # 선택된 예제 상세 정보 표시
                             with st.expander("📖 선택된 예제 상세 정보", expanded=True):
                                 col_info1, col_info2 = st.columns(2)
-                                with col_info1:
-                                    st.write("**점수 정보:**")
-                                    if 'hybrid_score' in selected_example:
-                                        st.write(f"- Hybrid Score: {selected_example['hybrid_score']:.4f}")
-                                    if 'bm25_score' in selected_example:
-                                        st.write(f"- BM25 Score: {selected_example['bm25_score']:.4f}")
-                                    st.write(f"- Similarity: {selected_example['similarity']:.4f}")
-                                
-                                with col_info2:
-                                    st.write("**문서 정보:**")
-                                    if 'id' in selected_example:
-                                        doc_id = selected_example['id']
-                                        all_examples = rag_manager.get_all_examples()
-                                        for example in all_examples:
-                                            if example['id'] == doc_id:
-                                                metadata = example.get('metadata', {})
-                                                st.write(f"- PDF: {metadata.get('pdf_name', 'Unknown')}")
-                                                st.write(f"- Page: {metadata.get('page_num', 'Unknown')}")
-                                                st.write(f"- Role: {selected_example['answer_json'].get('page_role', 'N/A')}")
-                                                break
-                                
-                                st.write("**OCR 텍스트 미리보기:**")
-                                ocr_preview = selected_example['ocr_text'][:500] + "..." if len(selected_example['ocr_text']) > 500 else selected_example['ocr_text']
-                                st.text_area(
-                                    "참고 예제 OCR 텍스트",
-                                    value=ocr_preview,
-                                    height=150,
-                                    key=f"example_ocr_preview_{current_page}",
-                                    disabled=True
-                                )
-                                
-                                st.write("**정답 JSON 미리보기:**")
-                                example_answer_str = json.dumps(selected_example['answer_json'], ensure_ascii=False, indent=2)
-                                st.code(example_answer_str[:1000] + "..." if len(example_answer_str) > 1000 else example_answer_str, language='json')
+                            with col_info1:
+                                st.write("**점수 정보:**")
+                                if 'hybrid_score' in selected_example:
+                                    st.write(f"- Hybrid Score: {selected_example['hybrid_score']:.4f}")
+                                if 'bm25_score' in selected_example:
+                                    st.write(f"- BM25 Score: {selected_example['bm25_score']:.4f}")
+                                st.write(f"- Similarity: {selected_example['similarity']:.4f}")
                             
+                            with col_info2:
+                                st.write("**문서 정보:**")
+                                if 'id' in selected_example:
+                                    doc_id = selected_example['id']
+                                    all_examples = rag_manager.get_all_examples()
+                                    for example in all_examples:
+                                        if example['id'] == doc_id:
+                                            metadata = example.get('metadata', {})
+                                            st.write(f"- PDF: {metadata.get('pdf_name', 'Unknown')}")
+                                            st.write(f"- Page: {metadata.get('page_num', 'Unknown')}")
+                                            st.write(f"- Role: {selected_example['answer_json'].get('page_role', 'N/A')}")
+                                            break
+                            
+                            st.write("**OCR 텍스트 미리보기:**")
+                            ocr_preview = selected_example['ocr_text'][:500] + "..." if len(selected_example['ocr_text']) > 500 else selected_example['ocr_text']
+                            st.text_area(
+                                "참고 예제 OCR 텍스트",
+                                value=ocr_preview,
+                                height=150,
+                                key=f"example_ocr_preview_{current_page}",
+                                disabled=True
+                            )
+                            
+                            st.write("**정답 JSON 미리보기:**")
+                            example_answer_str = json.dumps(selected_example['answer_json'], ensure_ascii=False, indent=2)
+                            st.code(example_answer_str[:1000] + "..." if len(example_answer_str) > 1000 else example_answer_str, language='json')
+                        
                             # 정답 생성 버튼
                             if st.button(
                                 "🚀 선택한 예제로 정답 생성",
@@ -1310,13 +1491,12 @@ def render_answer_editor_tab():
                                     try:
                                         ocr_text = search_results["ocr_text"]
                                         
-                                        # 선택된 예제를 사용하여 RAG 추출 (extract_json_with_rag 수정 필요)
-                                        # 일단 기존 함수를 사용하되, 선택된 예제를 강제로 사용하도록 수정
+                                        # 선택된 예제를 사용하여 RAG 추출
                                         def progress_wrapper(msg: str):
                                             st.info(f"🤖 {msg}")
                                         
                                         # 선택된 예제를 직접 사용하여 프롬프트 생성
-                                        project_root = get_project_root()  # 상단에서 이미 import됨
+                                        project_root = get_project_root()
                                         prompts_dir = project_root / "prompts"
                                         
                                         example_ocr = selected_example["ocr_text"]
@@ -1404,99 +1584,8 @@ def render_answer_editor_tab():
                                         st.error(f"❌ 정답 생성 실패: {e}")
                                         st.code(traceback.format_exc())
                         else:
-                            st.info("⚠️ 검색된 예제가 없습니다. Zero-shot 모드로 진행할 수 있습니다.")
-                            
-                            # Zero-shot 모드로 정답 생성 버튼
-                            if st.button(
-                                "🚀 Zero-shot 모드로 정답 생성",
-                                type="primary",
-                                key=f"generate_zero_shot_{current_page}"
-                            ):
-                                with st.spinner("LLM 호출 중 (Zero-shot)..."):
-                                    try:
-                                        ocr_text = search_results["ocr_text"]
-                                        
-                                        # Zero-shot 프롬프트 사용
-                                        project_root = get_project_root()
-                                        config = get_rag_config()
-                                        prompts_dir = project_root / "prompts"
-                                        
-                                        prompt_template_path = prompts_dir / "rag_zero_shot.txt"
-                                        if not prompt_template_path.exists():
-                                            raise FileNotFoundError(
-                                                f"프롬프트 파일이 없습니다: {prompt_template_path}\n"
-                                                f"prompts/rag_zero_shot.txt 파일이 필요합니다."
-                                            )
-                                        
-                                        with open(prompt_template_path, 'r', encoding='utf-8') as f:
-                                            prompt_template = f.read()
-                                        prompt = prompt_template.format(
-                                            ocr_text=ocr_text,
-                                            question=config.question
-                                        )
-                                        
-                                        # 프롬프트를 세션 상태에 저장 (확인용)
-                                        st.session_state[f"last_prompt_{current_page}"] = prompt
-                                        
-                                        # 프롬프트 미리보기 표시
-                                        with st.expander("📝 사용된 프롬프트 확인", expanded=True):
-                                            st.text_area(
-                                                "최종 프롬프트",
-                                                value=prompt,
-                                                height=400,
-                                                key=f"prompt_preview_zero_shot_{current_page}",
-                                                disabled=True,
-                                                help="OpenAI API에 전송되는 최종 프롬프트입니다."
-                                            )
-                                        
-                                        # OpenAI API 호출
-                                        api_key = os.getenv("OPENAI_API_KEY")
-                                        if not api_key:
-                                            raise ValueError("OPENAI_API_KEY가 필요합니다.")
-                                        
-                                        client = OpenAI(api_key=api_key)
-                                        response = client.chat.completions.create(
-                                            model=selected_model,
-                                            messages=[{"role": "user", "content": prompt}],
-                                            temperature=0.0,
-                                            timeout=120
-                                        )
-                                        result_text = response.choices[0].message.content
-                                        
-                                        # JSON 파싱
-                                        result_text = result_text.strip()
-                                        if result_text.startswith('```'):
-                                            result_text = result_text.split('```', 1)[1]
-                                            if result_text.startswith('json'):
-                                                result_text = result_text[4:].strip()
-                                            if result_text.endswith('```'):
-                                                result_text = result_text.rsplit('```', 1)[0].strip()
-                                        
-                                        result_text = re.sub(r':\s*None\s*([,}])', r': null\1', result_text)
-                                        result_text = re.sub(r':\s*True\s*([,}])', r': true\1', result_text)
-                                        result_text = re.sub(r':\s*False\s*([,}])', r': false\1', result_text)
-                                        
-                                        result_json = json.loads(result_text)
-                                        
-                                        # null 값 정규화
-                                        if result_json.get("items") is None:
-                                            result_json["items"] = []
-                                        if result_json.get("page_role") is None:
-                                            result_json["page_role"] = "detail"
-                                        if not isinstance(result_json.get("items"), list):
-                                            result_json["items"] = []
-                                        
-                                        # 세션 상태에 저장 (정답 JSON 편집 영역에 바로 반영)
-                                        st.session_state[f"rag_result_{current_page}"] = result_json
-                                        st.session_state[f"answer_json_{current_page}"] = json.dumps(result_json, ensure_ascii=False, indent=2)
-                                        st.session_state[f"page_role_{current_page}"] = result_json.get("page_role", "detail")
-                                        st.success("✅ Zero-shot 모드로 정답 생성 완료! 아래 정답 JSON 편집 영역에서 확인하세요.")
-                                        st.rerun()
-                                        
-                                    except Exception as e:
-                                        st.error(f"❌ 정답 생성 실패: {e}")
-                                        st.code(traceback.format_exc())
-                    
+                            st.info("⚠️ 검색된 예제가 없습니다.")
+                
                     # 기존 RAG 기반 정답 생성 버튼 (하위 호환성 유지)
                     if st.button(
                         "🔍 RAG 기반 정답 생성 (자동)",
@@ -1525,14 +1614,8 @@ def render_answer_editor_tab():
                                         st.error("❌ OCR 텍스트를 추출할 수 없습니다.")
                                     else:
                                         # RAG 기반 JSON 추출
-                                        last_prompt = [None]  # 프롬프트를 저장할 리스트 (클로저를 위해)
-                                        
                                         def progress_wrapper(msg: str):
                                             st.info(f"🤖 {msg}")
-                                            # 프롬프트가 포함된 메시지인지 확인
-                                            if "프롬프트" in msg or "prompt" in msg.lower():
-                                                # 프롬프트 추출 시도 (간단한 방법)
-                                                pass
                                         
                                         result_json = extract_json_with_rag(
                                             ocr_text=ocr_text,
@@ -1588,352 +1671,175 @@ def render_answer_editor_tab():
                                     st.error(f"❌ OpenAI API 호출 실패: {e}")
                                     st.code(traceback.format_exc())
 
-                    # 기존 OpenAI 응답 결과 표시 (하위 호환성 유지)
-                    if f"openai_result_{current_page}" in st.session_state:
-                        result_json = st.session_state[f"openai_result_{current_page}"]
-
-                        # 결과를 데이터프레임으로 변환
-                        if result_json.get("items"):
-                            result_df, mgmt_col = prepare_dataframe_for_aggrid(result_json["items"])
-
-                            if AgGridUtils.is_available() and len(result_df) > 0:
-                                gb = GridOptionsBuilder.from_dataframe(result_df)
-                                gb.configure_default_column(editable=False, resizable=True)
-
-                                for col in result_df.columns:
-                                    japanese_name = COLUMN_NAME_MAPPING.get(col, col)
-                                    if col == 'No':
-                                        gb.configure_column(col, header_name=japanese_name, editable=False, width=60, pinned='left')
+            # 저장 버튼 (expander 밖)
+            col_save1, col_save2, col_save3 = st.columns([1, 1, 3])
+            with col_save1:
+                if st.button("💾 저장", type="primary", key=f"save_answer_{current_page}"):
+                    # JSON 파싱 및 저장
+                    try:
+                        # 텍스트 영역의 JSON을 우선 사용
+                        answer_json_str_for_save = st.session_state.get(f"answer_json_{current_page}", "{}")
+                        
+                        # JSON 파싱
+                        try:
+                            answer_json = json.loads(answer_json_str_for_save)
+                        except json.JSONDecodeError:
+                            # 파싱 실패 시 기본값 사용
+                            answer_json = default_answer_json.copy()
+                        
+                        # page_role은 JSON에서 직접 읽어옴 (별도 UI 없음)
+                        
+                        # 탭에서 수정한 데이터 반영 (각 키별로, items 포함)
+                        top_level_keys = [k for k in answer_json.keys() if k != "page_role"]
+                        for key in top_level_keys:
+                            if f"json_data_{current_page}_{key}" in st.session_state:
+                                updated_data = st.session_state[f"json_data_{current_page}_{key}"]
+                                
+                                if isinstance(updated_data, dict):
+                                    # 평탄화된 딕셔너리인 경우 복원
+                                    if any(sep in k for k in updated_data.keys() for sep in ['_']):
+                                        # 평탄화된 키가 있는 경우 복원 시도
+                                        try:
+                                            answer_json[key] = unflatten_dict(updated_data)
+                                        except Exception:
+                                            # 복원 실패 시 그대로 저장
+                                            answer_json[key] = updated_data
                                     else:
-                                        gb.configure_column(col, header_name=japanese_name)
+                                        answer_json[key] = updated_data
+                                elif isinstance(updated_data, list):
+                                    answer_json[key] = updated_data
+                                elif isinstance(updated_data, str):
+                                    # 단순 문자열 값인 경우 타입 변환 시도
+                                    try:
+                                        # 숫자로 변환 가능한지 확인
+                                        if updated_data.isdigit():
+                                            answer_json[key] = int(updated_data)
+                                        elif updated_data.replace('.', '', 1).isdigit():
+                                            answer_json[key] = float(updated_data)
+                                        else:
+                                            answer_json[key] = updated_data
+                                    except Exception:
+                                        answer_json[key] = updated_data
+                                else:
+                                    answer_json[key] = updated_data
 
-                                gb.configure_pagination(enabled=False)
-                                get_row_style_code = create_management_color_style(mgmt_col, result_df)
-                                grid_options = gb.build()
-                                if get_row_style_code:
-                                    grid_options['getRowStyle'] = get_row_style_code
-                                grid_options['pagination'] = False
+                        # 파일 저장 (전체 JSON 저장)
+                        if not answer_json_path:
+                            st.error(f"❌ 저장 경로가 없습니다. answer_json_path를 확인하세요.")
+                        else:
+                            os.makedirs(os.path.dirname(answer_json_path), exist_ok=True)
+                            with open(answer_json_path, "w", encoding="utf-8") as f:
+                                json.dump(answer_json, f, ensure_ascii=False, indent=2)
 
-                                auto_size_js = JsCode("""
-                                function(params) {
-                                    params.api.sizeColumnsToFit();
-                                    var allColumnIds = [];
-                                    params.columnApi.getColumns().forEach(function(column) {
-                                        if (column.colId) allColumnIds.push(column.colId);
-                                    });
-                                    params.columnApi.autoSizeColumns(allColumnIds);
-                                }
-                                """)
-                                grid_options['onGridReady'] = auto_size_js
-
-                                st.subheader("📊 OpenAI 응답 결과")
-                                AgGrid(result_df, gridOptions=grid_options, update_mode=GridUpdateMode.NO_UPDATE,
-                                       data_return_mode=DataReturnMode.FILTERED_AND_SORTED, fit_columns_on_grid_load=True,
-                                       height=400, theme='streamlit', allow_unsafe_jscode=True, hide_index=False,
-                                       key=f"openai_result_grid_{current_page}")
-                            elif len(result_df) > 0:
-                                st.subheader("📊 OpenAI 응답 결과")
-                                st.dataframe(result_df, height=400)
-                            else:
-                                st.info("응답에 items가 없습니다.")
-
-            with col2:
-                st.subheader("📄 PyMuPDF 추출 결과 (원문 텍스트)")
-                if page_info.get("ocr_text"):
-                    st.text_area(
-                        "PyMuPDF OCR 결과",
-                        value=page_info["ocr_text"],
-                        height=200,
-                        key=f"ocr_text_{current_page}",
-                        disabled=True
-                    )
-                else:
-                    st.warning("PyMuPDF 추출 결과가 없습니다.")
-
-                # JSON 파일 로드 (Gemini 결과 > RAG 결과 > 파일 순으로 우선 사용)
-                answer_json_path = page_info["answer_json_path"]
-                default_answer_json = {
-                    "page_role": "detail",
-                    "items": []
-                }
-                
-                # Gemini 결과가 있으면 우선 사용, 없으면 RAG 결과, 없으면 파일에서 로드
-                if f"gemini_result_{current_page}" in st.session_state:
-                    default_answer_json = st.session_state[f"gemini_result_{current_page}"]
-                elif f"rag_result_{current_page}" in st.session_state:
-                    default_answer_json = st.session_state[f"rag_result_{current_page}"]
-                elif os.path.exists(answer_json_path):
-                    try:
-                        with open(answer_json_path, "r", encoding="utf-8") as f:
-                            loaded_json = json.load(f)
-                            # 불필요한 필드 제거 (page_role과 items만 유지)
-                            default_answer_json = filter_answer_json(loaded_json)
-                    except Exception as e:
-                        st.warning(f"기존 정답 JSON 로드 실패: {e}")
-
-                # JSON 편집 expander
-                with st.expander("📝 JSON 편집", expanded=False):
-                    page_role = st.selectbox(
-                        "페이지 역할 (page_role)",
-                        options=["cover", "detail", "summary"],
-                        index=["cover", "detail", "summary"].index(default_answer_json.get("page_role", "detail")) if default_answer_json.get("page_role", "detail") in ["cover", "detail", "summary"] else 1,
-                        key=f"page_role_{current_page}"
-                    )
-
-                    st.divider()
-
-                    # JSON 편집 창 (필터링된 JSON만 표시)
-                    # default_answer_json은 이미 filter_answer_json으로 필터링되어 있음
-                    # 세션 상태에 저장된 값이 있으면 우선 사용 (RAG 결과 반영)
-                    if f"answer_json_{current_page}" in st.session_state:
-                        answer_json_str_default = st.session_state[f"answer_json_{current_page}"]
-                    else:
-                        answer_json_str_default = json.dumps(default_answer_json, ensure_ascii=False, indent=2)
-                    
-                    answer_json_str = st.text_area(
-                        "정답 JSON (편집 가능) - page_role과 items만 포함됩니다",
-                        value=answer_json_str_default,
-                        height=300,
-                        key=f"answer_json_{current_page}"
-                    )
-
-                    # JSON 파싱 오류 처리
-                    try:
-                        parsed_json = json.loads(answer_json_str)
+                            st.success(f"✅ 정답 JSON 저장 완료! (파일 크기: {os.path.getsize(answer_json_path)} bytes)")
+                            st.caption(f"저장 경로: `{answer_json_path}`")
+                            # 탭 상태 유지
+                            if "active_tab" not in st.session_state:
+                                st.session_state.active_tab = "✏️ 정답지 편집"
+                            st.rerun()
                     except json.JSONDecodeError as e:
                         st.error(f"❌ JSON 파싱 오류: {e}")
-
-                # Items 편집 expander
-                with st.expander("📊 Items 편집 (AgGrid)", expanded=False):
-                    # JSON에서 items 추출 (세션 상태에서 가져오기)
-                    items = []
-                    try:
-                        answer_json_str_for_items = st.session_state.get(f"answer_json_{current_page}", answer_json_str_default)
-                        parsed_json = json.loads(answer_json_str_for_items)
-                        items = parsed_json.get("items", [])
-                    except (json.JSONDecodeError, NameError, KeyError):
-                        items = []
-
-                    if not AgGridUtils.is_available():
-                        st.warning("⚠️ AgGrid가 설치되어 있지 않습니다. `pip install streamlit-aggrid`로 설치하세요.")
-                        if items:
-                            df = pd.DataFrame(items)
-                            edited_df = st.data_editor(df, height=400, key=f"items_editor_{current_page}")
-                            st.session_state[f"updated_items_{current_page}"] = edited_df.to_dict('records')
-                        else:
-                            st.info("Items가 없습니다.")
-                            st.session_state[f"updated_items_{current_page}"] = []
-                    elif not items:
-                        st.info("Items가 없습니다. JSON 편집 창에서 items를 추가하세요.")
-                        st.session_state[f"updated_items_{current_page}"] = []
-                    else:
-                        df, mgmt_col = prepare_dataframe_for_aggrid(items)
-
-                        # GridOptionsBuilder 설정
-                        if len(df) == 0 or len(df.columns) == 0:
-                            st.warning(f"⚠️ DataFrame을 생성할 수 없습니다. (items 개수: {len(items)})")
-                            st.session_state[f"updated_items_{current_page}"] = items
-                        else:
-                            gb = GridOptionsBuilder.from_dataframe(df)
-                            gb.configure_default_column(editable=True, resizable=True)
-
-                            # 각 컬럼의 헤더명을 일본어로 설정
-                            for col in df.columns:
-                                japanese_name = COLUMN_NAME_MAPPING.get(col, col)
-                                if col == 'No':
-                                    gb.configure_column(col, header_name=japanese_name, editable=False, width=60, pinned='left')
-                                else:
-                                    gb.configure_column(col, header_name=japanese_name)
-
-                            gb.configure_pagination(enabled=False)
-
-                            # 관리번호별 색상 지정 (함수 사용)
-                            get_row_style_code = create_management_color_style(mgmt_col, df)
-                            grid_options = gb.build()
-                            if get_row_style_code:
-                                grid_options['getRowStyle'] = get_row_style_code
-                            grid_options['pagination'] = False
-
-                            auto_size_js = JsCode("""
-                            function(params) {
-                                params.api.sizeColumnsToFit();
-                                var allColumnIds = [];
-                                params.columnApi.getColumns().forEach(function(column) {
-                                    if (column.colId) allColumnIds.push(column.colId);
-                                });
-                                params.columnApi.autoSizeColumns(allColumnIds);
-                            }
-                            """)
-                            grid_options['onGridReady'] = auto_size_js
-
-                            # AG Grid 렌더링
-                            grid_response = AgGrid(
-                                df,
-                                gridOptions=grid_options,
-                                update_mode=GridUpdateMode.VALUE_CHANGED,
-                                data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
-                                fit_columns_on_grid_load=True,
-                                height=400,
-                                theme='streamlit',
-                                allow_unsafe_jscode=True,
-                                hide_index=False,
-                                key=f"aggrid_items_{current_page}"
-                            )
-
-                            # 수정된 데이터 가져오기
-                            updated_df = grid_response['data'] if grid_response.get('data') is not None else pd.DataFrame()
-                            if len(updated_df) > 0 and 'No' in updated_df.columns:
-                                updated_df = updated_df.drop(columns=['No'])
-                            st.session_state[f"updated_items_{current_page}"] = updated_df.to_dict('records') if len(updated_df) > 0 else items
-
-                            # AgGrid 바로 아래에 저장 버튼 추가
-                            st.caption("⚠️ AgGrid에서 수정한 내용은 아래 저장 버튼을 클릭해야 파일에 저장됩니다.")
-                            col_save_aggrid1, col_save_aggrid2 = st.columns([1, 4])
-                            with col_save_aggrid1:
-                                if st.button("💾 AgGrid 변경사항 저장", type="primary", key=f"save_aggrid_{current_page}"):
-                                    # AgGrid에서 수정된 items와 page_role로 새 JSON 생성 (필요한 필드만)
-                                    answer_json = {
-                                        "page_role": st.session_state.get(f"page_role_{current_page}", default_answer_json.get("page_role", "detail")),
-                                        "items": st.session_state.get(f"updated_items_{current_page}", items)
-                                    }
-
-                                    # 파일 저장
-                                    os.makedirs(os.path.dirname(answer_json_path), exist_ok=True)
-                                    with open(answer_json_path, "w", encoding="utf-8") as f:
-                                        json.dump(answer_json, f, ensure_ascii=False, indent=2)
-
-                                    st.success(f"✅ AgGrid 변경사항 저장 완료! (파일 크기: {os.path.getsize(answer_json_path)} bytes)")
-                                    # 탭 상태 유지
-                                    if "active_tab" not in st.session_state:
-                                        st.session_state.active_tab = "✏️ 정답지 편집"
-                                    st.rerun()
-
-                            with col_save_aggrid2:
-                                st.caption(f"저장 경로: `{answer_json_path}`")
-
-                # 저장 버튼 (expander 밖)
-                col_save1, col_save2, col_save3 = st.columns([1, 1, 3])
-                with col_save1:
-                    if st.button("💾 저장", type="primary", key=f"save_answer_{current_page}"):
-                        # JSON 파싱 및 page_role 업데이트
-                        try:
-                            # answer_json_str_default가 정의되어 있는지 확인
-                            if 'answer_json_str_default' not in locals():
-                                answer_json_str_default = json.dumps(default_answer_json, ensure_ascii=False, indent=2)
-                            
-                            answer_json_str_for_save = st.session_state.get(f"answer_json_{current_page}", answer_json_str_default)
-                            page_role_for_save = st.session_state.get(f"page_role_{current_page}", default_answer_json.get("page_role", "detail"))
-                            
-                            # JSON 파싱
-                            parsed_json = json.loads(answer_json_str_for_save)
-                            
-                            # items 업데이트 (AgGrid에서 수정한 경우)
-                            updated_items = st.session_state.get(f"updated_items_{current_page}")
-                            if updated_items is not None:
-                                items_to_save = updated_items
-                            else:
-                                items_to_save = parsed_json.get("items", [])
-                            
-                            # 필요한 필드만 추출하여 저장 (page_role과 items만)
-                            answer_json = {
-                                "page_role": page_role_for_save,
-                                "items": items_to_save
-                            }
-
-                            # 파일 저장
-                            if not answer_json_path:
-                                st.error(f"❌ 저장 경로가 없습니다. answer_json_path를 확인하세요.")
-                            else:
-                                os.makedirs(os.path.dirname(answer_json_path), exist_ok=True)
-                                with open(answer_json_path, "w", encoding="utf-8") as f:
-                                    json.dump(answer_json, f, ensure_ascii=False, indent=2)
-
-                                st.success(f"✅ 정답 JSON 저장 완료! (파일 크기: {os.path.getsize(answer_json_path)} bytes)")
-                                st.caption(f"저장 경로: `{answer_json_path}`")
-                                # 탭 상태 유지
-                                if "active_tab" not in st.session_state:
-                                    st.session_state.active_tab = "✏️ 정답지 편집"
-                                st.rerun()
-                        except json.JSONDecodeError as e:
-                            st.error(f"❌ JSON 파싱 오류: {e}")
-                            st.code(traceback.format_exc())
-                        except Exception as e:
-                            st.error(f"❌ 저장 실패: {e}")
-                            st.code(traceback.format_exc())
-                    
-                with col_save2:
-                    # 벡터 DB 저장 버튼
-                    ocr_text = page_info.get("ocr_text", "")
-                    has_ocr = bool(ocr_text)
-                    try:
-                        answer_json_str_for_check = st.session_state.get(f"answer_json_{current_page}", answer_json_str_default)
-                        parsed_json = json.loads(answer_json_str_for_check)
-                        has_answer = bool(parsed_json)
-                    except (json.JSONDecodeError, NameError, KeyError):
-                        has_answer = False
-                    
-                    if st.button("🔍 벡터 DB 저장", key=f"save_rag_{current_page}", 
-                               disabled=not (has_ocr and has_answer),
-                               help="OCR 텍스트와 정답 JSON을 벡터 DB에 저장합니다 (RAG 학습용)"):
-                        try:
-                            # JSON 파싱
-                            answer_json_str_for_rag = st.session_state.get(f"answer_json_{current_page}", answer_json_str_default)
-                            page_role_for_rag = st.session_state.get(f"page_role_{current_page}", default_answer_json.get("page_role", "detail"))
-                            parsed_json = json.loads(answer_json_str_for_rag)
-                            
-                            # items 가져오기 (AgGrid에서 수정한 경우 우선)
-                            updated_items = st.session_state.get(f"updated_items_{current_page}")
-                            if updated_items is not None:
-                                items_for_rag = updated_items
-                            else:
-                                items_for_rag = parsed_json.get("items", [])
-                            
-                            # 필요한 필드만 추출 (page_role과 items만)
-                            answer_json = {
-                                "page_role": page_role_for_rag,
-                                "items": items_for_rag
-                            }
-                            
-                            # RAG Manager로 저장
-                            rag_manager = get_rag_manager()
-                            doc_id = rag_manager.add_example(
-                                ocr_text=ocr_text,
-                                answer_json=answer_json,
-                                metadata={
-                                    "pdf_name": selected_pdf,
-                                    "page_num": current_page,
-                                    "page_role": page_role_for_rag
-                                }
-                            )
-                            
-                            st.success(f"✅ 벡터 DB 저장 완료! (ID: {doc_id[:8]}...)")
-                            st.caption(f"총 예제 수: {rag_manager.count_examples()}개")
-                        except PermissionError as e:
-                            st.error(f"❌ 벡터 DB 저장 실패 (권한 문제): {e}")
-                            st.info("💡 해결 방법: 터미널에서 다음 명령어를 실행하세요:\n"
-                                   f"`chmod -R 755 chroma_db` 또는 `sudo chmod -R 755 chroma_db`")
-                        except Exception as e:
-                            error_msg = str(e)
-                            if "readonly" in error_msg.lower():
-                                st.error(f"❌ 벡터 DB 저장 실패 (읽기 전용 오류): {error_msg}")
-                                st.info("💡 해결 방법:\n"
-                                       "1. `chmod -R 755 chroma_db` 명령어로 권한 수정\n"
-                                       "2. 또는 `chroma_db` 디렉토리를 삭제하고 다시 시도")
-                            else:
-                                st.error(f"❌ 벡터 DB 저장 실패: {error_msg}")
-                                with st.expander("상세 오류 정보"):
-                                    st.code(traceback.format_exc())
+                        st.code(traceback.format_exc())
+                    except Exception as e:
+                        st.error(f"❌ 저장 실패: {e}")
+                        st.code(traceback.format_exc())
                 
-                with col_save3:
-                    # 벡터 DB 통계 표시
+            with col_save2:
+                # 벡터 DB 저장 버튼
+                ocr_text = page_info.get("ocr_text", "")
+                has_ocr = bool(ocr_text)
+                try:
+                    answer_json_str_for_check = st.session_state.get(f"answer_json_{current_page}", json.dumps(default_answer_json, ensure_ascii=False, indent=2))
+                    parsed_json = json.loads(answer_json_str_for_check)
+                    has_answer = bool(parsed_json)
+                except (json.JSONDecodeError, NameError, KeyError):
+                    has_answer = False
+                
+                if st.button("🔍 벡터 DB 저장", key=f"save_rag_{current_page}", 
+                            disabled=not (has_ocr and has_answer),
+                            help="OCR 텍스트와 정답 JSON을 벡터 DB에 저장합니다 (RAG 학습용)"):
                     try:
+                        # JSON 파싱 (전체 JSON 사용)
+                        answer_json_str_for_rag = st.session_state.get(f"answer_json_{current_page}", json.dumps(default_answer_json, ensure_ascii=False, indent=2))
+                        parsed_json = json.loads(answer_json_str_for_rag)
+                        
+                        # page_role은 JSON에서 직접 읽어옴
+                        page_role_for_rag = parsed_json.get("page_role", "detail")
+                        
+                        # 탭에서 수정한 데이터 반영 (각 키별로, items 포함)
+                        top_level_keys = [k for k in parsed_json.keys() if k != "page_role"]
+                        for key in top_level_keys:
+                            if f"json_data_{current_page}_{key}" in st.session_state:
+                                updated_data = st.session_state[f"json_data_{current_page}_{key}"]
+                                
+                                if isinstance(updated_data, dict):
+                                    # 평탄화된 딕셔너리인 경우 복원
+                                    if any('_' in k for k in updated_data.keys()):
+                                        try:
+                                            parsed_json[key] = unflatten_dict(updated_data)
+                                        except Exception:
+                                            parsed_json[key] = updated_data
+                                    else:
+                                        parsed_json[key] = updated_data
+                                elif isinstance(updated_data, list):
+                                    parsed_json[key] = updated_data
+                                elif isinstance(updated_data, str):
+                                    # 단순 문자열 값인 경우 타입 변환 시도
+                                    try:
+                                        if updated_data.isdigit():
+                                            parsed_json[key] = int(updated_data)
+                                        elif updated_data.replace('.', '', 1).isdigit():
+                                            parsed_json[key] = float(updated_data)
+                                        else:
+                                            parsed_json[key] = updated_data
+                                    except Exception:
+                                        parsed_json[key] = updated_data
+                                else:
+                                    parsed_json[key] = updated_data
+                        
+                        # 전체 JSON 저장 (필터링하지 않음)
+                        answer_json = parsed_json
+                        
+                        # RAG Manager로 저장
                         rag_manager = get_rag_manager()
-                        example_count = rag_manager.count_examples()
-                        st.caption(f"벡터 DB 예제 수: {example_count}개")
-                    except Exception:
-                        pass
+                        doc_id = rag_manager.add_example(
+                            ocr_text=ocr_text,
+                            answer_json=answer_json,
+                            metadata={
+                                "pdf_name": selected_pdf,
+                                "page_num": current_page,
+                                "page_role": page_role_for_rag
+                            }
+                        )
+                        
+                        st.success(f"✅ 벡터 DB 저장 완료! (ID: {doc_id[:8]}...)")
+                        st.caption(f"총 예제 수: {rag_manager.count_examples()}개")
+                    except PermissionError as e:
+                        st.error(f"❌ 벡터 DB 저장 실패 (권한 문제): {e}")
+                        st.info("💡 해결 방법: 터미널에서 다음 명령어를 실행하세요:\n"
+                                f"`chmod -R 755 chroma_db` 또는 `sudo chmod -R 755 chroma_db`")
+                    except Exception as e:
+                        error_msg = str(e)
+                        if "readonly" in error_msg.lower():
+                            st.error(f"❌ 벡터 DB 저장 실패 (읽기 전용 오류): {error_msg}")
+                            st.info("💡 해결 방법:\n"
+                                    "1. `chmod -R 755 chroma_db` 명령어로 권한 수정\n"
+                                    "2. 또는 `chroma_db` 디렉토리를 삭제하고 다시 시도")
+                        else:
+                            st.error(f"❌ 벡터 DB 저장 실패: {error_msg}")
+                            with st.expander("상세 오류 정보"):
+                                st.code(traceback.format_exc())
+            
+            with col_save3:
+                # 벡터 DB 통계 표시
+                try:
+                    rag_manager = get_rag_manager()
+                    example_count = rag_manager.count_examples()
+                    st.caption(f"벡터 DB 예제 수: {example_count}개")
+                except Exception:
+                    pass
 
-        # 정답지와 비교 기능
+    # 정답지와 비교 기능
         if f"openai_result_{current_page}" in st.session_state:
             st.divider()
             st.subheader("🔍 OpenAI 응답 vs 정답지 비교")
@@ -1966,4 +1872,3 @@ def render_answer_editor_tab():
             st.caption("💡 OpenAI 응답 결과가 있으면 정답지와 자동으로 비교됩니다.")
     else:
         st.info("위에서 PDF 파일을 업로드하세요.", icon="👆")
-

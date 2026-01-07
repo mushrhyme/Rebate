@@ -1,0 +1,203 @@
+{
+  "items": [
+    {
+      "management_id": "2501001142",
+      "customer": "ドラックストア モリ",
+      "product_name": "ノウシン 辛ラーメン3食",
+      "units_per_case": 12,
+      "case_count": 73,
+      "bara_count": 5.0,
+      "amount": 134793
+    },
+    {
+      "management_id": "2501001142",
+      "customer": "ドラックストア モリ",
+      "product_name": "辛ラーメンBLACK3食",
+      "units_per_case": 12,
+      "case_count": 18,
+      "bara_count": 6.0,
+      "amount": 23310
+    },
+    {
+      "management_id": "2501001142",
+      "customer": "ドラックストア モリ",
+      "product_name": "辛ラーメンキムチ3食",
+      "units_per_case": 12,
+      "case_count": 12,
+      "bara_count": NaN,
+      "amount": 22032
+    },
+    {
+      "management_id": "2501001142",
+      "customer": "ドラックストア モリ",
+      "product_name": "農心チャパゲッティ 140g",
+      "units_per_case": 30,
+      "case_count": 3,
+      "bara_count": 9.0,
+      "amount": 4455
+    },
+    {
+      "management_id": "2501001142",
+      "customer": "ドラックストア モリ",
+      "product_name": "農心チャパゲッティ 140g",
+      "units_per_case": 30,
+      "case_count": 2,
+      "bara_count": 12.0,
+      "amount": 2376
+    },
+    {
+      "management_id": "2501001142",
+      "customer": "ドラックストア モリ",
+      "product_name": "農心ノグリラーメン 120g",
+      "units_per_case": 30,
+      "case_count": 4,
+      "bara_count": 10.0,
+      "amount": 5850
+    },
+    {
+      "management_id": "2501001142",
+      "customer": "ドラックストア モリ",
+      "product_name": "農心ノグリラーメン 120g",
+      "units_per_case": 30,
+      "case_count": 4,
+      "bara_count": 20.0,
+      "amount": 4620
+    },
+    {
+      "management_id": "2501001142",
+      "customer": "ドラックストア モリ",
+      "product_name": "農心チャパグリ大盛カップ114g",
+      "units_per_case": 12,
+      "case_count": 7,
+      "bara_count": NaN,
+      "amount": 4116
+    },
+    {
+      "management_id": "2501001142",
+      "customer": "ドラックストア モリ",
+      "product_name": "辛ラーメン焼そばチーズカップ105g",
+      "units_per_case": 12,
+      "case_count": 8,
+      "bara_count": NaN,
+      "amount": 2880
+    },
+    {
+      "management_id": "2501001143",
+      "customer": "株式会社大賀薬局",
+      "product_name": "農心 NEW辛ラーメンカップ 68g",
+      "units_per_case": 12,
+      "case_count": 2,
+      "bara_count": NaN,
+      "amount": 1200
+    },
+    {
+      "management_id": "2501001143",
+      "customer": "株式会社大賀薬局",
+      "product_name": "農心辛ラーメンキムチカップ 68g",
+      "units_per_case": 12,
+      "case_count": 1,
+      "bara_count": NaN,
+      "amount": 600
+    },
+    {
+      "management_id": "2501001143",
+      "customer": "株式会社大賀薬局",
+      "product_name": "辛ラーメンバケツカップ 114g",
+      "units_per_case": 12,
+      "case_count": 1,
+      "bara_count": NaN,
+      "amount": 264
+    },
+    {
+      "management_id": "2501001144",
+      "customer": "株式会社ビッグワン",
+      "product_name": "ノウシン 辛ラーメン3食",
+      "units_per_case": 12,
+      "case_count": 32,
+      "bara_count": NaN,
+      "amount": 52992
+    },
+    {
+      "management_id": "2501001144",
+      "customer": "株式会社ビッグワン",
+      "product_name": "農心 NEW辛ラーメンカップ 68g",
+      "units_per_case": 12,
+      "case_count": 29,
+      "bara_count": NaN,
+      "amount": 17400
+    },
+    {
+      "management_id": "2501001144",
+      "customer": "株式会社ビッグワン",
+      "product_name": "農心辛ラーメンキムチカップ 68g",
+      "units_per_case": 12,
+      "case_count": 12,
+      "bara_count": NaN,
+      "amount": 7200
+    },
+    {
+      "management_id": "2501001144",
+      "customer": "株式会社ビッグワン",
+      "product_name": "辛ラーメン激辛 68g",
+      "units_per_case": 12,
+      "case_count": 10,
+      "bara_count": NaN,
+      "amount": 6000
+    },
+    {
+      "management_id": "2501001144",
+      "customer": "株式会社ビッグワン",
+      "product_name": "辛ラーメンキムチ3食",
+      "units_per_case": 12,
+      "case_count": 12,
+      "bara_count": NaN,
+      "amount": 19872
+    },
+    {
+      "management_id": "2501001145",
+      "customer": "玉寄スーパー",
+      "product_name": "ノウシン 辛ラーメン3食",
+      "units_per_case": 12,
+      "case_count": 1,
+      "bara_count": NaN,
+      "amount": 1296
+    },
+    {
+      "management_id": "2501001145",
+      "customer": "玉寄スーパー",
+      "product_name": "農心辛ラーメンキムチカップ 68g",
+      "units_per_case": 12,
+      "case_count": 1,
+      "bara_count": NaN,
+      "amount": 456
+    },
+    {
+      "management_id": "2501001146",
+      "customer": "与儀商店株式会社",
+      "product_name": "ノウシン 辛ラーメン3食",
+      "units_per_case": 12,
+      "case_count": 1,
+      "bara_count": NaN,
+      "amount": 1296
+    },
+    {
+      "management_id": "2501001146",
+      "customer": "与儀商店株式会社",
+      "product_name": "農心 NEW辛ラーメンカップ 68g",
+      "units_per_case": 12,
+      "case_count": 1,
+      "bara_count": NaN,
+      "amount": 456
+    },
+    {
+      "management_id": "2501001146",
+      "customer": "与儀商店株式会社",
+      "product_name": "農心辛ラーメンキムチカップ 68g",
+      "units_per_case": 12,
+      "case_count": 1,
+      "bara_count": NaN,
+      "amount": 456
+    }
+  ],
+  "page_role": "detail"
+}

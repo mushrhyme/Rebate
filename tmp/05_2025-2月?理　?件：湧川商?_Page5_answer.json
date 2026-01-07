@@ -1,0 +1,117 @@
+{
+  "items": [
+    {
+      "management_id": "2501001147",
+      "customer": "株式会社大亜",
+      "product_name": "ノウシン 辛ラーメン3食",
+      "units_per_case": 12,
+      "case_count": 1,
+      "amount": 1416
+    },
+    {
+      "management_id": "2501001148",
+      "customer": "スーパーなかそね",
+      "product_name": "ノウシン 辛ラーメン3食",
+      "units_per_case": 12,
+      "case_count": 3,
+      "amount": 3888
+    },
+    {
+      "management_id": "2501001148",
+      "customer": "スーパーなかそね",
+      "product_name": "農心 NEW辛ラーメンカップ 68g",
+      "units_per_case": 12,
+      "case_count": 5,
+      "amount": 2280
+    },
+    {
+      "management_id": "2501001149",
+      "customer": "まるきスーパー伊良部",
+      "product_name": "農心 NEW辛ラーメンカップ 68g",
+      "units_per_case": 12,
+      "case_count": 2,
+      "amount": 912
+    },
+    {
+      "management_id": "2501001149",
+      "customer": "まるきスーパー伊良部",
+      "product_name": "農心辛ラーメンキムチカップ 68g",
+      "units_per_case": 12,
+      "case_count": 1,
+      "amount": 456
+    },
+    {
+      "management_id": "2501001150",
+      "customer": "スーパーミナミ (南大東)",
+      "product_name": "ノウシン 辛ラーメン3食",
+      "units_per_case": 12,
+      "case_count": 1,
+      "amount": 1296
+    },
+    {
+      "management_id": "2501001150",
+      "customer": "スーパーミナミ (南大東)",
+      "product_name": "農心 NEW辛ラーメンカップ 68g",
+      "units_per_case": 12,
+      "case_count": 1,
+      "amount": 456
+    },
+    {
+      "management_id": "2501001150",
+      "customer": "スーパーミナミ (南大東)",
+      "product_name": "農心辛ラーメンキムチカップ 68g",
+      "units_per_case": 12,
+      "case_count": 1,
+      "amount": 456
+    },
+    {
+      "management_id": "2501001151",
+      "customer": "大栄食品 (石垣)",
+      "product_name": "農心 NEW辛ラーメンカップ 68g",
+      "units_per_case": 12,
+      "case_count": 1,
+      "amount": 456
+    },
+    {
+      "management_id": "2501001151",
+      "customer": "大栄食品 (石垣)",
+      "product_name": "農心辛ラーメンキムチカップ 68g",
+      "units_per_case": 12,
+      "case_count": 1,
+      "amount": 456
+    },
+    {
+      "management_id": "2501001152",
+      "customer": "株式会社琉球デリカサービス",
+      "product_name": "農心 NEW辛ラーメンカップ 68g",
+      "units_per_case": 12,
+      "case_count": 10,
+      "amount": 5160
+    },
+    {
+      "management_id": "2501001152",
+      "customer": "株式会社琉球デリカサービス",
+      "product_name": "農心辛ラーメンキムチカップ 68g",
+      "units_per_case": 12,
+      "case_count": 6,
+      "amount": 3096
+    },
+    {
+      "management_id": "2501001153",
+      "customer": "株式会社崎浜商店",
+      "product_name": "ノウシン 辛ラーメン3食",
+      "units_per_case": 12,
+      "case_count": 4,
+      "amount": 6624
+    },
+    {
+      "management_id": "2501001153",
+      "customer": "株式会社崎浜商店",
+      "product_name": "農心 NEW辛ラーメンカップ 68g",
+      "units_per_case": 12,
+      "case_count": 35,
+      "amount": 21000
+    }
+  ],
+  "page_role": "detail"
+}

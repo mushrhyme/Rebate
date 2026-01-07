@@ -1,0 +1,140 @@
+{
+  "page_role": "detail",
+  "items": [
+    {
+      "management_id": "363173SA",
+      "customer": "小田急商事 (株) OXストアー",
+      "product_name": "農心 辛ラーメン 袋 (農心) 120g",
+      "units_per_case": 60.0,
+      "quantity": 60.0,
+      "amount": 1590,
+      "spot": NaN
+    },
+    {
+      "management_id": "363173SA",
+      "customer": "小田急商事 (株) OXストアー",
+      "product_name": "農心 辛ラーメン 120g X 3",
+      "units_per_case": 12.0,
+      "quantity": 1332.0,
+      "amount": 137196,
+      "spot": NaN
+    },
+    {
+      "management_id": "363173SA",
+      "customer": "小田急商事 (株) OXストアー",
+      "product_name": "農心ジャパン 辛カップラーメン 68g",
+      "units_per_case": 24.0,
+      "quantity": 1176.0,
+      "amount": 44688,
+      "spot": NaN
+    },
+    {
+      "management_id": "363173SA",
+      "customer": "小田急商事 (株) OXストアー",
+      "product_name": "消費税金額 8%",
+      "units_per_case": NaN,
+      "quantity": NaN,
+      "amount": 14678,
+      "spot": "True"
+    },
+    {
+      "management_id": "363174TA",
+      "customer": "小田急商事 (株) OXストアー",
+      "product_name": "農心 辛ラーメン 袋 (農心) 120g",
+      "units_per_case": 60.0,
+      "quantity": 60.0,
+      "amount": 540,
+      "spot": NaN
+    },
+    {
+      "management_id": "363174TA",
+      "customer": "小田急商事 (株) OXストアー",
+      "product_name": "農心 辛ラーメン 120g X 3",
+      "units_per_case": 12.0,
+      "quantity": 1332.0,
+      "amount": 56610,
+      "spot": NaN
+    },
+    {
+      "management_id": "363174TA",
+      "customer": "小田急商事 (株) OXストアー",
+      "product_name": "農心ジャパン 辛カップラーメン 68g",
+      "units_per_case": 24.0,
+      "quantity": 1176.0,
+      "amount": 11760,
+      "spot": NaN
+    },
+    {
+      "management_id": "363174TA",
+      "customer": "小田急商事 (株) OXストアー",
+      "product_name": "消費税金額 8%",
+      "units_per_case": NaN,
+      "quantity": NaN,
+      "amount": 5513,
+      "spot": "True"
+    },
+    {
+      "management_id": "363172NB",
+      "customer": "小田急商事 (株) OXストアー",
+      "product_name": "統計別商品 (地域密着メーカー その他",
+      "units_per_case": 1.0,
+      "quantity": NaN,
+      "amount": 20000,
+      "spot": NaN
+    },
+    {
+      "management_id": "363172NB",
+      "customer": "小田急商事 (株) OXストアー",
+      "product_name": "消費税金額 1 0 %",
+      "units_per_case": NaN,
+      "quantity": NaN,
+      "amount": 2000,
+      "spot": "True"
+    },
+    {
+      "management_id": "363295TA",
+      "customer": "(株) ウェルパーク",
+      "product_name": "農心 辛ラーメン 120g X 3",
+      "units_per_case": 12.0,
+      "quantity": 1752.0,
+      "amount": 290832,
+      "spot": NaN
+    },
+    {
+      "management_id": "363295TA",
+      "customer": "(株) ウェルパーク",
+      "product_name": "農心 ノグリラーメン 120g",
+      "units_per_case": 30.0,
+      "quantity": 210.0,
+      "amount": 9450,
+      "spot": NaN
+    },
+    {
+      "management_id": "363295TA",
+      "customer": "(株) ウェルパーク",
+      "product_name": "農心ジャパン 辛カップラーメン 68g",
+      "units_per_case": 24.0,
+      "quantity": 1728.0,
+      "amount": 91584,
+      "spot": NaN
+    },
+    {
+      "management_id": "363295TA",
+      "customer": "(株) ウェルパーク",
+      "product_name": "農心ジャパン 辛ラーメン キムチ カップ 68g",
+      "units_per_case": 24.0,
+      "quantity": 1140.0,
+      "amount": 60420,
+      "spot": NaN
+    },
+    {
+      "management_id": "363295TA",
+      "customer": "(株) ウェルパーク",
+      "product_name": "農心ジャパン 辛ラーメン 激辛カップ",
+      "units_per_case": 24.0,
+      "quantity": 1128.0,
+      "amount": 59784,
+      "spot": NaN
+    }
+  ]
+}

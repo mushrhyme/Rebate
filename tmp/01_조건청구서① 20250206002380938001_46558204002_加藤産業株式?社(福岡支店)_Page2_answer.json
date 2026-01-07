@@ -1,0 +1,101 @@
+{
+  "page_role": "detail",
+  "items": [
+    {
+      "management_id": "00750718",
+      "customer": "イオン琉球(株)",
+      "product_name": "農心 辛ラーメンミニカップ 49G",
+      "units_per_case": 24.0,
+      "quantity": 36.0,
+      "amount": 1692
+    },
+    {
+      "management_id": "00750718",
+      "customer": "イオン琉球(株)",
+      "product_name": "農心 チャーワン麺 134g",
+      "units_per_case": 40.0,
+      "quantity": 40.0,
+      "amount": 3700
+    },
+    {
+      "management_id": "00750718",
+      "customer": "イオン琉球(株)",
+      "product_name": "農心 ノグリラーメン マイルド",
+      "units_per_case": 30.0,
+      "quantity": 30.0,
+      "amount": 1890
+    },
+    {
+      "management_id": "00750918",
+      "customer": "(株)ドラッグイレブン",
+      "product_name": "新店半額導入 8%",
+      "units_per_case": 1.0,
+      "quantity": NaN,
+      "amount": 3858
+    },
+    {
+      "management_id": "00752355",
+      "customer": "ダイレックス(株)",
+      "product_name": "農心 辛カップラーメン 68G",
+      "units_per_case": 24.0,
+      "quantity": 1380.0,
+      "amount": 75348
+    },
+    {
+      "management_id": "00752356",
+      "customer": "ダイレックス(株)",
+      "product_name": "農心 辛ラーメン 3P",
+      "units_per_case": 12.0,
+      "quantity": 10140.0,
+      "amount": 1379040
+    },
+    {
+      "management_id": "00752356",
+      "customer": "ダイレックス(株)",
+      "product_name": "農心 辛ラーメンミニカップ 49G",
+      "units_per_case": 24.0,
+      "quantity": 1026.0,
+      "amount": 24624
+    },
+    {
+      "management_id": "00752356",
+      "customer": "ダイレックス(株)",
+      "product_name": "農心 辛カップラーメン 68G",
+      "units_per_case": 24.0,
+      "quantity": 5376.0,
+      "amount": 247296
+    },
+    {
+      "management_id": "00752357",
+      "customer": "ダイレックス(株)",
+      "product_name": "農心 ノグリラーメン 120G",
+      "units_per_case": 30.0,
+      "quantity": 4010.0,
+      "amount": 160400
+    },
+    {
+      "management_id": "00752358",
+      "customer": "ダイレックス(株)",
+      "product_name": "農心 辛ラーメン キムチ 3P",
+      "units_per_case": 12.0,
+      "quantity": 2448.0,
+      "amount": 337824
+    },
+    {
+      "management_id": "00752359",
+      "customer": "(株)大賀薬局",
+      "product_name": "農心 辛ラーメン 3P",
+      "units_per_case": 12.0,
+      "quantity": 24.0,
+      "amount": 2400
+    },
+    {
+      "management_id": "00752359",
+      "customer": "(株)大賀薬局",
+      "product_name": "農心 辛ラーメンミニカップ 49G",
+      "units_per_case": 24.0,
+      "quantity": 12.0,
+      "amount": 120
+    }
+  ]
+}

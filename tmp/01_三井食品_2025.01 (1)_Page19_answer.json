@@ -1,0 +1,69 @@
+{
+  "page_role": "detail",
+  "items": [
+    {
+      "management_id": "1472760",
+      "customer": "全国農業協同組合連合会 ＪＡ全農Ａコープ",
+      "product_name": "農心 キムチサバル麺 86G",
+      "units_per_case": 24,
+      "quantity": 16,
+      "amount": 4224
+    },
+    {
+      "management_id": "1472760",
+      "customer": "全国農業協同組合連合会 ＪＡ全農Ａコープ",
+      "product_name": "農心ジャパン 辛カップラーメン 68G",
+      "units_per_case": 12,
+      "quantity": 14,
+      "amount": 6216
+    },
+    {
+      "management_id": "1472760",
+      "customer": "全国農業協同組合連合会 ＪＡ全農Ａコープ",
+      "product_name": "農心 辛ラーメン 3食入 120G×3",
+      "units_per_case": 12,
+      "quantity": 21,
+      "amount": 33768
+    },
+    {
+      "management_id": "1472760",
+      "customer": "全国農業協同組合連合会 ＪＡ全農Ａコープ",
+      "product_name": "農心 ユッケジャンラーメン 86G",
+      "units_per_case": 24,
+      "quantity": 16,
+      "amount": 4224
+    },
+    {
+      "management_id": "1472761",
+      "customer": "全国農業協同組合連合会 ＪＡ全農Ａコープ",
+      "product_name": "農心 キムチサバル麺 86G",
+      "units_per_case": 1,
+      "quantity": 432,
+      "amount": 4752
+    },
+    {
+      "management_id": "1472761",
+      "customer": "全国農業協同組合連合会 ＪＡ全農Ａコープ",
+      "product_name": "農心ジャパン 辛カップラーメン 68G",
+      "units_per_case": 1,
+      "quantity": 288,
+      "amount": 10656
+    },
+    {
+      "management_id": "1472761",
+      "customer": "全国農業協同組合連合会 ＪＡ全農Ａコープ",
+      "product_name": "農心 辛ラーメン 3食入 120G×3",
+      "units_per_case": 1,
+      "quantity": 228,
+      "amount": 30552
+    },
+    {
+      "management_id": "1472761",
+      "customer": "全国農業協同組合連合会 ＪＡ全農Ａコープ",
+      "product_name": "農心 ユッケジャンラーメン 86G",
+      "units_per_case": 1,
+      "quantity": 432,
+      "amount": 4752
+    }
+  ]
+}

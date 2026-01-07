@@ -1,0 +1,125 @@
+{
+  "items": [
+    {
+      "management_id": "1559635",
+      "customer": "(株) ファミリーマート",
+      "product_name": "農心 ノグリラーメンカップ 62g",
+      "units_per_case": 24,
+      "quantity": 12,
+      "amount": 45
+    },
+    {
+      "management_id": "1559635",
+      "customer": "(株) ファミリーマート",
+      "product_name": "農心 辛ラーメンカップ 68g",
+      "units_per_case": 24,
+      "quantity": 3324,
+      "amount": 12299
+    },
+    {
+      "management_id": "1559635",
+      "customer": "(株) ファミリーマート",
+      "product_name": "農心 FM 辛ラーメン激辛カップ 68g",
+      "units_per_case": 24,
+      "quantity": 12,
+      "amount": 45
+    },
+    {
+      "management_id": "1559636",
+      "customer": "(株) ファミリーマート",
+      "product_name": "農心 辛ラーメン ミニカップ 49g",
+      "units_per_case": 24,
+      "quantity": 534,
+      "amount": 5340
+    },
+    {
+      "management_id": "1559636",
+      "customer": "(株) ファミリーマート",
+      "product_name": "農心 辛ラーメン 袋 120g",
+      "units_per_case": 60,
+      "quantity": 6635,
+      "amount": 278670
+    },
+    {
+      "management_id": "1559637",
+      "customer": "(株) ファミリーマート",
+      "product_name": "農心 辛ラーメンカップ 68g",
+      "units_per_case": 24,
+      "quantity": 10380,
+      "amount": 38406
+    },
+    {
+      "management_id": "1559638",
+      "customer": "ファミリーマート",
+      "product_name": "農心 辛ラーメン ミニカップ 49g",
+      "units_per_case": 24,
+      "quantity": 3803,
+      "amount": 38030
+    },
+    {
+      "management_id": "1559638",
+      "customer": "ファミリーマート",
+      "product_name": "農心 辛ラーメン 袋 120g",
+      "units_per_case": 60,
+      "quantity": 6015,
+      "amount": 252630
+    },
+    {
+      "management_id": "1559639",
+      "customer": "ファミリーマート",
+      "product_name": "農心 辛ラーメンカップ 68g",
+      "units_per_case": 24,
+      "quantity": 3828,
+      "amount": 14164
+    },
+    {
+      "management_id": "1559640",
+      "customer": "ファミリーマート",
+      "product_name": "農心 辛ラーメン ミニカップ 49g",
+      "units_per_case": 24,
+      "quantity": 636,
+      "amount": 6360
+    },
+    {
+      "management_id": "1559640",
+      "customer": "ファミリーマート",
+      "product_name": "農心 辛ラーメン 袋 120g",
+      "units_per_case": 60,
+      "quantity": 5785,
+      "amount": 242970
+    },
+    {
+      "management_id": "1559641",
+      "customer": "ファミリーマート",
+      "product_name": "農心 辛ラーメンカップ 68g",
+      "units_per_case": 24,
+      "quantity": 4392,
+      "amount": 16251
+    },
+    {
+      "management_id": "1559642",
+      "customer": "ファミリーマート",
+      "product_name": "農心 辛ラーメン ミニカップ 49g",
+      "units_per_case": 24,
+      "quantity": 2262,
+      "amount": 22620
+    },
+    {
+      "management_id": "1559642",
+      "customer": "ファミリーマート",
+      "product_name": "農心 辛ラーメン 袋 120g",
+      "units_per_case": 60,
+      "quantity": 6859,
+      "amount": 288078
+    },
+    {
+      "management_id": "1559643",
+      "customer": "ファミリーマート",
+      "product_name": "農心 辛ラーメンカップ 68g",
+      "units_per_case": 24,
+      "quantity": 2868,
+      "amount": 10612
+    }
+  ],
+  "page_role": "detail"
+}

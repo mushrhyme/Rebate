@@ -1,0 +1,165 @@
+{
+  "page_role": "detail",
+  "items": [
+    {
+      "management_id": "250104001",
+      "product_name": "農心 辛ラーメン キムチ 3食パック 120GX3",
+      "quantity": 8,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 11520,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "250104001",
+      "product_name": "農心 辛カップラーメン 68Gカップ",
+      "quantity": 10,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 12000,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "250104001",
+      "product_name": "農心 旨辛海鮮ちゃんぽん 130G袋",
+      "quantity": 10,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 40,
+      "amount": 300,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "250104001",
+      "product_name": "農心 ノグリラーメン 120G袋",
+      "quantity": 2,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 30,
+      "amount": 2220,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "250104001",
+      "product_name": "農心 ノグリラーメン 120G袋",
+      "quantity": 5,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 30,
+      "amount": 185,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "250104001",
+      "product_name": "農心 チャパゲッティ 140G袋",
+      "quantity": 1,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 30,
+      "amount": 1170,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "250104001",
+      "product_name": "農心 チャパゲッティ 140G袋",
+      "quantity": 20,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 30,
+      "amount": 780,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "250104001",
+      "product_name": "農心 カムジャ麺 100G袋",
+      "quantity": 30,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 40,
+      "amount": 1230,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "250104001",
+      "product_name": "農心 辛ラーメン 120G 袋",
+      "quantity": 2,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 60,
+      "amount": 3840,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "250104001",
+      "product_name": "農心 辛ラーメン 120G 袋",
+      "quantity": 15,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 60,
+      "amount": 480,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "250104001",
+      "product_name": "農心 辛ラーメン 3食パック 120GX3P",
+      "quantity": 17,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 24480,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "250104018",
+      "product_name": "農心 辛ラーメン 120G 袋",
+      "quantity": 20,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 60,
+      "amount": 640,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "250104018",
+      "product_name": "農心 チャパゲッティ 140G袋",
+      "quantity": 10,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 30,
+      "amount": 390,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "250104018",
+      "product_name": "農心 辛ラーメン 3食パック 120GX3P",
+      "quantity": 4,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 5760,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "250104018",
+      "product_name": "農心 辛カップラーメン 68Gカップ",
+      "quantity": 3,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 3600,
+      "customer": "（株）サンリブ"
+    },
+    {
+      "management_id": "250104018",
+      "product_name": "農心 ノグリラーメン 120G袋",
+      "quantity": 5,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 30,
+      "amount": 185,
+      "customer": "（株）サンリブ"
+    }
+  ]
+}

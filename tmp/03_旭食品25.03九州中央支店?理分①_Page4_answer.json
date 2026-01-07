@@ -1,0 +1,65 @@
+{
+  "page_role": "detail",
+  "items": [
+    {
+      "management_id": "3006544676",
+      "product_name": "農心 辛ラーメン袋 120G",
+      "quantity": 540,
+      "case_count": 9,
+      "bara_count": null,
+      "units_per_case": 60,
+      "amount": 7560,
+      "customer": "株式会社トライアルカンパニー"
+    },
+    {
+      "management_id": "3006544676",
+      "product_name": "農心 辛ラーメン袋 120G",
+      "quantity": 540,
+      "case_count": 9,
+      "bara_count": null,
+      "units_per_case": 60,
+      "amount": 19980,
+      "customer": "株式会社トライアルカンパニー"
+    },
+    {
+      "management_id": "3006544676",
+      "product_name": "農心 辛ラーメン3食 360G",
+      "quantity": 60,
+      "case_count": 5,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 10140,
+      "customer": "株式会社トライアルカンパニー"
+    },
+    {
+      "management_id": "3006544676",
+      "product_name": "農心 ユッケジャンラーメン 86G",
+      "quantity": 360,
+      "case_count": 15,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 8280,
+      "customer": "株式会社トライアルカンパニー"
+    },
+    {
+      "management_id": "3006544676",
+      "product_name": "農心 ノグリラーメン 120G",
+      "quantity": 450,
+      "case_count": 15,
+      "bara_count": null,
+      "units_per_case": 30,
+      "amount": 6300,
+      "customer": "株式会社トライアルカンパニー"
+    },
+    {
+      "management_id": "3006544676",
+      "product_name": "農心 ノグリラーメン 120G",
+      "quantity": 450,
+      "case_count": 15,
+      "bara_count": null,
+      "units_per_case": 30,
+      "amount": 16650,
+      "customer": "株式会社トライアルカンパニー"
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "page_role": "detail",
+  "items": [
+    {
+      "management_id": "2000001314",
+      "customer": "博多ステイションフード（株）",
+      "product_name": "農心 ユッケジャンラーメンカップ 86Gカップ",
+      "units_per_case": 24,
+      "quantity": 4,
+      "amount": 192
+    },
+    {
+      "management_id": "2000001314",
+      "customer": "博多ステイションフード（株）",
+      "product_name": "農心 ユッケジャンラーメンカップ 86Gカップ",
+      "units_per_case": 24,
+      "quantity": 12,
+      "amount": 24
+    },
+    {
+      "management_id": "2000001314",
+      "customer": "博多ステイションフード（株）",
+      "product_name": "農心 辛ラーメン 3食パック 120GX3P",
+      "units_per_case": 12,
+      "quantity": 4,
+      "amount": 5040
+    },
+    {
+      "management_id": "2000001314",
+      "customer": "博多ステイションフード（株）",
+      "product_name": "農心 辛カップラーメン 68Gカップ",
+      "units_per_case": 24,
+      "quantity": 3,
+      "amount": 2880
+    },
+    {
+      "management_id": "2000001314",
+      "customer": "博多ステイションフード（株）",
+      "product_name": "農心 辛カップラーメン 68Gカップ",
+      "units_per_case": 24,
+      "quantity": 12,
+      "amount": 480
+    },
+    {
+      "management_id": "250103554",
+      "customer": "（株）小林食品",
+      "product_name": "農心 辛ラーメン 3食パック 120GX3P",
+      "units_per_case": 12,
+      "quantity": 5,
+      "amount": 6300
+    },
+    {
+      "management_id": "250103696",
+      "customer": "（株）エルショップ",
+      "product_name": "農心 辛ラーメン 3食パック 120GX3P",
+      "units_per_case": 12,
+      "quantity": 3,
+      "amount": 4788
+    },
+    {
+      "management_id": "250103696",
+      "customer": "（株）エルショップ",
+      "product_name": "農心 旨辛海鮮ちゃんぽん 130G袋",
+      "units_per_case": 40,
+      "quantity": 1,
+      "amount": 600
+    },
+    {
+      "management_id": "250103798",
+      "customer": "新鮮市場サカイ",
+      "product_name": "農心 辛カップラーメン 68Gカップ",
+      "units_per_case": 24,
+      "quantity": 1,
+      "amount": 1488
+    },
+    {
+      "management_id": "250103798",
+      "customer": "新鮮市場サカイ",
+      "product_name": "農心 辛カップラーメン 68Gカップ",
+      "units_per_case": 24,
+      "quantity": 1,
+      "amount": 1248
+    },
+    {
+      "management_id": "250103798",
+      "customer": "新鮮市場サカイ",
+      "product_name": "農心 辛カップラーメン 68Gカップ",
+      "units_per_case": 24,
+      "quantity": 12,
+      "amount": 624
+    }
+  ]
+}

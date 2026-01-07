@@ -1,0 +1,285 @@
+{
+  "page_role": "detail",
+  "items": [
+    {
+      "management_id": "0001916714",
+      "product_name": "農心 チャパゲティ 140G",
+      "quantity": 30,
+      "case_count": 1,
+      "bara_count": null,
+      "units_per_case": 30,
+      "amount": 510,
+      "customer": "株式会社 農心ジャパン"
+    },
+    {
+      "management_id": "0001916714",
+      "product_name": "農心 チャパグリカップ 114G",
+      "quantity": 36,
+      "case_count": 1,
+      "bara_count": 12,
+      "units_per_case": 24,
+      "amount": 240,
+      "customer": "株式会社 農心ジャパン"
+    },
+    {
+      "management_id": "0001916714",
+      "product_name": "農心 辛ラーメン焼きそばカップ 103G",
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": null,
+      "amount": 120,
+      "customer": "株式会社 農心ジャパン"
+    },
+    {
+      "management_id": "3006544674",
+      "product_name": "農心 辛ラーメン3食 360G",
+      "quantity": 312,
+      "case_count": 26,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 43368,
+      "customer": "株式会社九州セイムス"
+    },
+    {
+      "management_id": "3006544674",
+      "product_name": "農心 辛ラーメン3食 360G",
+      "quantity": 528,
+      "case_count": 44,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 73392,
+      "customer": "株式会社九州セイムス"
+    },
+    {
+      "management_id": "3006544674",
+      "product_name": "農心 辛カップラーメン 68G",
+      "quantity": 180,
+      "case_count": 7,
+      "bara_count": 12,
+      "units_per_case": 24,
+      "amount": 8904,
+      "customer": "株式会社九州セイムス"
+    },
+    {
+      "management_id": "3006544674",
+      "product_name": "農心 辛カップラーメン 68G",
+      "quantity": 348,
+      "case_count": 14,
+      "bara_count": 12,
+      "units_per_case": 24,
+      "amount": 17808,
+      "customer": "株式会社九州セイムス"
+    },
+    {
+      "management_id": "3006544675",
+      "product_name": "農心 辛ラーメン袋 120G",
+      "quantity": 1200,
+      "case_count": 20,
+      "bara_count": null,
+      "units_per_case": 60,
+      "amount": 56400,
+      "customer": "株式会社トライアルカンパニー"
+    },
+    {
+      "management_id": "3006544675",
+      "product_name": "農心 辛ラーメン袋 120G",
+      "quantity": 2760,
+      "case_count": 46,
+      "bara_count": null,
+      "units_per_case": 60,
+      "amount": 129720,
+      "customer": "株式会社トライアルカンパニー"
+    },
+    {
+      "management_id": "3006544675",
+      "product_name": "農心 辛ラーメン3食 360G",
+      "quantity": 4656,
+      "case_count": 388,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 786864,
+      "customer": "株式会社トライアルカンパニー"
+    },
+    {
+      "management_id": "3006544675",
+      "product_name": "農心 辛ラーメン3食 360G",
+      "quantity": 7488,
+      "case_count": 624,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 1265472,
+      "customer": "株式会社トライアルカンパニー"
+    },
+    {
+      "management_id": "3006544675",
+      "product_name": "農心 ユッケジャンラーメン 86G",
+      "quantity": 576,
+      "case_count": 24,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 13248,
+      "customer": "株式会社トライアルカンパニー"
+    },
+    {
+      "management_id": "3006544675",
+      "product_name": "農心 ユッケジャンラーメン 86G",
+      "quantity": 1128,
+      "case_count": 47,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 25944,
+      "customer": "株式会社トライアルカンパニー"
+    },
+    {
+      "management_id": "3006544675",
+      "product_name": "農心 ノグリラーメン 120G",
+      "quantity": 2460,
+      "case_count": 82,
+      "bara_count": null,
+      "units_per_case": 30,
+      "amount": 116325,
+      "customer": "株式会社トライアルカンパニー"
+    },
+    {
+      "management_id": "3006544675",
+      "product_name": "農心 ノグリラーメン 120G",
+      "quantity": 990,
+      "case_count": 33,
+      "bara_count": null,
+      "units_per_case": 30,
+      "amount": 46530,
+      "customer": "株式会社トライアルカンパニー"
+    },
+    {
+      "management_id": "3006544675",
+      "product_name": "農心 本場韓国コムタンラーメン3 333G",
+      "quantity": 12,
+      "case_count": 1,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 1800,
+      "customer": "株式会社トライアルカンパニー"
+    },
+    {
+      "management_id": "3006544675",
+      "product_name": "農心 本場韓国コムタンラーメン袋 111G",
+      "quantity": 200,
+      "case_count": 5,
+      "bara_count": null,
+      "units_per_case": 40,
+      "amount": 8400,
+      "customer": "株式会社トライアルカンパニー"
+    },
+    {
+      "management_id": "3006544675",
+      "product_name": "農心 本場韓国コムタンラーメン袋 111G",
+      "quantity": 80,
+      "case_count": 2,
+      "bara_count": null,
+      "units_per_case": 40,
+      "amount": 3360,
+      "customer": "株式会社トライアルカンパニー"
+    },
+    {
+      "management_id": "3006544675",
+      "product_name": "農心 辛カップラーメン 68G",
+      "quantity": 228,
+      "case_count": 9,
+      "bara_count": 12,
+      "units_per_case": 24,
+      "amount": 13392,
+      "customer": "株式会社トライアルカンパニー"
+    },
+    {
+      "management_id": "3006544675",
+      "product_name": "農心 辛カップラーメン 68G",
+      "quantity": 324,
+      "case_count": 13,
+      "bara_count": 12,
+      "units_per_case": 24,
+      "amount": 19344,
+      "customer": "株式会社トライアルカンパニー"
+    },
+    {
+      "management_id": "3006544675",
+      "product_name": "農心 辛カップラーメン 68G",
+      "quantity": 17100,
+      "case_count": 712,
+      "bara_count": 12,
+      "units_per_case": 24,
+      "amount": 1175654,
+      "customer": "株式会社トライアルカンパニー"
+    },
+    {
+      "management_id": "3006544675",
+      "product_name": "農心 辛カップラーメン 68G",
+      "quantity": 6804,
+      "case_count": 283,
+      "bara_count": 12,
+      "units_per_case": 24,
+      "amount": 467290,
+      "customer": "株式会社トライアルカンパニー"
+    },
+    {
+      "management_id": "3006544675",
+      "product_name": "農心 辛ラーメン5食 600G",
+      "quantity": 1544,
+      "case_count": 193,
+      "bara_count": null,
+      "units_per_case": 8,
+      "amount": 444672,
+      "customer": "株式会社トライアルカンパニー"
+    },
+    {
+      "management_id": "3006544675",
+      "product_name": "農心 カムジャ麺4食 400G",
+      "quantity": 120,
+      "case_count": 10,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 28440,
+      "customer": "株式会社トライアルカンパニー"
+    },
+    {
+      "management_id": "3006544675",
+      "product_name": "農心 カムジャ麺4食 400G",
+      "quantity": 48,
+      "case_count": 4,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 11376,
+      "customer": "株式会社トライアルカンパニー"
+    },
+    {
+      "management_id": "3006544675",
+      "product_name": "農心 カムジャ麺 100G",
+      "quantity": 120,
+      "case_count": 3,
+      "bara_count": null,
+      "units_per_case": 40,
+      "amount": 1800,
+      "customer": "株式会社トライアルカンパニー"
+    },
+    {
+      "management_id": "3006544675",
+      "product_name": "農心 カムジャ麺 100G",
+      "quantity": 120,
+      "case_count": 3,
+      "bara_count": null,
+      "units_per_case": 40,
+      "amount": 4680,
+      "customer": "株式会社トライアルカンパニー"
+    },
+    {
+      "management_id": "3006544675",
+      "product_name": "農心 旨辛海鮮ちゃんぽん 130G",
+      "quantity": 40,
+      "case_count": 1,
+      "bara_count": null,
+      "units_per_case": 40,
+      "amount": 1920,
+      "customer": "株式会社トライアルカンパニー"
+    }
+  ]
+}

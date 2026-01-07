@@ -1,0 +1,37 @@
+{
+  "page_role": "detail",
+  "items": [
+    {
+      "management_id": "250102009",
+      "customer": "（株）サンリブ",
+      "product_name": "農心 チャパゲッティ 140G袋",
+      "units_per_case": 30,
+      "quantity": 1,
+      "amount": 1170
+    },
+    {
+      "management_id": "250102009",
+      "customer": "（株）サンリブ",
+      "product_name": "農心 チャパゲッティ 140G袋",
+      "units_per_case": 30,
+      "quantity": 25,
+      "amount": 975
+    },
+    {
+      "management_id": "250102009",
+      "customer": "（株）サンリブ",
+      "product_name": "農心 辛カップラーメン 68Gカップ",
+      "units_per_case": 24,
+      "quantity": 20,
+      "amount": 24000
+    },
+    {
+      "management_id": "250102009",
+      "customer": "（株）サンリブ",
+      "product_name": "農心 辛カップラーメン 68Gカップ",
+      "units_per_case": 24,
+      "quantity": 12,
+      "amount": 600
+    }
+  ]
+}

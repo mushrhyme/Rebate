@@ -1,0 +1,125 @@
+{
+  "page_role": "detail",
+  "items": [
+    {
+      "management_id": "1402070",
+      "customer": "（株）大阪屋ショップ",
+      "product_name": "農心 オニオンリング 50g",
+      "units_per_case": 20,
+      "quantity": 60,
+      "amount": 780
+    },
+    {
+      "management_id": "1402070",
+      "customer": "（株）大阪屋ショップ",
+      "product_name": "農心 バナナキック 45g",
+      "units_per_case": 20,
+      "quantity": 20,
+      "amount": 260
+    },
+    {
+      "management_id": "1402071",
+      "customer": "（株）ＰＬＡＮＴ",
+      "product_name": "農心 辛ラーメン 120g×3",
+      "units_per_case": 12,
+      "quantity": 948,
+      "amount": 145992
+    },
+    {
+      "management_id": "1402071",
+      "customer": "（株）ＰＬＡＮＴ",
+      "product_name": "農心 辛カップラーメン 68g",
+      "units_per_case": 12,
+      "quantity": 1752,
+      "amount": 98112
+    },
+    {
+      "management_id": "1402071",
+      "customer": "（株）ＰＬＡＮＴ",
+      "product_name": "農心 辛ラーメン キムチ カップ 68g",
+      "units_per_case": 12,
+      "quantity": 756,
+      "amount": 42336
+    },
+    {
+      "management_id": "1402071",
+      "customer": "（株）ＰＬＡＮＴ",
+      "product_name": "農心 辛ラーメン 激辛 カップ 68g",
+      "units_per_case": 12,
+      "quantity": 36,
+      "amount": 1548
+    },
+    {
+      "management_id": "1402071",
+      "customer": "（株）ＰＬＡＮＴ",
+      "product_name": "農心 辛ラーメン キムチ 袋 120g×3",
+      "units_per_case": 12,
+      "quantity": 252,
+      "amount": 38808
+    },
+    {
+      "management_id": "1402071",
+      "customer": "（株）ＰＬＡＮＴ",
+      "product_name": "農心 甘辛ヤンニョムチキンビビン麺 カップ 122g",
+      "units_per_case": 12,
+      "quantity": 60,
+      "amount": 2100
+    },
+    {
+      "management_id": "1402072",
+      "customer": "（株）ＰＬＡＮＴ",
+      "product_name": "農心 辛ラーメン 焼きそば カップ 103g",
+      "units_per_case": 12,
+      "quantity": 60,
+      "amount": 2100
+    },
+    {
+      "management_id": "1402073",
+      "customer": "（株）ＰＬＡＮＴ",
+      "product_name": "農心 本場韓国コムタンラーメン 袋 3P",
+      "units_per_case": 12,
+      "quantity": 108,
+      "amount": 16524
+    },
+    {
+      "management_id": "1402073",
+      "customer": "（株）ＰＬＡＮＴ",
+      "product_name": "農心 辛ラーメン ミニカップ 49g",
+      "units_per_case": 24,
+      "quantity": 30,
+      "amount": 300
+    },
+    {
+      "management_id": "1402073",
+      "customer": "（株）ＰＬＡＮＴ",
+      "product_name": "農心 辛カップラーメン 68g",
+      "units_per_case": 12,
+      "quantity": 168,
+      "amount": 7224
+    },
+    {
+      "management_id": "1402073",
+      "customer": "（株）ＰＬＡＮＴ",
+      "product_name": "農心 カムジャ麺 100g×4",
+      "units_per_case": 12,
+      "quantity": 96,
+      "amount": 18528
+    },
+    {
+      "management_id": "1402073",
+      "customer": "（株）ＰＬＡＮＴ",
+      "product_name": "農心 辛ラーメン キムチ カップ 68g",
+      "units_per_case": 12,
+      "quantity": 108,
+      "amount": 5184
+    },
+    {
+      "management_id": "1402073",
+      "customer": "（株）ＰＬＡＮＴ",
+      "product_name": "農心 チャパグリカップ 114g",
+      "units_per_case": 12,
+      "quantity": 48,
+      "amount": 1392
+    }
+  ]
+}

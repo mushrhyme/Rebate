@@ -1,0 +1,125 @@
+{
+  "items": [
+    {
+      "management_id": "00757926",
+      "customer": "マミーズ(株)",
+      "product_name": "農心 辛ラーメン 120g",
+      "units_per_case": 60,
+      "quantity": 1170.0,
+      "amount": 63180
+    },
+    {
+      "management_id": "00757926",
+      "customer": "マミーズ(株)",
+      "product_name": "農心 本場韓国コムタンラーメン 75g",
+      "units_per_case": 24,
+      "quantity": 72.0,
+      "amount": 3888
+    },
+    {
+      "management_id": "00757926",
+      "customer": "マミーズ(株)",
+      "product_name": "農心 辛ラーメン袋 5食",
+      "units_per_case": 8,
+      "quantity": 584.0,
+      "amount": 156512
+    },
+    {
+      "management_id": "00757926",
+      "customer": "マミーズ(株)",
+      "product_name": "農心ジャパン 辛カップラーメン 68g",
+      "units_per_case": 24,
+      "quantity": 1524.0,
+      "amount": 82296
+    },
+    {
+      "management_id": "00757926",
+      "customer": "マミーズ(株)",
+      "product_name": "辛ラーメン焼きそばカップ",
+      "units_per_case": 24,
+      "quantity": 240.0,
+      "amount": 7440
+    },
+    {
+      "management_id": "00759636",
+      "customer": "(株)ドラッグイレブン",
+      "product_name": "農心 辛ラーメン 3P",
+      "units_per_case": 12,
+      "quantity": 780.0,
+      "amount": 103740
+    },
+    {
+      "management_id": "00759636",
+      "customer": "(株)ドラッグイレブン",
+      "product_name": "農心ジャパン 辛カップラーメン 68g",
+      "units_per_case": 24,
+      "quantity": 1476.0,
+      "amount": 82656
+    },
+    {
+      "management_id": "00759636",
+      "customer": "(株)ドラッグイレブン",
+      "product_name": "農心 辛ラーメン キムチカップ 68g",
+      "units_per_case": 24,
+      "quantity": 120.0,
+      "amount": 6720
+    },
+    {
+      "management_id": "00759636",
+      "customer": "(株)ドラッグイレブン",
+      "product_name": "農心 チャパグリカップ 114g",
+      "units_per_case": 24,
+      "quantity": 12.0,
+      "amount": 360
+    },
+    {
+      "management_id": "00759637",
+      "customer": "(株)くすりのコーエイ",
+      "product_name": "農心 辛ラーメン 3P",
+      "units_per_case": 12,
+      "quantity": 120.0,
+      "amount": 13440
+    },
+    {
+      "management_id": "00759637",
+      "customer": "(株)くすりのコーエイ",
+      "product_name": "農心ジャパン 辛カップラーメン 68g",
+      "units_per_case": 24,
+      "quantity": 180.0,
+      "amount": 7380
+    },
+    {
+      "management_id": "00759637",
+      "customer": "(株)くすりのコーエイ",
+      "product_name": "農心 チャパグリカップ 114g",
+      "units_per_case": 24,
+      "quantity": 96.0,
+      "amount": 2880
+    },
+    {
+      "management_id": "00759637",
+      "customer": "(株)くすりのコーエイ",
+      "product_name": "甘辛ヤンニョムチキンビビン麺 カップ 122g",
+      "units_per_case": 24,
+      "quantity": 36.0,
+      "amount": 1080
+    },
+    {
+      "management_id": "00759637",
+      "customer": "(株)くすりのコーエイ",
+      "product_name": "辛ラーメン焼きそばカップ",
+      "units_per_case": 24,
+      "quantity": 48.0,
+      "amount": 960
+    },
+    {
+      "management_id": "00760270",
+      "customer": "(株)ドラッグイレブン",
+      "product_name": "新店半額導入",
+      "units_per_case": 1,
+      "quantity": NaN,
+      "amount": 6423
+    }
+  ],
+  "page_role": "detail"
+}

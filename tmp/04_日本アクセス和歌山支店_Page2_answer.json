@@ -1,0 +1,261 @@
+{
+  "items": [
+    {
+      "amount": 27000,
+      "customer": "(株)廣岡",
+      "quantity": 180,
+      "product_name": "農心 辛ラーメン 120gX3",
+      "management_id": "1445703",
+      "units_per_case": 12
+    },
+    {
+      "amount": 4704,
+      "customer": "(株)廣岡",
+      "quantity": 96,
+      "product_name": "農心 辛カップラーメン 68g",
+      "management_id": "1445703",
+      "units_per_case": 12
+    },
+    {
+      "amount": 1176,
+      "customer": "(株)廣岡",
+      "quantity": 24,
+      "product_name": "農心 辛ラーメン キムチ カップ 68g",
+      "management_id": "1445703",
+      "units_per_case": 12
+    },
+    {
+      "amount": 10800,
+      "customer": "(株)廣岡",
+      "quantity": 72,
+      "product_name": "農心 辛ラーメン キムチ 袋 120gX3",
+      "management_id": "1445703",
+      "units_per_case": 12
+    },
+    {
+      "amount": 133,
+      "customer": "田辺米穀（株）",
+      "quantity": 24,
+      "product_name": "農心 チャパグリカップ 114g",
+      "management_id": "1445704",
+      "units_per_case": 12
+    },
+    {
+      "amount": 61266,
+      "customer": "田辺米穀（株）",
+      "quantity": 61266,
+      "product_name": "農心 辛カップラーメン 68g",
+      "management_id": "8117563",
+      "units_per_case": 12
+    },
+    {
+      "amount": 2313,
+      "customer": "田辺米穀（株）",
+      "quantity": 204,
+      "product_name": "農心 辛ラーメン 120gX3",
+      "management_id": "1445705",
+      "units_per_case": 12
+    },
+    {
+      "amount": 133,
+      "customer": "田辺米穀（株）",
+      "quantity": 24,
+      "product_name": "農心 甘辛ヤンニョムチキンビビン麺カップ 122g",
+      "management_id": "1445705",
+      "units_per_case": 12
+    },
+    {
+      "amount": 799,
+      "customer": "田辺米穀（株）",
+      "quantity": 144,
+      "product_name": "農心 辛ラーメン バケツカップスパイシーチキン味",
+      "management_id": "1445705",
+      "units_per_case": 24
+    },
+    {
+      "amount": 2016,
+      "customer": "田辺米穀（株）",
+      "quantity": 480,
+      "product_name": "農心 辛カップラーメン 68g",
+      "management_id": "1445706",
+      "units_per_case": 12
+    },
+    {
+      "amount": 120,
+      "customer": "田辺米穀（株）",
+      "quantity": 30,
+      "product_name": "農心 チャパゲティー 140g",
+      "management_id": "1445706",
+      "units_per_case": 30
+    },
+    {
+      "amount": 2880,
+      "customer": "エバグリーン廣甚（株）",
+      "quantity": 60,
+      "product_name": "農心 辛ラーメン 袋 120g",
+      "management_id": "1445707",
+      "units_per_case": 30
+    },
+    {
+      "amount": 554400,
+      "customer": "エバグリーン廣甚（株）",
+      "quantity": 3696,
+      "product_name": "農心 辛ラーメン 120gX3",
+      "management_id": "1445707",
+      "units_per_case": 12
+    },
+    {
+      "amount": 270,
+      "customer": "エバグリーン廣甚（株）",
+      "quantity": 60,
+      "product_name": "農心 ユッケジャンラーメン カップ 86g",
+      "management_id": "1445707",
+      "units_per_case": 12
+    },
+    {
+      "amount": 10260,
+      "customer": "エバグリーン廣甚（株）",
+      "quantity": 270,
+      "product_name": "農心 ノグリラーメン 120g",
+      "management_id": "1445707",
+      "units_per_case": 30
+    },
+    {
+      "amount": 3432,
+      "customer": "エバグリーン廣甚（株）",
+      "quantity": 264,
+      "product_name": "農心 辛ラーメン ミニカップ 49g",
+      "management_id": "1445707",
+      "units_per_case": 24
+    },
+    {
+      "amount": 2400,
+      "customer": "エバグリーン廣甚（株）",
+      "quantity": 60,
+      "product_name": "農心 本場韓国コムタンラーメン 袋 111g",
+      "management_id": "1445707",
+      "units_per_case": 20
+    },
+    {
+      "amount": 94668,
+      "customer": "エバグリーン廣甚（株）",
+      "quantity": 1932,
+      "product_name": "農心 辛カップラーメン 68g",
+      "management_id": "1445708",
+      "units_per_case": 12
+    },
+    {
+      "amount": 46368,
+      "customer": "エバグリーン廣甚（株）",
+      "quantity": 828,
+      "product_name": "農心 辛カップラーメン 68g",
+      "management_id": "1445708",
+      "units_per_case": 12
+    },
+    {
+      "amount": 9720,
+      "customer": "エバグリーン廣甚（株）",
+      "quantity": 180,
+      "product_name": "農心 カムジャ麺 袋 100g",
+      "management_id": "1445708",
+      "units_per_case": 20
+    },
+    {
+      "amount": 30576,
+      "customer": "エバグリーン廣甚（株）",
+      "quantity": 624,
+      "product_name": "農心 辛ラーメン キムチ カップ 68g",
+      "management_id": "1445708",
+      "units_per_case": 12
+    },
+    {
+      "amount": 20160,
+      "customer": "エバグリーン廣甚（株）",
+      "quantity": 360,
+      "product_name": "農心 辛ラーメン キムチ カップ 68g",
+      "management_id": "1445708",
+      "units_per_case": 12
+    },
+    {
+      "amount": 2000,
+      "customer": "エバグリーン廣甚（株）",
+      "quantity": 80,
+      "product_name": "農心 辛ラーメンブラック 130g",
+      "management_id": "1445708",
+      "units_per_case": 20
+    },
+    {
+      "amount": 672,
+      "customer": "エバグリーン廣甚（株）",
+      "quantity": 12,
+      "product_name": "農心 辛ラーメン激辛 カップ 68g",
+      "management_id": "1445709",
+      "units_per_case": 12
+    },
+    {
+      "amount": 180000,
+      "customer": "エバグリーン廣甚（株）",
+      "quantity": 1200,
+      "product_name": "農心 辛ラーメン キムチ 袋 120gX3",
+      "management_id": "1445709",
+      "units_per_case": 12
+    },
+    {
+      "amount": 4500,
+      "customer": "エバグリーン廣甚（株）",
+      "quantity": 150,
+      "product_name": "農心 チャパゲティー 140g",
+      "management_id": "1445709",
+      "units_per_case": 30
+    },
+    {
+      "amount": 3040,
+      "customer": "エバグリーン廣甚（株）",
+      "quantity": 80,
+      "product_name": "農心 安城湯麺 125g",
+      "management_id": "1445709",
+      "units_per_case": 20
+    },
+    {
+      "amount": 2500,
+      "customer": "エバグリーン廣甚（株）",
+      "quantity": 100,
+      "product_name": "農心 辛ラーメン焼きそば 袋 131g",
+      "management_id": "1445709",
+      "units_per_case": 20
+    },
+    {
+      "amount": 768,
+      "customer": "エバグリーン廣甚（株）",
+      "quantity": 24,
+      "product_name": "農心 辛ラーメンカップチーズやきそば 105g",
+      "management_id": "1445709",
+      "units_per_case": 12
+    },
+    {
+      "amount": 384,
+      "customer": "エバグリーン廣甚（株）",
+      "quantity": 12,
+      "product_name": "農心 辛ラーメンバケツカップ 114g",
+      "management_id": "1445710",
+      "units_per_case": 12
+    },
+    {
+      "amount": 618,
+      "customer": "エバグリーン廣甚（株）",
+      "quantity": 6,
+      "product_name": "農心 コリコレ鍋セット プデチゲ 200g",
+      "management_id": "1445710",
+      "units_per_case": 36
+    },
+    {
+      "amount": 3000,
+      "customer": "エバグリーン廣甚（株）",
+      "quantity": 120,
+      "product_name": "農心 辛ラーメンチーズ焼きそば 袋 136g",
+      "management_id": "1445710",
+      "units_per_case": 20
+    }
+  ],
+  "page_role": "detail"
+}

@@ -1,0 +1,145 @@
+{
+  "items": [
+    {
+      "management_id": "365698NB",
+      "product_name": "農心 辛ラーメン 袋 (農心) 120g",
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": null,
+      "amount": 11000,
+      "customer": null
+    },
+    {
+      "management_id": "365900SA",
+      "product_name": "農心 辛ラーメン 袋 (農心) 120g",
+      "quantity": 3756,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 60,
+      "amount": 185283,
+      "customer": "(株) マルエツ 小型店"
+    },
+    {
+      "management_id": "365900SA",
+      "product_name": "農心 辛ラーメン 120g X 3",
+      "quantity": 2100,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 37800,
+      "customer": "(株) マルエツ 小型店"
+    },
+    {
+      "management_id": "365900SA",
+      "product_name": "農心ジャパン 辛カップラーメン 68g",
+      "quantity": 3648,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 56544,
+      "customer": "(株) マルエツ 小型店"
+    },
+    {
+      "management_id": "365900SA",
+      "product_name": "消費税金額 8%",
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": null,
+      "amount": 22370,
+      "customer": "(株) マルエツ 小型店"
+    },
+    {
+      "management_id": "365901TA",
+      "product_name": "農心 辛ラーメン 120g X 3",
+      "quantity": 2100,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 270900,
+      "customer": "(株) マルエツ 小型店"
+    },
+    {
+      "management_id": "365901TA",
+      "product_name": "農心ジャパン 辛カップラーメン 68g",
+      "quantity": 3648,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 107616,
+      "customer": "(株) マルエツ 小型店"
+    },
+    {
+      "management_id": "365901TA",
+      "product_name": "消費税金額 8%",
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": null,
+      "amount": 30281,
+      "customer": "(株) マルエツ 小型店"
+    },
+    {
+      "management_id": "366869TA",
+      "product_name": "農心 辛ラーメン 120g X 3",
+      "quantity": 948,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 126084,
+      "customer": "生活協同組合ユーコープ 店舗口座"
+    },
+    {
+      "management_id": "366869TA",
+      "product_name": "消費税金額 8%",
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": null,
+      "amount": 10087,
+      "customer": "生活協同組合ユーコープ 店舗口座"
+    },
+    {
+      "management_id": "367503TA",
+      "product_name": "農心ジャパン 辛カップラーメン 68g",
+      "quantity": 1212,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 41208,
+      "customer": "大学生活協同組合東京事業連合"
+    },
+    {
+      "management_id": "367503TA",
+      "product_name": "農心ジャパン 辛ラーメン キムチ カップ 68g",
+      "quantity": 312,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 10608,
+      "customer": "大学生活協同組合東京事業連合"
+    },
+    {
+      "management_id": "367503TA",
+      "product_name": "消費税金額 8%",
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": null,
+      "amount": 4145,
+      "customer": "大学生活協同組合東京事業連合"
+    },
+    {
+      "management_id": "367870SA",
+      "product_name": "農心 辛ラーメン 120g X 3",
+      "quantity": 1848,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 269808,
+      "customer": "(株) G7リコスストアズ"
+    }
+  ],
+  "page_role": "detail"
+}

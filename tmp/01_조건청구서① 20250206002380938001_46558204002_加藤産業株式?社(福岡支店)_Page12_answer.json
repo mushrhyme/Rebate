@@ -1,0 +1,93 @@
+{
+  "items": [
+    {
+      "management_id": "00755566",
+      "customer": "(株)アレス",
+      "product_name": "農心 辛ラーメン キムチ 3P",
+      "units_per_case": 12,
+      "quantity": 24,
+      "amount": 2880
+    },
+    {
+      "management_id": "00755566",
+      "customer": "(株)アレス",
+      "product_name": "農心 辛ラーメン キムチ 3P",
+      "units_per_case": 12,
+      "quantity": 720,
+      "amount": 113760
+    },
+    {
+      "management_id": "00755567",
+      "customer": "(株)ゲオ",
+      "product_name": "農心ジャパン 辛カップラーメン 68g",
+      "units_per_case": 24,
+      "quantity": 60,
+      "amount": 2460
+    },
+    {
+      "management_id": "00756941",
+      "customer": "ダイレックス(株)",
+      "product_name": "農心ジャパン 辛カップラーメン 68g",
+      "units_per_case": 24,
+      "quantity": 252,
+      "amount": 13759
+    },
+    {
+      "management_id": "00756942",
+      "customer": "ダイレックス(株)",
+      "product_name": "農心 辛ラーメン 3P",
+      "units_per_case": 12,
+      "quantity": 1260,
+      "amount": 171360
+    },
+    {
+      "management_id": "00756942",
+      "customer": "ダイレックス(株)",
+      "product_name": "農心 辛ラーメン ミニカップ 49g",
+      "units_per_case": 24,
+      "quantity": 36,
+      "amount": 864
+    },
+    {
+      "management_id": "00756942",
+      "customer": "ダイレックス(株)",
+      "product_name": "農心ジャパン 辛カップラーメン 68g",
+      "units_per_case": 24,
+      "quantity": 600,
+      "amount": 27600
+    },
+    {
+      "management_id": "00756943",
+      "customer": "ダイレックス(株)",
+      "product_name": "農心 ノグリラーメン 120g",
+      "units_per_case": 30,
+      "quantity": 440,
+      "amount": 17600
+    },
+    {
+      "management_id": "00756944",
+      "customer": "ダイレックス(株)",
+      "product_name": "農心 辛ラーメン キムチ 3P",
+      "units_per_case": 12,
+      "quantity": 348,
+      "amount": 48024
+    },
+    {
+      "management_id": "00756945",
+      "customer": "イオン琉球(株)",
+      "product_name": "農心 辛ラーメン 3P",
+      "units_per_case": 12,
+      "quantity": 1770,
+      "amount": 223020
+    },
+    {
+      "management_id": "00756945",
+      "customer": "イオン琉球(株)",
+      "product_name": "農心 辛ラーメン 120g",
+      "units_per_case": 60,
+      "quantity": 3400,
+      "amount": 129200
+    }
+  ],
+  "page_role": "detail"
+}

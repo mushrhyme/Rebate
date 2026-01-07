@@ -1,0 +1,53 @@
+{
+  "items": [
+    {
+      "management_id": "1256540",
+      "customer": "フォーレスト(株)",
+      "product_name": "農心 辛ラーメン 120g×3",
+      "units_per_case": 12,
+      "quantity": 24,
+      "amount": 3072
+    },
+    {
+      "management_id": "1256540",
+      "customer": "フォーレスト(株)",
+      "product_name": "農心 チャパゲティ 140g",
+      "units_per_case": 30,
+      "quantity": 30,
+      "amount": 690
+    },
+    {
+      "management_id": "1256540",
+      "customer": "フォーレスト(株)",
+      "product_name": "農心 チャパグリカップ 114g",
+      "units_per_case": 12,
+      "quantity": 24,
+      "amount": 528
+    },
+    {
+      "management_id": "1256540",
+      "customer": "フォーレスト(株)",
+      "product_name": "農心 辛ラーメン焼きそばカップ 103g",
+      "units_per_case": 12,
+      "quantity": 24,
+      "amount": 528
+    },
+    {
+      "management_id": "1256541",
+      "customer": "フォーレスト(株)",
+      "product_name": "農心 辛ラーメン ミニカップ 49g",
+      "units_per_case": 24,
+      "quantity": 24,
+      "amount": 120
+    },
+    {
+      "management_id": "1256541",
+      "customer": "フォーレスト(株)",
+      "product_name": "農心 辛ラーメン キムチカップ 68g",
+      "units_per_case": 24,
+      "quantity": 24,
+      "amount": 816
+    }
+  ],
+  "page_role": "detail"
+}

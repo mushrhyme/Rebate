@@ -1,0 +1,109 @@
+{
+  "items": [
+    {
+      "management_id": "00752359",
+      "customer": "(株)大賀薬局",
+      "product_name": "農心 辛カップラーメン 68G",
+      "units_per_case": 24,
+      "quantity": 252,
+      "amount": 12600
+    },
+    {
+      "management_id": "00752359",
+      "customer": "(株)大賀薬局",
+      "product_name": "農心 辛ラーメン キムチ カップ 68G",
+      "units_per_case": 24,
+      "quantity": 144,
+      "amount": 7200
+    },
+    {
+      "management_id": "00752359",
+      "customer": "(株)大賀薬局",
+      "product_name": "農心 チャパグリカップ 114g",
+      "units_per_case": 24,
+      "quantity": 12,
+      "amount": 360
+    },
+    {
+      "management_id": "00752359",
+      "customer": "(株)大賀薬局",
+      "product_name": "農心 辛ラーメン焼きそばカップ",
+      "units_per_case": 24,
+      "quantity": 24,
+      "amount": 720
+    },
+    {
+      "management_id": "00752360",
+      "customer": "(株)ヘルスサポート",
+      "product_name": "農心 ふるる冷麺 (ビビン冷麺) 159G",
+      "units_per_case": 20,
+      "quantity": 30,
+      "amount": 2475
+    },
+    {
+      "management_id": "00752360",
+      "customer": "(株)ヘルスサポート",
+      "product_name": "農心 チャーワン麺 134g",
+      "units_per_case": 40,
+      "quantity": 10,
+      "amount": 925
+    },
+    {
+      "management_id": "00752360",
+      "customer": "(株)ヘルスサポート",
+      "product_name": "農心 ノグリラーメンマイルド 120G",
+      "units_per_case": 8,
+      "quantity": 14,
+      "amount": 4410
+    },
+    {
+      "management_id": "00752360",
+      "customer": "(株)ヘルスサポート",
+      "product_name": "農心 バナナキック 45g",
+      "units_per_case": 20,
+      "quantity": 20,
+      "amount": 1200
+    },
+    {
+      "management_id": "00752360",
+      "customer": "(株)ヘルスサポート",
+      "product_name": "農心 べホンドンビビン麺 1P 136g",
+      "units_per_case": 40,
+      "quantity": 30,
+      "amount": 2085
+    },
+    {
+      "management_id": "00752360",
+      "customer": "(株)ヘルスサポート",
+      "product_name": "コリコレ鍋セット プデチゲ 200g",
+      "units_per_case": 36,
+      "quantity": 6,
+      "amount": 1014
+    },
+    {
+      "management_id": "00752361",
+      "customer": "(株)ヘルスサポート",
+      "product_name": "コリコレ鍋セット キムチチゲ 210g",
+      "units_per_case": 36,
+      "quantity": 18,
+      "amount": 3042
+    },
+    {
+      "management_id": "00753638",
+      "customer": "(株)丸喜",
+      "product_name": "農心 辛ラーメン 3P",
+      "units_per_case": 12,
+      "quantity": 257,
+      "amount": 37779
+    },
+    {
+      "management_id": "00753639",
+      "customer": "(株)丸喜",
+      "product_name": "農心 辛ラーメン キムチ 3P",
+      "units_per_case": 12,
+      "quantity": 113,
+      "amount": 16611
+    }
+  ],
+  "page_role": "detail"
+}

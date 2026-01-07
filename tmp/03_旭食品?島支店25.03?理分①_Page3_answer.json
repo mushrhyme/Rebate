@@ -1,0 +1,284 @@
+{
+  "items": [
+    {
+      "management_id": "3006542753",
+      "customer": "株式会社ツルハＧＤ＆Ｆ西日本",
+      "product_name": "農心 辛カップラーメン 68G",
+      "units_per_case": 24,
+      "case_count": 111.0,
+      "bara_count": 12.0,
+      "amount": 145842
+    },
+    {
+      "management_id": "3006542753",
+      "customer": "株式会社ツルハＧＤ＆Ｆ西日本",
+      "product_name": "農心 辛カップラーメン 68G",
+      "units_per_case": 24,
+      "case_count": 44.0,
+      "bara_count": 12.0,
+      "amount": 58206
+    },
+    {
+      "management_id": "3006542753",
+      "customer": "株式会社ツルハＧＤ＆Ｆ西日本",
+      "product_name": "農心 カムジャ麺 100G",
+      "units_per_case": 40,
+      "case_count": 3.0,
+      "bara_count": NaN,
+      "amount": 1920
+    },
+    {
+      "management_id": "3006542753",
+      "customer": "株式会社ツルハＧＤ＆Ｆ西日本",
+      "product_name": "農心 カムジャ麺 100G",
+      "units_per_case": 40,
+      "case_count": 2.0,
+      "bara_count": 20.0,
+      "amount": 1600
+    },
+    {
+      "management_id": "3006542753",
+      "customer": "株式会社ツルハＧＤ＆Ｆ西日本",
+      "product_name": "農心 チャパゲティ 140G",
+      "units_per_case": 30,
+      "case_count": 3.0,
+      "bara_count": NaN,
+      "amount": 1350
+    },
+    {
+      "management_id": "3006542753",
+      "customer": "株式会社ツルハＧＤ＆Ｆ西日本",
+      "product_name": "農心 チャパグリカップ 114G",
+      "units_per_case": 24,
+      "case_count": 2.0,
+      "bara_count": NaN,
+      "amount": 1440
+    },
+    {
+      "management_id": "3006542753",
+      "customer": "株式会社ツルハＧＤ＆Ｆ西日本",
+      "product_name": "農心 チャパグリカップ 114G",
+      "units_per_case": 24,
+      "case_count": 2.0,
+      "bara_count": 12.0,
+      "amount": 1800
+    },
+    {
+      "management_id": "3006542753",
+      "customer": "株式会社ツルハＧＤ＆Ｆ西日本",
+      "product_name": "農心 ノグリラーメンマイルド 120G",
+      "units_per_case": 30,
+      "case_count": 5.0,
+      "bara_count": NaN,
+      "amount": 3150
+    },
+    {
+      "management_id": "3006542753",
+      "customer": "株式会社ツルハＧＤ＆Ｆ西日本",
+      "product_name": "農心 ノグリラーメンマイルド 120G",
+      "units_per_case": 30,
+      "case_count": 6.0,
+      "bara_count": NaN,
+      "amount": 3780
+    },
+    {
+      "management_id": "3006542753",
+      "customer": "株式会社ツルハＧＤ＆Ｆ西日本",
+      "product_name": "農心 甘辛ヤンニョムチキンビビン 122G",
+      "units_per_case": 24,
+      "case_count": 1.0,
+      "bara_count": NaN,
+      "amount": 720
+    },
+    {
+      "management_id": "3006542753",
+      "customer": "株式会社ツルハＧＤ＆Ｆ西日本",
+      "product_name": "農心 甘辛ヤンニョムチキンビビン 122G",
+      "units_per_case": 24,
+      "case_count": 3.0,
+      "bara_count": 12.0,
+      "amount": 2520
+    },
+    {
+      "management_id": "3006542753",
+      "customer": "株式会社ツルハＧＤ＆Ｆ西日本",
+      "product_name": "農心 安城湯麺 125G",
+      "units_per_case": 40,
+      "case_count": NaN,
+      "bara_count": 20.0,
+      "amount": 420
+    },
+    {
+      "management_id": "3006542753",
+      "customer": "株式会社ツルハＧＤ＆Ｆ西日本",
+      "product_name": "農心 安城湯麺 125G",
+      "units_per_case": 40,
+      "case_count": 1.0,
+      "bara_count": 20.0,
+      "amount": 1260
+    },
+    {
+      "management_id": "3006542753",
+      "customer": "株式会社ツルハＧＤ＆Ｆ西日本",
+      "product_name": "農心 辛ラーメン焼きそばカップ 103G",
+      "units_per_case": 24,
+      "case_count": 4.0,
+      "bara_count": NaN,
+      "amount": 2880
+    },
+    {
+      "management_id": "3006542753",
+      "customer": "株式会社ツルハＧＤ＆Ｆ西日本",
+      "product_name": "農心 辛ラーメン焼きそばカップ 103G",
+      "units_per_case": 24,
+      "case_count": 2.0,
+      "bara_count": 12.0,
+      "amount": 1800
+    },
+    {
+      "management_id": "3006542753",
+      "customer": "株式会社ツルハＧＤ＆Ｆ西日本",
+      "product_name": "農心 辛ラーメン焼きそば袋 131G",
+      "units_per_case": 40,
+      "case_count": 1.0,
+      "bara_count": NaN,
+      "amount": 560
+    },
+    {
+      "management_id": "3006542753",
+      "customer": "株式会社ツルハＧＤ＆Ｆ西日本",
+      "product_name": "農心 辛ラーメン焼きそば袋 131G",
+      "units_per_case": 40,
+      "case_count": 2.0,
+      "bara_count": NaN,
+      "amount": 1120
+    },
+    {
+      "management_id": "3006542754",
+      "customer": "株式会社トライアルカンパニー",
+      "product_name": "農心 辛ラーメン袋 120G",
+      "units_per_case": 60,
+      "case_count": 10.0,
+      "bara_count": 30.0,
+      "amount": 29610
+    },
+    {
+      "management_id": "3006542754",
+      "customer": "株式会社トライアルカンパニー",
+      "product_name": "農心 辛ラーメン3食 360G",
+      "units_per_case": 12,
+      "case_count": 136.0,
+      "bara_count": NaN,
+      "amount": 275808
+    },
+    {
+      "management_id": "3006542754",
+      "customer": "株式会社トライアルカンパニー",
+      "product_name": "農心 ユッケジャンラーメン 86G",
+      "units_per_case": 24,
+      "case_count": 12.0,
+      "bara_count": NaN,
+      "amount": 5184
+    },
+    {
+      "management_id": "3006542754",
+      "customer": "株式会社トライアルカンパニー",
+      "product_name": "農心 ノグリラーメン 120G",
+      "units_per_case": 30,
+      "case_count": 18.0,
+      "bara_count": NaN,
+      "amount": 25380
+    },
+    {
+      "management_id": "3006542754",
+      "customer": "株式会社トライアルカンパニー",
+      "product_name": "農心 本場韓国コムタンラーメン袋 111G",
+      "units_per_case": 40,
+      "case_count": 3.0,
+      "bara_count": 20.0,
+      "amount": 5880
+    },
+    {
+      "management_id": "3006542754",
+      "customer": "株式会社トライアルカンパニー",
+      "product_name": "農心 辛カップラーメン 68G",
+      "units_per_case": 24,
+      "case_count": 4.0,
+      "bara_count": NaN,
+      "amount": 5952
+    },
+    {
+      "management_id": "3006542754",
+      "customer": "株式会社トライアルカンパニー",
+      "product_name": "農心 辛カップラーメン 68G",
+      "units_per_case": 24,
+      "case_count": 152.0,
+      "bara_count": NaN,
+      "amount": 250982
+    },
+    {
+      "management_id": "3006542754",
+      "customer": "株式会社トライアルカンパニー",
+      "product_name": "農心 辛ラーメン5食 600G",
+      "units_per_case": 8,
+      "case_count": 67.0,
+      "bara_count": NaN,
+      "amount": 154368
+    },
+    {
+      "management_id": "3006542754",
+      "customer": "株式会社トライアルカンパニー",
+      "product_name": "農心 辛ラーメンキムチカップ 68G",
+      "units_per_case": 24,
+      "case_count": 2.0,
+      "bara_count": 12.0,
+      "amount": 3720
+    },
+    {
+      "management_id": "3006542754",
+      "customer": "株式会社トライアルカンパニー",
+      "product_name": "農心 辛ラーメンキムチカップ 68G",
+      "units_per_case": 24,
+      "case_count": 60.0,
+      "bara_count": NaN,
+      "amount": 99072
+    },
+    {
+      "management_id": "3006542754",
+      "customer": "株式会社トライアルカンパニー",
+      "product_name": "農心 辛ラーメンキムチ3食 360G",
+      "units_per_case": 12,
+      "case_count": 39.0,
+      "bara_count": NaN,
+      "amount": 79092
+    },
+    {
+      "management_id": "3006542754",
+      "customer": "株式会社トライアルカンパニー",
+      "product_name": "農心 チャパゲティ 140G",
+      "units_per_case": 30,
+      "case_count": 7.0,
+      "bara_count": NaN,
+      "amount": 8820
+    },
+    {
+      "management_id": "3006542754",
+      "customer": "株式会社トライアルカンパニー",
+      "product_name": "農心 チャパグリカップ 114G",
+      "units_per_case": 24,
+      "case_count": 4.0,
+      "bara_count": NaN,
+      "amount": 1152
+    },
+    {
+      "management_id": "3006542754",
+      "customer": "株式会社ト라이얼カンパニー",
+      "product_name": "農心 チャパグリカップ 114G",
+      "units_per_case": 24,
+      "case_count": 4.0,
+      "bara_count": NaN,
+      "amount": 3072
+    }
+  ],
+  "page_role": "detail"
+}

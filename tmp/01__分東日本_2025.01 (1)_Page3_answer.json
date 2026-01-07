@@ -1,0 +1,165 @@
+{
+  "items": [
+    {
+      "management_id": "363295TA",
+      "product_name": "農心 辛ラーメン キムチ 120g X 3",
+      "quantity": 300,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 49800,
+      "customer": "(株) ウェルパーク"
+    },
+    {
+      "management_id": "363295TA",
+      "product_name": "農心ジャパン チャパゲティ 140g",
+      "quantity": 120,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 30,
+      "amount": 4800,
+      "customer": "(株) ウェルパーク"
+    },
+    {
+      "management_id": "363295TA",
+      "product_name": "農心ジャパン 辛ラーメン焼きそば カップ 103g",
+      "quantity": 120,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 3120,
+      "customer": "(株) ウェルパーク"
+    },
+    {
+      "management_id": "363295TA",
+      "product_name": "消費税金額 8%",
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": null,
+      "amount": 45583,
+      "customer": "(株) ウェルパーク"
+    },
+    {
+      "management_id": "365401SA",
+      "product_name": "農心 辛ラーメン 120g X 3",
+      "quantity": 4500,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 85500,
+      "customer": "(株) マルエツ 新口座"
+    },
+    {
+      "management_id": "365401SA",
+      "product_name": "農心 辛ラーメン 120g X 3",
+      "quantity": 14076,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 253368,
+      "customer": "(株) マルエツ 新口座"
+    },
+    {
+      "management_id": "365401SA",
+      "product_name": "農心 ノグリラーメン 120g",
+      "quantity": 3925,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 30,
+      "amount": 7850,
+      "customer": "(株) マルエツ 新口座"
+    },
+    {
+      "management_id": "365401SA",
+      "product_name": "農心ジャパン 辛カップラーメン 68g",
+      "quantity": 12828,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 198834,
+      "customer": "(株) マルエツ 新口座"
+    },
+    {
+      "management_id": "365401SA",
+      "product_name": "農心 旨辛海鮮ちゃんぽん 130g",
+      "quantity": 225,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 40,
+      "amount": 6750,
+      "customer": "(株) マルエツ 新口座"
+    },
+    {
+      "management_id": "365401SA",
+      "product_name": "農心ジャパン 辛ラーメン キムチ カップ 68g",
+      "quantity": 24,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 24,
+      "amount": 612,
+      "customer": "(株) マルエツ 新口座"
+    },
+    {
+      "management_id": "365401SA",
+      "product_name": "農心 辛ラーメン キムチ 120g X 3",
+      "quantity": 1762,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 31716,
+      "customer": "(株) マルエツ 新口座"
+    },
+    {
+      "management_id": "365401SA",
+      "product_name": "農心ジャパン ノグリラーメン マイルド 120g",
+      "quantity": 90,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 30,
+      "amount": 180,
+      "customer": "(株) マルエツ 新口座"
+    },
+    {
+      "management_id": "365401SA",
+      "product_name": "消費税金額 8%",
+      "quantity": null,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": null,
+      "amount": 46785,
+      "customer": "(株) マルエツ 新口座"
+    },
+    {
+      "management_id": "365402TA",
+      "product_name": "農心 辛ラーメン 120g X 3",
+      "quantity": 4500,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 580500,
+      "customer": "(株) マルエツ 新口座"
+    },
+    {
+      "management_id": "365402TA",
+      "product_name": "農心 辛ラーメン 120g X 3",
+      "quantity": 14076,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 1815804,
+      "customer": "(株) マルエツ 新口座"
+    },
+    {
+      "management_id": "365402TA",
+      "product_name": "農心 辛ラーメン 120g X 3",
+      "quantity": 60,
+      "case_count": null,
+      "bara_count": null,
+      "units_per_case": 12,
+      "amount": 7740,
+      "customer": "(株) マルエツ 新口座"
+    }
+  ],
+  "page_role": "detail"
+}

@@ -1,0 +1,109 @@
+{
+  "items": [
+    {
+      "management_id": "00756948",
+      "customer": "イオン琉球(株)",
+      "product_name": null,
+      "units_per_case": 40.0,
+      "quantity": 40.0,
+      "amount": 1520
+    },
+    {
+      "management_id": "00756948",
+      "customer": "イオン琉球(株)",
+      "product_name": "農心 チャパグリカップ 114g",
+      "units_per_case": 24.0,
+      "quantity": 120.0,
+      "amount": 240
+    },
+    {
+      "management_id": "00756948",
+      "customer": "イオン琉球(株)",
+      "product_name": "甘辛ヤンニョムチキンピビン麺 カップ",
+      "units_per_case": 24.0,
+      "quantity": 36.0,
+      "amount": 72
+    },
+    {
+      "management_id": "00756948",
+      "customer": "イオン琉球(株)",
+      "product_name": "辛ラーメン焼きそばカップ",
+      "units_per_case": 24.0,
+      "quantity": 96.0,
+      "amount": 192
+    },
+    {
+      "management_id": "00756948",
+      "customer": "イオン琉球(株)",
+      "product_name": "農心 辛ラーメン バケツカップ 114g",
+      "units_per_case": 24.0,
+      "quantity": 180.0,
+      "amount": 5400
+    },
+    {
+      "management_id": "00756948",
+      "customer": "イオン琉球(株)",
+      "product_name": "コリコレ鍋セット プデチゲ 200g",
+      "units_per_case": 36.0,
+      "quantity": 12.0,
+      "amount": 1152
+    },
+    {
+      "management_id": "00756949",
+      "customer": "イオン琉球(株)",
+      "product_name": "コリコレ鍋セット プデチゲ 200g",
+      "units_per_case": 36.0,
+      "quantity": 96.0,
+      "amount": 9888
+    },
+    {
+      "management_id": "00756949",
+      "customer": "イオン琉球(株)",
+      "product_name": "コリコレ鍋セット キムチチゲ 210g",
+      "units_per_case": 36.0,
+      "quantity": 12.0,
+      "amount": 1152
+    },
+    {
+      "management_id": "00756949",
+      "customer": "イオン琉球(株)",
+      "product_name": "コリコレ鍋セット キムチチゲ 210g",
+      "units_per_case": 36.0,
+      "quantity": 96.0,
+      "amount": 9888
+    },
+    {
+      "management_id": "00756950",
+      "customer": "ひかり商事 (株)",
+      "product_name": "農心 辛ラーメン 3P",
+      "units_per_case": 12.0,
+      "quantity": 48.0,
+      "amount": 4320
+    },
+    {
+      "management_id": "00756950",
+      "customer": "ひかり商事 (株)",
+      "product_name": "農心 辛カップ ラーメン 68G",
+      "units_per_case": 24.0,
+      "quantity": 36.0,
+      "amount": 1656
+    },
+    {
+      "management_id": "00757925",
+      "customer": "ミニストップ(株)",
+      "product_name": "農心 辛ラーメン 120g",
+      "units_per_case": 60.0,
+      "quantity": 46.5,
+      "amount": 46500
+    },
+    {
+      "management_id": "00757926",
+      "customer": "マミーズ(株)",
+      "product_name": "農心 辛ラーメン 3P",
+      "units_per_case": 12.0,
+      "quantity": 151.0,
+      "amount": 28992
+    }
+  ],
+  "page_role": "detail"
+}
