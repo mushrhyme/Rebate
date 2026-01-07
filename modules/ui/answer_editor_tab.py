@@ -815,133 +815,59 @@ def render_answer_editor_tab():
                 form_folders.append(item.name)
         form_folders.sort()  # 숫자 순서로 정렬
     
-    # 양식 선택 UI
-    if form_folders:
-        st.subheader("📁 양식 선택")
-        selected_form = st.selectbox(
-            "양식 폴더 선택",
-            options=["전체"] + form_folders,
-            key="answer_editor_form_selector",
-            help="양식별 폴더를 선택하면 해당 양식의 PDF만 표시됩니다"
-        )
-    else:
-        selected_form = "전체"
+    # 양식 선택 UI (필수 선택)
+    if not form_folders:
+        st.error("❌ 양식 폴더를 찾을 수 없습니다. img 폴더에 양식 폴더(01, 02 등)가 있는지 확인하세요.")
+        return
+    
+    st.subheader("📁 양식 선택 (필수)")
+    selected_form = st.selectbox(
+        "양식 종류를 선택하세요",
+        options=form_folders,
+        key="answer_editor_form_selector",
+        help="파일을 업로드하려면 먼저 양식 종류를 선택해야 합니다"
+    )
     
     # 정답지 버전 선택 UI 제거 (항상 v2 사용)
     st.session_state.answer_editor_version = "v2"
-    
-    # 기존 처리된 PDF 목록 확인 (선택된 양식 폴더 기준)
+
+    # 선택된 양식 폴더에서 기존 PDF 목록 확인
+    selected_form_dir = img_dir / selected_form
     existing_pdfs = []
-    if img_dir.exists():
-        if selected_form == "전체":
-            # 모든 양식 폴더 순회
-            for form_folder_name in form_folders:
-                form_folder = img_dir / form_folder_name
-                if form_folder.exists():
-                    for item in form_folder.iterdir():
-                        if item.is_dir():
-                            if (item / "Page1.png").exists():
-                                existing_pdfs.append(f"{form_folder_name}/{item.name}")
-        else:
-            # 선택된 양식 폴더만 순회
-            form_folder = img_dir / selected_form
-            if form_folder.exists():
-                for item in form_folder.iterdir():
-                    if item.is_dir():
-                        if (item / "Page1.png").exists():
-                            existing_pdfs.append(item.name)
-    
-    # 여러 PDF 일괄 벡터 DB 저장 섹션
-    with st.expander("🔍 벡터 DB 구축", expanded=False):
-        st.info("img 폴더의 하위 폴더에 있는 PDF 파일들을 벡터 DB에 저장합니다.")
-        st.caption("• img 폴더의 모든 하위 폴더를 순회합니다")
-        st.caption("• 각 하위 폴더의 PDF 파일에서 PyMuPDF로 텍스트를 추출합니다")
-        st.caption("• 하위 폴더의 Page*_answer.json 파일을 정답지로 사용합니다")
-        
-        # 기존 벡터 DB 상태 확인
-        try:
-            rag_manager = get_rag_manager()
-            existing_count = rag_manager.count_examples()
-            if existing_count > 0:
-                st.caption(f"📊 현재 벡터 DB 예제 수: {existing_count}개")
-        except Exception:
-            pass
-        
-        # 벡터 DB 구축 버튼
-        if st.button("🚀 벡터 DB 구축 실행", type="primary", key="build_faiss_db"):
-            try:
-                from build_faiss_db import build_faiss_db
-                
-                with st.spinner("벡터 DB 구축 중..."):
-                    # 기존 예제 수 저장
-                    rag_manager = get_rag_manager()
-                    before_count = rag_manager.count_examples()
-                    
-                    # build_faiss_db 실행 (선택된 양식 폴더 기준)
-                    project_root = get_project_root()
-                    img_dir = project_root / "img"
-                    form_folder = selected_form if selected_form != "전체" else None
-                    build_faiss_db(img_dir, form_folder=form_folder, auto_merge=True)
-                    
-                    # 결과 확인
-                    after_count = rag_manager.count_examples()
-                    added_count = after_count - before_count
-                    
-                    if added_count > 0:
-                        st.success(f"✅ 벡터 DB 구축 완료!")
-                        st.caption(f"**구축 결과:**")
-                        st.caption(f"- 새로 추가된 예제: {added_count}개")
-                        st.caption(f"- **총 예제 수: {after_count}개**")
-                    else:
-                        st.warning("⚠️ 새로 추가된 예제가 없습니다. img 폴더에 PDF 파일이 있는지 확인하세요.")
-                    
-            except PermissionError as e:
-                st.error(f"❌ 벡터 DB 구축 실패 (권한 문제): {e}")
-                st.info("💡 해결 방법: 터미널에서 다음 명령어를 실행하세요:\n"
-                       f"`chmod -R 755 faiss_db` 또는 `sudo chmod -R 755 faiss_db`")
-            except Exception as e:
-                error_msg = str(e)
-                if "readonly" in error_msg.lower():
-                    st.error(f"❌ 벡터 DB 구축 실패 (읽기 전용 오류): {error_msg}")
-                    st.info("💡 해결 방법:\n"
-                           "1. `chmod -R 755 faiss_db` 명령어로 권한 수정\n"
-                           "2. 또는 `faiss_db` 디렉토리를 삭제하고 다시 시도")
-                else:
-                    st.error(f"❌ 벡터 DB 구축 실패: {error_msg}")
-                    with st.expander("상세 오류 정보"):
-                        st.code(traceback.format_exc())
-            else:
-                st.info("💡 위에서 저장할 PDF를 선택하세요.")
+    if selected_form_dir.exists():
+        for item in selected_form_dir.iterdir():
+            if item.is_dir() and (item / "Page1.png").exists():
+                existing_pdfs.append(item.name)
+        existing_pdfs.sort()
 
-    # PDF 선택 (기존 또는 새 업로드)
+    # 기존 PDF 선택 또는 새 PDF 업로드
+    # 세션 상태에서 이전 선택값을 가져옴 (기존 PDF 로드 성공 시 저장됨)
+    if "selected_existing_pdf" in st.session_state:
+        selected_existing = st.session_state.selected_existing_pdf
+    else:
+        selected_existing = "새로 업로드"
+
     if existing_pdfs:
-        st.subheader("📁 기존 처리된 PDF 선택")
-        selected_existing = st.selectbox(
-            "처리된 PDF 선택",
-            options=["새로 업로드"] + existing_pdfs,
-            key="answer_editor_existing_pdf"
-        )
+        st.subheader("📁 기존 PDF 선택")
+        # 세션 상태의 값을 우선적으로 사용하되, 목록에 없는 경우는 "새로 업로드"로 설정
+        if selected_existing not in ["새로 업로드"] + existing_pdfs:
+            selected_existing = "새로 업로드"
 
+        selected_existing = st.selectbox(
+            "편집할 기존 PDF를 선택하거나 '새로 업로드'를 선택하세요",
+            options=["새로 업로드"] + existing_pdfs,
+            index=(["새로 업로드"] + existing_pdfs).index(selected_existing),
+            key="answer_editor_existing_selector"
+        )
+        # 선택값을 세션 상태에 저장
+        st.session_state.selected_existing_pdf = selected_existing
+
+        # ✅ 핵심: selectbox 바로 아래에서 기존 PDF 처리
         if selected_existing != "새로 업로드":
-            # 양식 폴더 경로 처리
-            if "/" in selected_existing:
-                form_folder_name, pdf_name = selected_existing.split("/", 1)
-                pdf_img_dir = img_dir / form_folder_name / pdf_name
-            else:
-                pdf_name = selected_existing
-                if selected_form != "전체":
-                    pdf_img_dir = img_dir / selected_form / pdf_name
-                else:
-                    # 전체 모드에서는 첫 번째 양식 폴더에서 찾기
-                    pdf_img_dir = None
-                    for form_folder_name in form_folders:
-                        candidate_dir = img_dir / form_folder_name / pdf_name
-                        if candidate_dir.exists() and (candidate_dir / "Page1.png").exists():
-                            pdf_img_dir = candidate_dir
-                            break
-                    if pdf_img_dir is None:
-                        pdf_img_dir = img_dir / pdf_name
-            
+            # 기존 PDF 로드 로직
+            pdf_name = selected_existing
+            pdf_img_dir = selected_form_dir / pdf_name
+
             if pdf_name not in st.session_state.answer_editor_pdfs:
                 st.session_state.answer_editor_pdfs[pdf_name] = {
                     "pages": [],
@@ -949,50 +875,73 @@ def render_answer_editor_tab():
                 }
 
             pdf_info = st.session_state.answer_editor_pdfs[pdf_name]
-            if not pdf_info["processed"]:
-                page_info_list = []
-                page_num = 1
-                while True:
-                    image_path = pdf_img_dir / f"Page{page_num}.png"
-                    if not image_path.exists():
-                        break
-                    answer_json_path = get_answer_json_path(pdf_img_dir, page_num, st.session_state.answer_editor_version)
-                    # fitz를 사용하여 PDF에서 텍스트 추출
-                    pdf_path = pdf_img_dir / f"{pdf_name}.pdf"
-                    if not pdf_path.exists():
-                        # 양식 폴더를 고려하여 PDF 경로 찾기
-                        found_path = find_pdf_path_with_form(img_dir, pdf_name, selected_form)
-                        if found_path:
-                            pdf_path = found_path
-                    
-                    ocr_text = ""
-                    if pdf_path.exists():
-                        ocr_text = extract_text_from_pdf_page(pdf_path, page_num)
-                    page_info_list.append({
-                        "page_num": page_num,
-                        "image_path": str(image_path),
-                        "answer_json_path": str(answer_json_path),
-                        "ocr_text": ocr_text
-                    })
-                    page_num += 1
-                if page_info_list:
-                    pdf_info["pages"] = page_info_list
-                    pdf_info["processed"] = True
-                    st.session_state.answer_editor_selected_pdf = pdf_name
-                    st.session_state.answer_editor_selected_page = 1
-                    # 탭 상태 유지
-                    if "active_tab" not in st.session_state:
-                        st.session_state.active_tab = "✏️ 정답지 편집"
-                    st.rerun()
 
-    # PDF 업로드
-    st.subheader("📤 새 PDF 업로드")
-    uploaded_file = st.file_uploader(
-        "PDFファイルをアップロードしてください（정답지 편집용）",
-        type=['pdf'],
-        accept_multiple_files=False,
-        key="answer_editor_uploader"
-    )
+            # 선택 즉시 세션 상태 설정
+            st.session_state.answer_editor_selected_pdf = pdf_name
+            if not st.session_state.get("answer_editor_selected_page"):
+                st.session_state.answer_editor_selected_page = 1
+
+            # PDF 로드 상태를 위한 placeholder
+            pdf_load_placeholder = st.empty()
+
+            # 이미 로드된 경우 표시
+            if pdf_info["processed"]:
+                pdf_load_placeholder.success(f"✅ '{pdf_name}' PDF가 이미 로드되었습니다.")
+            else:
+                # 백그라운드에서 로드 시도
+                try:
+                    page_info_list = []
+                    page_num = 1
+                    while True:
+                        image_path = pdf_img_dir / f"Page{page_num}.png"
+                        if not image_path.exists():
+                            break
+
+                        answer_json_path = get_answer_json_path(pdf_img_dir, page_num, st.session_state.answer_editor_version)
+
+                        # PDF 경로 찾기
+                        pdf_path = pdf_img_dir / f"{pdf_name}.pdf"
+                        if not pdf_path.exists():
+                            pdf_path = selected_form_dir / f"{pdf_name}.pdf"
+
+                        ocr_text = ""
+                        if pdf_path.exists():
+                            ocr_text = extract_text_from_pdf_page(pdf_path, page_num)
+
+                        page_info_list.append({
+                            "page_num": page_num,
+                            "image_path": str(image_path),
+                            "answer_json_path": str(answer_json_path),
+                            "ocr_text": ocr_text
+                        })
+                        page_num += 1
+
+                    if page_info_list:
+                        pdf_info["pages"] = page_info_list
+                        pdf_info["processed"] = True  # ✅ 명확히 processed=True 세팅
+                        pdf_load_placeholder.success(f"✅ 기존 PDF 로드 완료! {len(page_info_list)}개 페이지")
+                    else:
+                        pdf_load_placeholder.error("❌ 페이지를 찾을 수 없습니다.")
+                        pdf_info["processed"] = True  # 빈 페이지라도 processed로 표시
+                except Exception as e:
+                    pdf_load_placeholder.error(f"기존 PDF 로드 실패: {e}")
+                    pdf_info["processed"] = True  # 에러 발생시에도 processed로 표시
+    else:
+        selected_existing = "새로 업로드"
+        st.info("📝 이 양식 폴더에는 기존 PDF가 없습니다. 새 PDF를 업로드하세요.")
+
+    # PDF 업로드 (새로 업로드 선택 시에만 표시)
+    if selected_existing == "새로 업로드":
+        st.subheader("📤 새 PDF 업로드")
+        uploaded_file = st.file_uploader(
+            "PDFファイルをアップロードしてください（정답지 편집용）",
+            type=['pdf'],
+            accept_multiple_files=False,
+            key="answer_editor_uploader",
+            disabled=False
+        )
+    else:
+        uploaded_file = None
 
     if uploaded_file:
         pdf_name = Path(uploaded_file.name).stem
@@ -1009,9 +958,9 @@ def render_answer_editor_tab():
             if st.button("🔄 PDF 처리 시작 (이미지 변환 + PyMuPDF 텍스트 추출)", type="primary"):
                 with st.spinner("PDF를 처리하는 중... (fitz 기반 이미지 추출)"):
                     try:
-                        # 저장 경로 준비
+                        # 저장 경로 준비 (선택된 양식 폴더에 저장)
                         project_root = get_project_root()
-                        img_dir = project_root / "img" / pdf_name
+                        img_dir = project_root / "img" / selected_form / pdf_name
                         img_dir.mkdir(parents=True, exist_ok=True)
                         temp_pdf_path = img_dir / f"{pdf_name}.pdf"
                         with open(temp_pdf_path, "wb") as f:
@@ -1068,20 +1017,23 @@ def render_answer_editor_tab():
                         st.error(f"PDF 처리 실패: {e}", icon="❌")
 
 
+    # processed된 PDF 목록 생성
     processed_pdfs = [name for name, info in st.session_state.answer_editor_pdfs.items()
                       if info.get("processed") and info.get("pages")]
 
-    if processed_pdfs:
+    available_pdfs = processed_pdfs
+
+    if available_pdfs:
         # PDF 선택
-        if st.session_state.answer_editor_selected_pdf not in processed_pdfs:
-            st.session_state.answer_editor_selected_pdf = processed_pdfs[0]
+        if st.session_state.answer_editor_selected_pdf not in available_pdfs:
+            st.session_state.answer_editor_selected_pdf = available_pdfs[0]
             st.session_state.answer_editor_selected_page = 1
 
-        if len(processed_pdfs) > 1:
+        if len(available_pdfs) > 1:
             selected_pdf = st.selectbox(
                 "편집할 PDF 선택",
-                options=processed_pdfs,
-                index=processed_pdfs.index(st.session_state.answer_editor_selected_pdf),
+                options=available_pdfs,
+                index=available_pdfs.index(st.session_state.answer_editor_selected_pdf),
                 key="answer_editor_pdf_selector"
             )
             if selected_pdf != st.session_state.answer_editor_selected_pdf:
@@ -1090,9 +1042,8 @@ def render_answer_editor_tab():
                 # 탭 상태 유지
                 if "active_tab" not in st.session_state:
                     st.session_state.active_tab = "✏️ 정답지 편집"
-                st.rerun()
         else:
-            selected_pdf = processed_pdfs[0]
+            selected_pdf = available_pdfs[0]
             st.session_state.answer_editor_selected_pdf = selected_pdf
 
         pdf_info = st.session_state.answer_editor_pdfs[selected_pdf]
@@ -1400,210 +1351,21 @@ def render_answer_editor_tab():
                         elif page_role == "cover":
                             cover_pages.append(page_data)
                 
-                # 거래처별 검증 (summary와 비교)
-                with st.expander("📊 得意先名/得意先コード別集計比較 (summary比較)", expanded=False):
-                    if detail_pages and summary_pages:
-                        st.caption("ℹ️ タイプの区分なく、得意先基準のみで合計した金額です。")
-                        
-                        # 販促金請求 검증
-                        st.write("**販促金請求:**")
-                        detail_promo_by_customer = aggregate_detail_by_customer(detail_pages, tax_rate=None, item_type="販促金請求")
-                        summary_promo_by_customer = extract_summary_by_customer(summary_pages, tax_rate=None, item_type="販促金請求")
-                        
-                        comparison_data_promo = []
-                        all_customers_promo = set(list(detail_promo_by_customer.keys()) + list(summary_promo_by_customer.keys()))
-                        
-                        for customer_key in sorted(all_customers_promo):
-                            customer_name, customer_code = customer_key
-                            detail_amount = detail_promo_by_customer.get(customer_key, 0)
-                            summary_amount = summary_promo_by_customer.get(customer_key, 0)
-                            diff = detail_amount - summary_amount
-                            match = abs(diff) < 1  # 1원 이하 차이는 일치로 간주
-                            
-                            comparison_data_promo.append({
-                                "得意先名": customer_name or "",
-                                "得意先コード": customer_code or "",
-                                "計算金額": f"{detail_amount:,}",
-                                "実際金額": f"{summary_amount:,}",
-                                "差額": f"{diff:,}",
-                                "状態": "✅ 一致" if match else "❌ 不一致"
-                            })
-                        
-                        if comparison_data_promo:
-                            comparison_df_promo = pd.DataFrame(comparison_data_promo)
-                            st.dataframe(comparison_df_promo, use_container_width=True, hide_index=True)
-                        else:
-                            st.info("販促金請求の比較データがありません。")
-                        
-                        # 役務提供 검증
-                        detail_service_by_customer = aggregate_detail_by_customer(detail_pages, tax_rate=None, item_type="役務提供")
-                        summary_service_by_customer = extract_summary_by_customer(summary_pages, tax_rate=None, item_type="役務提供")
-                        
-                        if detail_service_by_customer or summary_service_by_customer:
-                            st.write("**役務提供:**")
-                            comparison_data_service = []
-                            all_customers_service = set(list(detail_service_by_customer.keys()) + list(summary_service_by_customer.keys()))
-                            
-                            for customer_key in sorted(all_customers_service):
-                                customer_name, customer_code = customer_key
-                                detail_amount = detail_service_by_customer.get(customer_key, 0)
-                                summary_amount = summary_service_by_customer.get(customer_key, 0)
-                                diff = detail_amount - summary_amount
-                                match = abs(diff) < 1  # 1원 이하 차이는 일치로 간주
-                                
-                                comparison_data_service.append({
-                                    "得意先名": customer_name or "",
-                                    "得意先コード": customer_code or "",
-                                    "計算金額": f"{detail_amount:,}",
-                                    "実際金額": f"{summary_amount:,}",
-                                    "差額": f"{diff:,}",
-                                    "状態": "✅ 一致" if match else "❌ 不一致"
-                                })
-                            
-                            if comparison_data_service:
-                                comparison_df_service = pd.DataFrame(comparison_data_service)
-                                st.dataframe(comparison_df_service, use_container_width=True, hide_index=True)
-                            else:
-                                st.info("役務提供の比較データがありません。")
-                    elif not detail_pages:
-                        st.info("ℹ️ detailページがないため検証できません。")
-                    elif not summary_pages:
-                        st.warning("⚠️ summaryページが見つかりません。")
+                # 검증 함수 호출 (양식지별)
+                from modules.ui.validation import validate_form_type01, validate_form_type02
                 
-                # 소비세율별 검증 (cover와 비교)
-                with st.expander("💰 消費税率別総額比較 (cover比較)", expanded=False):
-                    if detail_pages and cover_pages:
-                        cover_totals = extract_cover_totals(cover_pages)
-                        promo_totals = cover_totals.get("販促金請求", {})
-                        service_totals = cover_totals.get("役務提供", {})
-                        
-                        # detail의 세금 제외 금액 계산 (판촉금만 비교)
-                        detail_tax_breakdown = calculate_detail_tax_excluded_and_tax(detail_pages)
-                        
-                        # detail의 세금 제외 금액 추출
-                        detail_8_tax_excluded = detail_tax_breakdown["8%"].get("税抜", 0)
-                        detail_10_tax_excluded = detail_tax_breakdown["10%"].get("税抜", 0)
-                        
-                        # detail의 役務提供 금액 계산
-                        detail_service_breakdown = calculate_detail_service_tax_excluded_and_tax(detail_pages)
-                        detail_service_tax_excluded = detail_service_breakdown.get("税抜", 0)
-                        detail_service_tax = detail_service_breakdown.get("消費税", 0)
-                        detail_service_total = detail_service_breakdown.get("合計", 0)
-                        
-                        # cover 판촉금 정보 (용역비 제외)
-                        cover_promo_8_tax_excluded = promo_totals.get("8%", {}).get("税抜", 0)
-                        cover_promo_8_tax = promo_totals.get("8%", {}).get("消費税", 0)
-                        cover_promo_8_total = cover_promo_8_tax_excluded + cover_promo_8_tax
-                        
-                        cover_promo_10_tax_excluded = promo_totals.get("10%", {}).get("税抜", 0)
-                        cover_promo_10_tax = promo_totals.get("10%", {}).get("消費税", 0)
-                        cover_promo_10_total = cover_promo_10_tax_excluded + cover_promo_10_tax
-                        
-                        # cover 役務提供 정보
-                        cover_service_tax_excluded = service_totals.get("税抜金額", 0)
-                        cover_service_tax = service_totals.get("消費税", 0)
-                        cover_service_total = service_totals.get("合計", 0)
-                        cover_service_request_total = service_totals.get("今回請求金額合計", 0)
-                        
-                        # 판촉금 검증: 8% 대상
-                        st.write("**販促金請求 - 8% 対象金額:**")
-                        detail_8_tax_calculated = round(detail_8_tax_excluded * 0.08)
-                        detail_8_total_calculated = detail_8_tax_excluded + detail_8_tax_calculated
-                        
-                        comparison_data_8 = []
-                        comparison_data_8.append({
-                            "区分": "税抜",
-                            "計算金額": f"{detail_8_tax_excluded:,}",
-                            "実際金額": f"{cover_promo_8_tax_excluded:,}",
-                            "差額": f"{detail_8_tax_excluded - cover_promo_8_tax_excluded:,}",
-                            "状態": "✅ 一致" if abs(detail_8_tax_excluded - cover_promo_8_tax_excluded) < 1 else "❌ 不一致"
-                        })
-                        comparison_data_8.append({
-                            "区分": "消費税",
-                            "計算金額": f"{detail_8_tax_calculated:,}",
-                            "実際金額": f"{cover_promo_8_tax:,}",
-                            "差額": f"{detail_8_tax_calculated - cover_promo_8_tax:,}",
-                            "状態": "✅ 一致" if abs(detail_8_tax_calculated - cover_promo_8_tax) < 1 else "❌ 不一致"
-                        })
-                        comparison_data_8.append({
-                            "区分": "合計 (税抜+消費税)",
-                            "計算金額": f"{detail_8_total_calculated:,}",
-                            "実際金額": f"{cover_promo_8_total:,}",
-                            "差額": f"{detail_8_total_calculated - cover_promo_8_total:,}",
-                            "状態": "✅ 一致" if abs(detail_8_total_calculated - cover_promo_8_total) < 1 else "❌ 不一致"
-                        })
-                        
-                        comparison_df_8 = pd.DataFrame(comparison_data_8)
-                        st.dataframe(comparison_df_8, use_container_width=True, hide_index=True)
-                        
-                        # 판촉금 검증: 10% 대상
-                        if detail_10_tax_excluded > 0 or cover_promo_10_tax_excluded > 0:
-                            detail_10_tax_calculated = round(detail_10_tax_excluded * 0.10)
-                            detail_10_total_calculated = detail_10_tax_excluded + detail_10_tax_calculated
-                            
-                            st.write("**販促金請求 - 10% 対象金額:**")
-                            comparison_data_10 = []
-                            comparison_data_10.append({
-                                "区分": "税抜",
-                                "計算金額": f"{detail_10_tax_excluded:,}",
-                                "実際金額": f"{cover_promo_10_tax_excluded:,}",
-                                "差額": f"{detail_10_tax_excluded - cover_promo_10_tax_excluded:,}",
-                                "状態": "✅ 一致" if abs(detail_10_tax_excluded - cover_promo_10_tax_excluded) < 1 else "❌ 不一致"
-                            })
-                            comparison_data_10.append({
-                                "区分": "消費税",
-                                "計算金額": f"{detail_10_tax_calculated:,}",
-                                "実際金額": f"{cover_promo_10_tax:,}",
-                                "差額": f"{detail_10_tax_calculated - cover_promo_10_tax:,}",
-                                "状態": "✅ 一致" if abs(detail_10_tax_calculated - cover_promo_10_tax) < 1 else "❌ 不一致"
-                            })
-                            comparison_data_10.append({
-                                "区分": "合計 (税抜+消費税)",
-                                "計算金額": f"{detail_10_total_calculated:,}",
-                                "実際金額": f"{cover_promo_10_total:,}",
-                                "差額": f"{detail_10_total_calculated - cover_promo_10_total:,}",
-                                "状態": "✅ 一致" if abs(detail_10_total_calculated - cover_promo_10_total) < 1 else "❌ 不一致"
-                            })
-                            
-                            comparison_df_10 = pd.DataFrame(comparison_data_10)
-                            st.dataframe(comparison_df_10, use_container_width=True, hide_index=True)
-                        
-                        # 役務提供 검증
-                        if detail_service_tax_excluded > 0 or cover_service_tax_excluded > 0:
-                            st.write("**役務提供:**")
-                            detail_service_tax_calculated = round(detail_service_tax_excluded * 0.10)  # 役務提供은 일반적으로 10% 세율
-                            detail_service_total_calculated = detail_service_tax_excluded + detail_service_tax_calculated
-                            
-                            comparison_data_service = []
-                            comparison_data_service.append({
-                                "区分": "税抜金額",
-                                "計算金額": f"{detail_service_tax_excluded:,}",
-                                "実際金額": f"{cover_service_tax_excluded:,}",
-                                "差額": f"{detail_service_tax_excluded - cover_service_tax_excluded:,}",
-                                "状態": "✅ 一致" if abs(detail_service_tax_excluded - cover_service_tax_excluded) < 1 else "❌ 不一致"
-                            })
-                            comparison_data_service.append({
-                                "区分": "消費税",
-                                "計算金額": f"{detail_service_tax_calculated:,}",
-                                "実際金額": f"{cover_service_tax:,}",
-                                "差額": f"{detail_service_tax_calculated - cover_service_tax:,}",
-                                "状態": "✅ 一致" if abs(detail_service_tax_calculated - cover_service_tax) < 1 else "❌ 不一致"
-                            })
-                            comparison_data_service.append({
-                                "区分": "合計（税込）",
-                                "計算金額": f"{detail_service_total_calculated:,}",
-                                "実際金額": f"{cover_service_total:,}",
-                                "差額": f"{detail_service_total_calculated - cover_service_total:,}",
-                                "状態": "✅ 一致" if abs(detail_service_total_calculated - cover_service_total) < 1 else "❌ 不一致"
-                            })
-                            
-                            comparison_df_service = pd.DataFrame(comparison_data_service)
-                            st.dataframe(comparison_df_service, use_container_width=True, hide_index=True)
-                    elif not detail_pages:
-                        st.info("ℹ️ detailページがないため検証できません。")
-                    elif not cover_pages:
-                        st.warning("⚠️ coverページが見つかりません。")
-                        
+                # 양식지 타입 확인
+                form_type = selected_form
+                
+                if form_type == "01":
+                    validate_form_type01(detail_pages, summary_pages, cover_pages)
+                elif form_type == "02":
+                    validate_form_type02(detail_pages, summary_pages, cover_pages)
+                else:
+                    st.warning(f"⚠️ 양식지 타입 '{form_type}'에 대한 검증 함수가 아직 구현되지 않았습니다.")
+                
+                # 기존 검증 코드는 별도 파일로 분리됨 (modules/ui/validation/form_type01.py)
+                
             except Exception as e:
                 st.error(f"❌ 検証中にエラーが発生しました: {e}")
                 with st.expander("詳細エラー情報"):
