@@ -7,6 +7,8 @@ manifest.json 파일 대신 DB를 사용합니다.
 
 from typing import Dict, Set, Optional, List, Any
 from database.registry import get_db
+import psycopg2
+import psycopg2.errors
 
 
 class DBManifestManager:
@@ -19,6 +21,7 @@ class DBManifestManager:
     def __init__(self):
         """DBManifestManager 초기화"""
         self.db = get_db()
+        self._ensure_tables_exist()  # 테이블이 없으면 자동 생성
     
     def get_page_info(self, pdf_filename: str, page_number: int) -> Optional[Dict[str, Any]]:
         """
@@ -241,22 +244,26 @@ class DBManifestManager:
         """
         from modules.utils.hash_utils import get_page_key
         
-        with self.db.get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT pdf_filename, page_number
-                FROM rag_learning_status
-            """)
-            
-            page_keys = set()
-            for row in cursor.fetchall():
-                pdf_filename = row[0]
-                page_number = row[1]
-                pdf_name = pdf_filename.replace('.pdf', '')  # 확장자 제거
-                page_key = get_page_key(pdf_name, page_number)
-                page_keys.add(page_key)
-            
-            return page_keys
+        try:
+            with self.db.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT pdf_filename, page_number
+                    FROM rag_learning_status
+                """)
+                
+                page_keys = set()
+                for row in cursor.fetchall():
+                    pdf_filename = row[0]
+                    page_number = row[1]
+                    pdf_name = pdf_filename.replace('.pdf', '')  # 확장자 제거
+                    page_key = get_page_key(pdf_name, page_number)
+                    page_keys.add(page_key)
+                
+                return page_keys
+        except psycopg2.errors.UndefinedTable:
+            # 테이블이 없으면 빈 집합 반환 (테이블은 _ensure_tables_exist에서 생성됨)
+            return set()
     
     def get_staged_page_keys(self) -> Set[str]:
         """
@@ -311,6 +318,56 @@ class DBManifestManager:
                 page_keys.add(page_key)
             
             return page_keys
+    
+    def _ensure_tables_exist(self):
+        """필요한 테이블이 존재하는지 확인하고 없으면 생성"""
+        try:
+            with self.db.get_connection() as conn:
+                cursor = conn.cursor()
+                # 테이블 존재 여부 확인
+                cursor.execute("""
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_name = 'rag_learning_status'
+                    )
+                """)
+                table_exists = cursor.fetchone()[0]
+                
+                if not table_exists:
+                    print("📋 RAG 학습 상태 테이블이 없습니다. 생성 중...")
+                    # rag_learning_status 테이블 생성
+                    cursor.execute("""
+                        CREATE TABLE rag_learning_status (
+                            learning_id SERIAL PRIMARY KEY,
+                            pdf_filename VARCHAR(500) NOT NULL,
+                            page_number INTEGER NOT NULL,
+                            status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                            page_hash VARCHAR(64),
+                            fingerprint_mtime REAL,
+                            fingerprint_size INTEGER,
+                            shard_id VARCHAR(255),
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            UNIQUE(pdf_filename, page_number)
+                        )
+                    """)
+                    # 인덱스 생성
+                    cursor.execute("""
+                        CREATE INDEX idx_rag_learning_status_pdf_page 
+                        ON rag_learning_status(pdf_filename, page_number)
+                    """)
+                    cursor.execute("""
+                        CREATE INDEX idx_rag_learning_status_status 
+                        ON rag_learning_status(status)
+                    """)
+                    cursor.execute("""
+                        CREATE INDEX idx_rag_learning_status_hash 
+                        ON rag_learning_status(page_hash)
+                    """)
+                    print("✅ RAG 학습 상태 테이블 생성 완료")
+        except psycopg2.Error as e:
+            print(f"⚠️ 테이블 생성 중 오류 발생: {e}")
+            # 오류가 발생해도 계속 진행 (테이블이 이미 존재할 수 있음)
 
 
 

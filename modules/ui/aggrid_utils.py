@@ -306,6 +306,8 @@ class AgGridUtils:
                     try:
                         from database.registry import get_db
                         import os
+                        from pathlib import Path
+                        from modules.utils.config import get_project_root
 
                         db_manager = get_db()
 
@@ -319,6 +321,44 @@ class AgGridUtils:
                         )
 
                         if success:
+                            # answer_json 파일도 업데이트 (검증 화면이 최신 데이터를 읽을 수 있도록)
+                            try:
+                                project_root = get_project_root()
+                                img_dir = project_root / "img"
+                                
+                                # PDF 이름으로 폴더 찾기
+                                pdf_folders = list(img_dir.glob(f"*/{pdf_name}"))
+                                if not pdf_folders:
+                                    # PDF 이름이 폴더명에 포함된 경우
+                                    pdf_folders = [d for d in img_dir.iterdir() if d.is_dir() and pdf_name in d.name]
+                                
+                                if pdf_folders:
+                                    pdf_img_dir = pdf_folders[0]
+                                    answer_json_path = pdf_img_dir / f"Page{page_num}_answer.json"
+                                    
+                                    # 기존 answer_json 파일이 있으면 items만 업데이트, 없으면 새로 생성
+                                    if answer_json_path.exists():
+                                        with open(answer_json_path, "r", encoding="utf-8") as f:
+                                            answer_json = json.load(f)
+                                        answer_json["items"] = updated_items
+                                    else:
+                                        # 새로 생성
+                                        answer_json = {
+                                            "page_role": "detail",
+                                            "items": updated_items
+                                        }
+                                    
+                                    # 파일 저장
+                                    os.makedirs(os.path.dirname(answer_json_path), exist_ok=True)
+                                    with open(answer_json_path, "w", encoding="utf-8") as f:
+                                        json.dump(answer_json, f, ensure_ascii=False, indent=2)
+                                    
+                                    # session_state는 위젯이 생성된 후 수정할 수 없으므로,
+                                    # 검증 섹션에서 파일을 우선적으로 읽도록 변경됨
+                            except Exception as json_error:
+                                # answer_json 파일 업데이트 실패해도 DB 저장은 성공했으므로 경고만 표시
+                                print(f"⚠️ answer_json 파일 업데이트 실패 (DB 저장은 성공): {json_error}")
+
                             st.success("保存完了！")
                             # 탭 상태 유지
                             if "active_tab" not in st.session_state:

@@ -215,7 +215,7 @@ def validate_form_type02(
                 )
                 
                 if not comparison_df.empty:
-                    st.dataframe(comparison_df, use_container_width=True, hide_index=True)
+                    st.dataframe(comparison_df, width='stretch', hide_index=True)
                     
                     # 총 금액 합산 및 비교
                     st.divider()
@@ -258,7 +258,7 @@ def validate_form_type02(
                     }]
 
                     total_comparison_df = pd.DataFrame(total_comparison_data)
-                    st.dataframe(total_comparison_df, use_container_width=True, hide_index=True)
+                    st.dataframe(total_comparison_df, width='stretch', hide_index=True)
                 else:
                     st.info("請求No別の比較データがありません。")
             else:

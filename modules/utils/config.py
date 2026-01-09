@@ -50,10 +50,38 @@ class RAGConfig:
     """
     # PDF 변환 설정
     dpi: int = 300  # PDF를 이미지로 변환할 때의 DPI
-    text_extraction_method: str = "excel"  # 텍스트 추출 방법: "pymupdf" 또는 "excel"
+    text_extraction_method: str = "excel"  # 텍스트 추출 방법: "pymupdf" 또는 "excel" (양식지별 매핑이 없을 때 사용)
+    
+    # 양식지별 텍스트 추출 방법 매핑 (양식지 번호: 변환 방식)
+    form_extraction_method: dict = None  # None이면 기본값 사용
+    
+    # 양식지별 색상 그룹핑 기준 컬럼 매핑 (양식지 번호: 컬럼명)
+    form_color_grouping_column: dict = None  # None이면 기본값 사용
+    
+    def __post_init__(self):
+        """기본 양식지별 매핑 설정"""
+        if self.form_extraction_method is None:
+            # 기본값: 1, 2, 5 -> excel, 3 -> upstage, 4 -> pymupdf
+            self.form_extraction_method = {
+                "01": "excel",
+                "02": "excel",
+                "03": "upstage",
+                "04": "upstage",
+                "05": "excel"
+            }
+        
+        if self.form_color_grouping_column is None:
+            # 양식지별 색상 그룹핑 기준 컬럼 설정
+            self.form_color_grouping_column = {
+                "01": "請求伝票番号",
+                "02": "JANコード",
+                "03": "請求No",
+                "04": "管理No",
+                "05": "照会番号"
+            }
     
     # RAG 검색 설정
-    top_k: int = 3 # 벡터 DB에서 검색할 예제 수
+    top_k: int = 5 # 벡터 DB에서 검색할 예제 수
     similarity_threshold: float = 0.7  # 최소 유사도 임계값 (0.0 ~ 1.0)
     search_method: str = "hybrid"  # 검색 방식: "vector", "hybrid"
     hybrid_alpha: float = 0.5  # 하이브리드 검색 가중치 (0.0~1.0, 0.5 = 벡터와 BM25 동일 가중치)
@@ -84,4 +112,40 @@ def get_rag_config() -> RAGConfig:
         RAGConfig 인스턴스
     """
     return rag_config
+
+
+def get_extraction_method_for_form(form_number: str = None) -> str:
+    """
+    양식지 번호에 따라 텍스트 추출 방법을 반환합니다.
+    
+    Args:
+        form_number: 양식지 번호 (예: "01", "02", "03", "04", "05"). None이면 기본값 사용
+    
+    Returns:
+        텍스트 추출 방법 ("pymupdf", "excel", 또는 "upstage")
+    """
+    config = get_rag_config()
+    
+    if form_number and config.form_extraction_method:
+        return config.form_extraction_method.get(form_number, config.text_extraction_method)
+    
+    return config.text_extraction_method
+
+
+def get_color_grouping_column_for_form(form_number: str = None) -> str:
+    """
+    양식지 번호에 따라 색상 그룹핑 기준 컬럼을 반환합니다.
+    
+    Args:
+        form_number: 양식지 번호 (예: "01", "02", "03", "04", "05"). None이면 None 반환
+    
+    Returns:
+        색상 그룹핑 기준 컬럼명 (없으면 None)
+    """
+    config = get_rag_config()
+    
+    if form_number and config.form_color_grouping_column:
+        return config.form_color_grouping_column.get(form_number)
+    
+    return None
 

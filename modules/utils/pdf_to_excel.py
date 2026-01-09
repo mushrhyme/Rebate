@@ -7,8 +7,23 @@ DataFrame으로 변환하여 LLM에 전달할 수 있습니다.
 
 from pathlib import Path
 from typing import Optional, List, Dict, Any
+import sys
 import pandas as pd
 import fitz  # PyMuPDF
+
+# xlrd가 Python 2 문법을 사용하여 Python 3에서 오류 발생 방지
+# pandas가 xlrd를 import하지 않도록 sys.modules에서 제거
+def _prevent_xlrd_import():
+    """xlrd import를 방지하여 Python 2 문법 오류를 예방"""
+    if 'xlrd' in sys.modules:
+        del sys.modules['xlrd']
+    # pandas.io.excel 모듈에서도 xlrd 참조 제거 시도
+    try:
+        import pandas.io.excel._xlrd
+        if hasattr(pandas.io.excel._xlrd, 'xlrd'):
+            delattr(pandas.io.excel._xlrd, 'xlrd')
+    except (ImportError, AttributeError):
+        pass
 
 
 class PdfToExcelConverter:
@@ -300,7 +315,33 @@ class PdfToExcelConverter:
                     return ""
             
             # 2단계: 생성된 엑셀 파일을 읽기
-            excel_df = pd.read_excel(created_excel_path, sheet_name=None, engine='openpyxl')  # 모든 시트 읽기
+            # xlrd import 방지 (Python 2 문법 오류 예방)
+            _prevent_xlrd_import()
+            try:
+                excel_df = pd.read_excel(created_excel_path, sheet_name=None, engine='openpyxl')  # 모든 시트 읽기
+            except (SyntaxError, ImportError) as e:
+                # xlrd 관련 오류 발생 시 openpyxl을 직접 사용
+                if 'xlrd' in str(e).lower() or 'print' in str(e).lower():
+                    print(f"⚠️ xlrd 오류 감지, openpyxl 직접 사용: {e}")
+                    from openpyxl import load_workbook
+                    wb = load_workbook(created_excel_path, data_only=True)
+                    excel_df = {}
+                    for sheet_name in wb.sheetnames:
+                        sheet = wb[sheet_name]
+                        data = []
+                        for row in sheet.iter_rows(values_only=True):
+                            if any(cell is not None for cell in row):  # 빈 행 제외
+                                data.append(row)
+                        if data:
+                            # 첫 번째 행을 헤더로 사용
+                            if len(data) > 1:
+                                df = pd.DataFrame(data[1:], columns=data[0])
+                            else:
+                                df = pd.DataFrame(data)
+                            excel_df[sheet_name] = df
+                    wb.close()
+                else:
+                    raise
             
             # 3단계: 읽은 DataFrame을 텍스트로 변환
             text_parts = []

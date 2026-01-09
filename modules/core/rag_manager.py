@@ -42,7 +42,9 @@ class RAGManager:
         # DB 연결 (use_db=True일 때만)
         if self.use_db:
             from database.registry import get_db
+            import psycopg2
             self.db = get_db()
+            self._ensure_vector_index_table_exists()  # 테이블이 없으면 자동 생성
         else:
             # 로컬 파일 모드: 디렉토리 생성 및 권한 설정
             os.makedirs(persist_directory, exist_ok=True, mode=0o755)
@@ -140,6 +142,46 @@ class RAGManager:
             print(f"⚠️ index_to_id 매핑 불완전, 재구축 중... ({len(self.index_to_id)}/{len(self.id_to_index)})")
             self.index_to_id = {idx: doc_id for doc_id, idx in self.id_to_index.items()}
             self._save_index()  # 재구축된 매핑 저장
+    
+    def _ensure_vector_index_table_exists(self):
+        """rag_vector_index 테이블이 존재하는지 확인하고 없으면 생성"""
+        try:
+            with self.db.get_connection() as conn:
+                cursor = conn.cursor()
+                # 테이블 존재 여부 확인
+                cursor.execute("""
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_name = 'rag_vector_index'
+                    )
+                """)
+                table_exists = cursor.fetchone()[0]
+                
+                if not table_exists:
+                    print("📋 RAG 벡터 인덱스 테이블이 없습니다. 생성 중...")
+                    # rag_vector_index 테이블 생성
+                    cursor.execute("""
+                        CREATE TABLE rag_vector_index (
+                            index_id SERIAL PRIMARY KEY,
+                            index_name VARCHAR(100) NOT NULL DEFAULT 'base',
+                            index_data BYTEA NOT NULL,
+                            metadata_json JSONB NOT NULL,
+                            index_size BIGINT,
+                            vector_count INTEGER DEFAULT 0,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            UNIQUE(index_name)
+                        )
+                    """)
+                    # 인덱스 생성
+                    cursor.execute("""
+                        CREATE INDEX idx_rag_vector_index_name 
+                        ON rag_vector_index(index_name)
+                    """)
+                    print("✅ RAG 벡터 인덱스 테이블 생성 완료")
+        except Exception as e:
+            print(f"⚠️ 테이블 생성 중 오류 발생: {e}")
+            # 오류가 발생해도 계속 진행 (테이블이 이미 존재할 수 있음)
     
     def _load_index_from_db(self, exclude_shard_name: Optional[str] = None) -> Tuple[Optional[Any], Dict[str, Any], Dict[str, int], Dict[int, str]]:
         """
@@ -869,7 +911,9 @@ class RAGManager:
             # 하이브리드 점수
             hybrid_score = hybrid_alpha * vector_similarity + (1 - hybrid_alpha) * normalized_bm25
             
-            if hybrid_score < similarity_threshold:
+            # 벡터 유사도가 threshold를 통과하면 하이브리드 점수와 관계없이 포함
+            # (BM25 점수가 낮아도 벡터 유사도가 높으면 유지)
+            if hybrid_score < similarity_threshold and vector_similarity < similarity_threshold:
                 continue
             
             result["bm25_score"] = normalized_bm25

@@ -415,7 +415,7 @@ def render_reference_document(pdf_name: str, page_num: int):
     else:
         # AgGrid가 없으면 일반 테이블로 표시
         df = pd.DataFrame(items)
-        st.dataframe(df, use_container_width=True)
+        st.dataframe(df, width='stretch')
 
 
 def render_editable_table(pdf_name: str, page_num: int):

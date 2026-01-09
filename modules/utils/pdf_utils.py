@@ -37,12 +37,28 @@ class PdfTextExtractor:
         Returns:
             추출된 텍스트 (없으면 빈 문자열)
         """
-        # 설정에서 추출 방법 가져오기
+        # 설정에서 추출 방법 가져오기 (양식지 기반)
         method = self.method
         if method is None:
-            from modules.utils.config import get_rag_config
-            config = get_rag_config()
-            method = getattr(config, 'text_extraction_method', 'pymupdf')
+            from modules.utils.config import get_extraction_method_for_form
+            
+            # 양식지 번호 추출
+            form_number = extract_form_number_from_path(pdf_path)
+            
+            # 양식지에 따라 변환 방식 결정
+            method = get_extraction_method_for_form(form_number)
+        
+        # Upstage OCR 방법 사용
+        if method == "upstage":
+            try:
+                from modules.utils.upstage_ocr import extract_text_from_pdf_page_with_upstage
+                text = extract_text_from_pdf_page_with_upstage(pdf_path, page_num)
+                if text:
+                    return text
+                # Upstage OCR 실패 시 PyMuPDF로 폴백
+                print(f"⚠️ Upstage OCR 실패, PyMuPDF로 폴백 ({pdf_path}, 페이지 {page_num})")
+            except Exception as e:
+                print(f"⚠️ Upstage OCR 오류, PyMuPDF로 폴백 ({pdf_path}, 페이지 {page_num}): {e}")
         
         # 엑셀 변환 방법 사용
         if method == "excel":
@@ -90,10 +106,42 @@ class PdfTextExtractor:
         self.close_all()
 
 
+def extract_form_number_from_path(pdf_path: Path) -> Optional[str]:
+    """
+    PDF 경로에서 양식지 번호를 추출합니다.
+    
+    Args:
+        pdf_path: PDF 파일 경로
+    
+    Returns:
+        양식지 번호 (예: "01", "02") 또는 None
+    """
+    if isinstance(pdf_path, str):
+        pdf_path = Path(pdf_path)
+    
+    # 경로를 정규화
+    pdf_path = pdf_path.resolve()
+    
+    # img/XX/... 패턴 찾기
+    parts = pdf_path.parts
+    try:
+        img_idx = parts.index("img")
+        if img_idx + 1 < len(parts):
+            form_folder = parts[img_idx + 1]
+            # 숫자 2자리 형식인지 확인 (01, 02, 03 등)
+            if form_folder.isdigit() and len(form_folder) == 2:
+                return form_folder
+    except ValueError:
+        pass
+    
+    return None
+
+
 def extract_text_from_pdf_page(
     pdf_path: Path,
     page_num: int,
-    method: Optional[str] = None  # None이면 설정에서 가져옴
+    method: Optional[str] = None,  # None이면 양식지에 따라 자동 결정
+    form_number: Optional[str] = None  # 양식지 번호 (None이면 경로에서 추출)
 ) -> str:
     """
     PDF에서 특정 페이지의 텍스트를 추출합니다.
@@ -101,7 +149,8 @@ def extract_text_from_pdf_page(
     Args:
         pdf_path: PDF 파일 경로 (Path 객체 또는 문자열)
         page_num: 페이지 번호 (1부터 시작)
-        method: 텍스트 추출 방법 ("pymupdf" 또는 "excel"). None이면 설정에서 가져옴
+        method: 텍스트 추출 방법 ("pymupdf" 또는 "excel"). None이면 양식지에 따라 자동 결정
+        form_number: 양식지 번호 (예: "01", "02"). None이면 경로에서 자동 추출
         
     Returns:
         추출된 텍스트 (없으면 빈 문자열)
@@ -120,11 +169,30 @@ def extract_text_from_pdf_page(
     if isinstance(pdf_path, str):
         pdf_path = Path(pdf_path)
     
-    # 설정에서 추출 방법 가져오기
+    # 설정에서 추출 방법 가져오기 (양식지 기반)
     if method is None:
-        from modules.utils.config import get_rag_config
-        config = get_rag_config()
-        method = getattr(config, 'text_extraction_method', 'pymupdf')
+        from modules.utils.config import get_extraction_method_for_form
+        
+        # 양식지 번호 추출
+        if form_number is None:
+            form_number = extract_form_number_from_path(pdf_path)
+        
+        # 양식지에 따라 변환 방식 결정
+        method = get_extraction_method_for_form(form_number)
+    
+    # Upstage OCR 방법 사용
+    if method == "upstage":
+        try:
+            from modules.utils.upstage_ocr import extract_text_from_pdf_page_with_upstage
+            text = extract_text_from_pdf_page_with_upstage(pdf_path, page_num)
+            if text:
+                return text
+            # Upstage OCR 실패 시 PyMuPDF로 폴백
+            print(f"⚠️ Upstage OCR 실패, PyMuPDF로 폴백 ({pdf_path}, 페이지 {page_num})")
+        except Exception as e:
+            print(f"⚠️ Upstage OCR 오류, PyMuPDF로 폴백 ({pdf_path}, 페이지 {page_num}): {e}")
+            import traceback
+            traceback.print_exc()
     
     # 엑셀 변환 방법 사용
     if method == "excel":

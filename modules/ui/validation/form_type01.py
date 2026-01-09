@@ -90,13 +90,13 @@ def render_customer_comparison(
         if detail_pages and summary_pages:
             st.caption("ℹ️ タイプの区分なく、得意先基準のみで合計した金額です。")
             
-            # 販促金請求 검증
-            st.write("**販促金請求:**")
+            # 販促_通常 검증
+            st.write("**販促_通常:**")
             detail_promo_by_customer = aggregate_detail_by_customer(
-                detail_pages, tax_rate=None, item_type="販促金請求"
+                detail_pages, tax_rate=None, item_type="販促_通常"
             )
             summary_promo_by_customer = extract_summary_by_customer(
-                summary_pages, tax_rate=None, item_type="販促金請求"
+                summary_pages, tax_rate=None, item_type="販促_通常"
             )
             
             comparison_df_promo = create_customer_comparison_table(
@@ -104,28 +104,28 @@ def render_customer_comparison(
             )
             
             if not comparison_df_promo.empty:
-                st.dataframe(comparison_df_promo, use_container_width=True, hide_index=True)
+                st.dataframe(comparison_df_promo, width='stretch', hide_index=True)
             else:
-                st.info("販促金請求の比較データがありません。")
+                st.info("販促_通常の比較データがありません。")
             
-            # 役務提供 검증
+            # その他 검증
             detail_service_by_customer = aggregate_detail_by_customer(
-                detail_pages, tax_rate=None, item_type="役務提供"
+                detail_pages, tax_rate=None, item_type="その他"
             )
             summary_service_by_customer = extract_summary_by_customer(
-                summary_pages, tax_rate=None, item_type="役務提供"
+                summary_pages, tax_rate=None, item_type="その他"
             )
             
             if detail_service_by_customer or summary_service_by_customer:
-                st.write("**役務提供:**")
+                st.write("**その他:**")
                 comparison_df_service = create_customer_comparison_table(
                     detail_service_by_customer, summary_service_by_customer
                 )
                 
                 if not comparison_df_service.empty:
-                    st.dataframe(comparison_df_service, use_container_width=True, hide_index=True)
+                    st.dataframe(comparison_df_service, width='stretch', hide_index=True)
                 else:
-                    st.info("役務提供の比較データがありません。")
+                    st.info("その他の比較データがありません。")
         else:
             if not detail_pages:
                 st.info("ℹ️ detailページがないため検証できません。")
@@ -141,8 +141,8 @@ def render_tax_rate_comparison(
     with st.expander("💰 消費税率別総額比較 (cover比較)", expanded=False):
         if detail_pages and cover_pages:
             cover_totals = extract_cover_totals(cover_pages)
-            promo_totals = cover_totals.get("販促金請求", {})
-            service_totals = cover_totals.get("役務提供", {})
+            promo_totals = cover_totals.get("販促_通常", {})
+            service_totals = cover_totals.get("その他", {})
             
             # detail의 세금 제외 금액 계산
             detail_tax_breakdown = calculate_detail_tax_excluded_and_tax(detail_pages)
@@ -151,7 +151,7 @@ def render_tax_rate_comparison(
             detail_8_tax_excluded = detail_tax_breakdown["8%"].get("税抜", 0)
             detail_10_tax_excluded = detail_tax_breakdown["10%"].get("税抜", 0)
             
-            # detail의 役務提供 금액 계산
+            # detail의 その他 금액 계산
             detail_service_breakdown = calculate_detail_service_tax_excluded_and_tax(detail_pages)
             detail_service_tax_excluded = detail_service_breakdown.get("税抜", 0)
             detail_service_tax = detail_service_breakdown.get("消費税", 0)
@@ -166,13 +166,13 @@ def render_tax_rate_comparison(
             cover_promo_10_tax = promo_totals.get("10%", {}).get("消費税", 0)
             cover_promo_10_total = cover_promo_10_tax_excluded + cover_promo_10_tax
             
-            # cover 役務提供 정보
+            # cover その他 정보
             cover_service_tax_excluded = service_totals.get("税抜金額", 0)
             cover_service_tax = service_totals.get("消費税", 0)
             cover_service_total = service_totals.get("合計", 0)
             
             # 판촉금 검증: 8% 대상
-            st.write("**販促金請求 - 8% 対象金額:**")
+            st.write("**販促_通常 - 8% 対象金額:**")
             detail_8_tax_calculated = round(detail_8_tax_excluded * 0.08)
             detail_8_total_calculated = detail_8_tax_excluded + detail_8_tax_calculated
             
@@ -183,14 +183,14 @@ def render_tax_rate_comparison(
             ]
             
             comparison_df_8 = create_tax_comparison_dataframe(comparison_items_8)
-            st.dataframe(comparison_df_8, use_container_width=True, hide_index=True)
+            st.dataframe(comparison_df_8, width='stretch', hide_index=True)
             
             # 판촉금 검증: 10% 대상
             if detail_10_tax_excluded > 0 or cover_promo_10_tax_excluded > 0:
                 detail_10_tax_calculated = round(detail_10_tax_excluded * 0.10)
                 detail_10_total_calculated = detail_10_tax_excluded + detail_10_tax_calculated
                 
-                st.write("**販促金請求 - 10% 対象金額:**")
+                st.write("**販促_通常 - 10% 対象金額:**")
                 comparison_items_10 = [
                     ("税抜", detail_10_tax_excluded, cover_promo_10_tax_excluded),
                     ("消費税", detail_10_tax_calculated, cover_promo_10_tax),
@@ -198,12 +198,12 @@ def render_tax_rate_comparison(
                 ]
                 
                 comparison_df_10 = create_tax_comparison_dataframe(comparison_items_10)
-                st.dataframe(comparison_df_10, use_container_width=True, hide_index=True)
+                st.dataframe(comparison_df_10, width='stretch', hide_index=True)
             
-            # 役務提供 검증
+            # その他 검증
             if detail_service_tax_excluded > 0 or cover_service_tax_excluded > 0:
-                st.write("**役務提供:**")
-                detail_service_tax_calculated = round(detail_service_tax_excluded * 0.10)  # 役務提供은 일반적으로 10% 세율
+                st.write("**その他:**")
+                detail_service_tax_calculated = round(detail_service_tax_excluded * 0.10)  # その他은 일반적으로 10% 세율
                 detail_service_total_calculated = detail_service_tax_excluded + detail_service_tax_calculated
                 
                 comparison_items_service = [
@@ -213,7 +213,7 @@ def render_tax_rate_comparison(
                 ]
                 
                 comparison_df_service = create_tax_comparison_dataframe(comparison_items_service)
-                st.dataframe(comparison_df_service, use_container_width=True, hide_index=True)
+                st.dataframe(comparison_df_service, width='stretch', hide_index=True)
         else:
             if not detail_pages:
                 st.info("ℹ️ detailページがないため検証できません。")

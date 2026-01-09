@@ -227,7 +227,7 @@ def render_review_tab():
             key="pdf_selector"
         )
     with col2:
-        if st.button("📚 学習リクエスト", type="primary", use_container_width=True):
+        if st.button("📚 学習リクエスト", type="primary", width='stretch'):
             progress_placeholder = st.empty()
             with progress_placeholder.container():
                 st.info("学習データを保存中...", icon="⏳")

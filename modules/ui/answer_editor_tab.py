@@ -1,5 +1,5 @@
 """
-정답지 편집 탭 - PDF 텍스트 추출 (PyMuPDF 또는 엑셀 변환)
+정답지 편집 탭 - PDF 텍스트 추출
 """
 
 import os
@@ -24,7 +24,7 @@ from src.rag_extractor import extract_json_with_rag
 from modules.ui.aggrid_utils import AgGridUtils
 import pandas as pd
 from modules.core.rag_manager import get_rag_manager
-from modules.utils.config import get_project_root, get_rag_config
+from modules.utils.config import get_project_root, get_rag_config, get_color_grouping_column_for_form
 from modules.utils.session_utils import ensure_session_state_defaults
 from modules.utils.pdf_utils import find_pdf_path, extract_text_from_pdf_page
 
@@ -92,7 +92,7 @@ def filter_answer_json(answer_json: dict) -> dict:
 
 def ensure_type_in_items(answer_json: dict) -> dict:
     """
-    detail 페이지와 summary 페이지의 items에 'タイプ' 키가 없으면 기본값 '販促金請求' 추가
+    detail 페이지와 summary 페이지의 items에 'タイプ' 키가 없으면 기본값 '販促_通常' 추가
     
     Args:
         answer_json: JSON 딕셔너리
@@ -105,7 +105,7 @@ def ensure_type_in_items(answer_json: dict) -> dict:
         items = answer_json.get("items", [])
         for item in items:
             if isinstance(item, dict) and "タイプ" not in item:
-                item["タイプ"] = "販促金請求"
+                item["タイプ"] = "販促_通常"
     return answer_json
 
 
@@ -144,6 +144,156 @@ def get_prompt_file_path(version: str = "v1", use_example: bool = True) -> Path:
         return prompts_dir / f"rag_zero_shot_{version}.txt"
 
 
+def get_last_management_id_customer_and_summary_from_previous_page(pdf_img_dir: Path, current_page: int) -> tuple:
+    """
+    직전 페이지의 마지막 관리번호, 거래처명, 摘要를 읽어옴
+    
+    Args:
+        pdf_img_dir: PDF 이미지 디렉토리 경로
+        current_page: 현재 페이지 번호 (1부터 시작)
+        
+    Returns:
+        (관리번호, 거래처명, 摘要) 튜플 (없으면 (None, None, None))
+    """
+    if current_page <= 1:
+        return (None, None, None)  # 첫 페이지는 직전 페이지가 없음
+    
+    prev_page = current_page - 1
+    prev_answer_json_path = get_answer_json_path(pdf_img_dir, prev_page)
+    
+    if not os.path.exists(prev_answer_json_path):
+        return (None, None, None)  # 직전 페이지 파일이 없음
+    
+    try:
+        with open(prev_answer_json_path, "r", encoding="utf-8") as f:
+            prev_json = json.load(f)
+        
+        items = prev_json.get("items", [])
+        if not items:
+            return (None, None, None)  # items가 없음
+        
+        # 가능한 관리번호 필드명 목록
+        mgmt_field_names = [
+            "management_id",      # 영어 필드명
+            "管理番号",            # 일본어 필드명
+            "請求No",              # 실제 사용 중인 필드명
+            "請求番号",            # 다른 형태
+            "契約No",              # 계약번호
+            "契約番号",            # 계약번호 (다른 형태)
+            "伝票番号"             # 전표번호
+        ]
+        
+        # 가능한 거래처명 필드명 목록
+        customer_field_names = [
+            "customer",           # 영어 필드명
+            "得意先名",            # 일본어 필드명 (실제 사용 중)
+            "取引先",              # 다른 형태
+            "取引先名",            # 다른 형태
+            "得意先"               # 다른 형태
+        ]
+        
+        # 가능한 摘要 필드명 목록
+        summary_field_names = [
+            "摘要",                # 일본어 필드명 (실제 사용 중)
+            "summary",             # 영어 필드명
+            "備考",                # 비고
+            "メモ",                # 메모
+            "remarks"              # 영어 비고
+        ]
+        
+        # 마지막 item부터 역순으로 관리번호, 거래처명, 摘要 찾기
+        last_mgmt_id = None
+        last_customer = None
+        last_summary = None
+        
+        for item in reversed(items):
+            # 관리번호 찾기
+            if not last_mgmt_id:
+                for field_name in mgmt_field_names:
+                    mgmt_id = item.get(field_name)
+                    if mgmt_id and str(mgmt_id).strip() and str(mgmt_id).strip().lower() != "null":
+                        last_mgmt_id = str(mgmt_id).strip()
+                        break
+            
+            # 거래처명 찾기
+            if not last_customer:
+                for field_name in customer_field_names:
+                    customer = item.get(field_name)
+                    if customer and str(customer).strip() and str(customer).strip().lower() != "null":
+                        last_customer = str(customer).strip()
+                        break
+            
+            # 摘要 찾기
+            if not last_summary:
+                for field_name in summary_field_names:
+                    summary = item.get(field_name)
+                    if summary and str(summary).strip() and str(summary).strip().lower() != "null":
+                        last_summary = str(summary).strip()
+                        break
+            
+            # 모두 찾았으면 중단
+            if last_mgmt_id and last_customer and last_summary:
+                break
+        
+        return (last_mgmt_id, last_customer, last_summary)
+    except Exception as e:
+        # 디버깅을 위해 예외 정보 출력 (선택적)
+        # print(f"Error reading previous page: {e}")
+        return (None, None, None)  # 파일 읽기 실패
+
+
+def get_first_tax_rate_from_next_page(pdf_img_dir: Path, current_page: int, total_pages: int) -> str:
+    """
+    다음 페이지의 첫 번째 세액(税額)을 읽어옴
+    
+    Args:
+        pdf_img_dir: PDF 이미지 디렉토리 경로
+        current_page: 현재 페이지 번호 (1부터 시작)
+        total_pages: 전체 페이지 수
+        
+    Returns:
+        다음 페이지의 첫 번째 세액 (없으면 None)
+    """
+    if current_page >= total_pages:
+        return None  # 마지막 페이지는 다음 페이지가 없음
+    
+    next_page = current_page + 1
+    next_answer_json_path = get_answer_json_path(pdf_img_dir, next_page)
+    
+    if not os.path.exists(next_answer_json_path):
+        return None  # 다음 페이지 파일이 없음
+    
+    try:
+        with open(next_answer_json_path, "r", encoding="utf-8") as f:
+            next_json = json.load(f)
+        
+        items = next_json.get("items", [])
+        if not items:
+            return None  # items가 없음
+        
+        # 가능한 세액 필드명 목록
+        tax_field_names = [
+            "税額",                # 일본어 필드명 (실제 사용 중)
+            "消費税率",            # 다른 형태
+            "税率",                # 다른 형태
+            "tax_rate",            # 영어 필드명
+            "tax"                  # 영어 필드명 (간단한 형태)
+        ]
+        
+        # 첫 번째 item부터 순서대로 세액 찾기
+        for item in items:
+            for field_name in tax_field_names:
+                tax_rate = item.get(field_name)
+                if tax_rate and str(tax_rate).strip() and str(tax_rate).strip().lower() != "null":
+                    return str(tax_rate).strip()
+        
+        return None  # 세액을 찾지 못함
+    except Exception as e:
+        # 디버깅을 위해 예외 정보 출력 (선택적)
+        # print(f"Error reading next page: {e}")
+        return None  # 파일 읽기 실패
+
+
 def parse_amount(amount_str):
     """
     金額 문자열을 정수로 변환 (예: "324,000" -> 324000)
@@ -172,7 +322,7 @@ def aggregate_detail_by_customer(detail_pages, tax_rate=None, item_type=None):
     Args:
         detail_pages: detail 페이지 JSON 딕셔너리 리스트
         tax_rate: 필터링할 세율 (8 또는 10, None이면 전체)
-        item_type: 필터링할 타입 ("販促金請求" 또는 "役務提供", None이면 전체)
+        item_type: 필터링할 타입 ("販促_通常" 또는 "その他", None이면 전체)
         
     Returns:
         딕셔너리: {("得意先名", "得意先コード"): 총액, ...}
@@ -244,7 +394,7 @@ def aggregate_detail_by_tax_rate(detail_pages):
 
 def calculate_detail_tax_excluded_and_tax(detail_pages):
     """
-    detail 페이지들의 販促金請求 타입 항목의 金額을 세금 제외 금액으로 가정하고, 세금 제외 금액과 세금을 계산
+    detail 페이지들의 販促_通常 타입 항목의 金額을 세금 제외 금액으로 가정하고, 세금 제외 금액과 세금을 계산
     
     Args:
         detail_pages: detail 페이지 JSON 딕셔너리 리스트
@@ -257,9 +407,9 @@ def calculate_detail_tax_excluded_and_tax(detail_pages):
     for page_data in detail_pages:
         items = page_data.get("items", [])
         for item in items:
-            # タイプ이 役務提供이면 건너뛰기 (販促金請求만 처리)
+            # タイプ이 その他이면 건너뛰기 (販促_通常만 처리)
             item_type = item.get("タイプ") or item.get("type")
-            if item_type == "役務提供":
+            if item_type == "その他":
                 continue
             
             tax_rate_str = item.get("消費税率") or item.get("税率")
@@ -287,8 +437,8 @@ def calculate_detail_tax_excluded_and_tax(detail_pages):
 
 def calculate_detail_service_tax_excluded_and_tax(detail_pages):
     """
-    detail 페이지들의 役務提供 타입 항목의 金額을 세금 제외 금액으로 가정하고, 세금 제외 금액과 세금을 계산
-    役務提供은 일반적으로 10% 세율 사용
+    detail 페이지들의 その他 타입 항목의 金額을 세금 제외 금액으로 가정하고, 세금 제외 금액과 세금을 계산
+    その他은 일반적으로 10% 세율 사용
     
     Args:
         detail_pages: detail 페이지 JSON 딕셔너리 리스트
@@ -301,9 +451,9 @@ def calculate_detail_service_tax_excluded_and_tax(detail_pages):
     for page_data in detail_pages:
         items = page_data.get("items", [])
         for item in items:
-            # タイプ이 役務提供인 항목만 처리
+            # タイプ이 その他인 항목만 처리
             item_type = item.get("タイプ") or item.get("type")
-            if item_type != "役務提供":
+            if item_type != "その他":
                 continue
             
             tax_rate_str = item.get("消費税率") or item.get("税率")
@@ -335,7 +485,7 @@ def extract_summary_by_customer(summary_pages, tax_rate=None, item_type=None):
     Args:
         summary_pages: summary 페이지 JSON 딕셔너리 리스트
         tax_rate: 필터링할 세율 (8 또는 10, None이면 전체)
-        item_type: 필터링할 타입 ("販促金請求" 또는 "役務提供", None이면 전체)
+        item_type: 필터링할 타입 ("販促_通常" 또는 "その他", None이면 전체)
         
     Returns:
         딕셔너리: {("得意先名", "得意先コード"): 총액, ...}
@@ -382,8 +532,8 @@ def extract_cover_totals(cover_pages):
         
     Returns:
         딕셔너리: {
-            "販促金請求": {"8%": {"税抜": 금액, "消費税": 금액}, "10%": {"税抜": 금액, "消費税": 금액}, "合計": 금액, "今回請求金額合計": 금액},
-            "役務提供": {"税抜金額": 금액, "消費税": 금액, "合計": 금액, "今回請求金額合計": 금액}
+            "販促_通常": {"8%": {"税抜": 금액, "消費税": 금액}, "10%": {"税抜": 금액, "消費税": 금액}, "合計": 금액, "今回請求金額合計": 금액},
+            "その他": {"税抜金額": 금액, "消費税": 금액, "合計": 금액, "今回請求金額合計": 금액}
         }
     """
     promo_totals = {"8%": {"税抜": 0, "消費税": 0}, "10%": {"税抜": 0, "消費税": 0}, "合計": 0, "今回請求金額合計": 0}
@@ -420,9 +570,9 @@ def extract_cover_totals(cover_pages):
                 if item.get("件名") == "合計" and tax_included:
                     promo_totals["合計"] = parse_amount(tax_included)
         
-        # totals.販促金請求 형식 확인
-        if "販促金請求" in totals_section:
-            promo_section = totals_section["販促金請求"]
+        # totals.販促_通常 형식 확인
+        if "販促_通常" in totals_section:
+            promo_section = totals_section["販促_通常"]
             if "当月請求額" in promo_section:
                 monthly = promo_section["当月請求額"]
                 if "8％対象金額" in monthly:
@@ -443,9 +593,9 @@ def extract_cover_totals(cover_pages):
             if "今回請求金額合計" in promo_section:
                 promo_totals["今回請求金額合計"] = parse_amount(promo_section["今回請求金額合計"])
         
-        # totals.役務提供 형식 확인 (용역비는 별도로 분리)
-        if "役務提供" in totals_section:
-            service_section = totals_section["役務提供"]
+        # totals.その他 형식 확인 (용역비는 별도로 분리)
+        if "その他" in totals_section:
+            service_section = totals_section["その他"]
             if "当月請求額" in service_section:
                 monthly = service_section["当月請求額"]
                 # 税抜金額 추출
@@ -462,8 +612,8 @@ def extract_cover_totals(cover_pages):
                 service_totals["今回請求金額合計"] = parse_amount(service_section["今回請求金額合計"])
     
     return {
-        "販促金請求": promo_totals,
-        "役務提供": service_totals
+        "販促_通常": promo_totals,
+        "その他": service_totals
     }
 
 
@@ -531,6 +681,86 @@ def create_management_color_style(mgmt_col, df):
     }}
     """
     return JsCode(get_row_style_js)
+
+
+def create_items_aggrid_options(df, grouping_col=None):
+    """
+    items 편집용 AgGrid 옵션 생성
+    
+    Args:
+        df: DataFrame (No 컬럼 포함)
+        grouping_col: 색상 그룹핑 기준 컬럼명 (None이면 그룹핑 안 함)
+        
+    Returns:
+        grid_options: AgGrid 옵션 딕셔너리
+    """
+    gb = GridOptionsBuilder.from_dataframe(df)
+    gb.configure_default_column(editable=True, resizable=True)
+    
+    # 컬럼별 고정 너비 설정 (컬럼 타입에 따라 적절한 너비 지정)
+    column_widths = {
+        'No': 60,
+        'タイプ': 120,
+        '管理番号': 120,
+        '請求No': 120,
+        '請求番号': 120,
+        '契約No': 120,
+        '契約番号': 120,
+        '伝票番号': 120,
+        '得意先名': 200,
+        '得意先コード': 120,
+        '商品名': 200,
+        '摘要': 200,
+        '金額': 120,
+        '消費税率': 100,
+        '税率': 100,
+        '税額': 100,
+        '数量': 100,
+        '単価': 100,
+    }
+    
+    # 각 컬럼 설정
+    for col in df.columns:
+        if col == 'No':
+            gb.configure_column(col, header_name=col, editable=False, width=60, pinned='left', resizable=False)
+        elif col == 'タイプ':
+            # 'タイプ' 컬럼은 selectbox로 설정
+            type_options = ["販促_通常", "販促_スポット", "その他"]
+            # DataFrame에 있는 고유값도 옵션에 추가
+            if col in df.columns:
+                existing_values = df[col].dropna().unique().tolist()
+                for val in existing_values:
+                    if val not in type_options:
+                        type_options.append(str(val))
+            # 고정 너비 설정
+            width = column_widths.get(col, 120)
+            gb.configure_column(
+                col,
+                header_name=col,
+                editable=True,
+                width=width,
+                resizable=False,
+                cellEditor='agSelectCellEditor',
+                cellEditorParams={'values': type_options}
+            )
+        else:
+            # 컬럼별 고정 너비 설정 (없으면 기본값 150)
+            width = column_widths.get(col, 150)
+            gb.configure_column(col, header_name=col, width=width, resizable=False)
+    
+    gb.configure_pagination(enabled=False)
+    
+    # 선택한 컬럼 기준으로 색상 지정
+    get_row_style_code = create_management_color_style(grouping_col, df)
+    grid_options = gb.build()
+    if get_row_style_code:
+        grid_options['getRowStyle'] = get_row_style_code
+    grid_options['pagination'] = False
+    
+    # 자동 크기 조정 비활성화 (고정 너비 유지)
+    grid_options['suppressSizeToFit'] = True  # sizeColumnsToFit 자동 호출 방지
+    
+    return grid_options
 
 
 def create_comparison_dataframe(openai_items, answer_items):
@@ -782,24 +1012,9 @@ def render_answer_editor_tab():
     if "answer_editor_version" not in st.session_state:
         st.session_state.answer_editor_version = "v2"
 
-    # 설정에 따라 텍스트 추출 방법 표시
-    from modules.utils.config import get_rag_config
-    import os
-    config = get_rag_config()
-    extraction_method = getattr(config, 'text_extraction_method', 'pymupdf')
-    method_name = "엑셀 변환" if extraction_method == "excel" else "PyMuPDF"
-    keep_excel = os.getenv("KEEP_EXCEL_FILES", "false").lower() == "true"
-    
-    info_text = f"**📌 정답지 편집 가이드**:\n\n"
-    info_text += f"• PDF 파일을 업로드하면 자동으로 이미지로 변환되고 **{method_name}**으로 텍스트를 추출합니다\n\n"
-    
-    if extraction_method == "excel":
-        info_text += f"• **엑셀 변환 방식**: PDF → 엑셀 파일(.xlsx) 생성 → 엑셀 파일 읽기 → 텍스트 변환\n\n"
-        if keep_excel:
-            info_text += "• 엑셀 파일이 PDF와 같은 폴더에 저장됩니다 (KEEP_EXCEL_FILES=true)\n\n"
-        else:
-            info_text += "• 엑셀 파일은 임시로 생성 후 자동 삭제됩니다 (KEEP_EXCEL_FILES=false)\n\n"
-    
+    # 정답지 편집 가이드 (변환 방식 언급 제거)
+    info_text = "**📌 정답지 편집 가이드**:\n\n"
+    info_text += "• PDF 파일을 업로드하면 자동으로 이미지로 변환되고 텍스트를 추출합니다\n\n"
     info_text += "• 각 페이지별로 원문 텍스트, 텍스트 추출 결과, 정답 JSON을 편집할 수 있습니다\n\n"
     info_text += "• 정답 JSON은 RAG 학습용 정답지로 사용됩니다"
     
@@ -955,7 +1170,7 @@ def render_answer_editor_tab():
         pdf_info = st.session_state.answer_editor_pdfs[pdf_name]
 
         if not pdf_info["processed"]:
-            if st.button("🔄 PDF 처리 시작 (이미지 변환 + PyMuPDF 텍스트 추출)", type="primary"):
+            if st.button("🔄 PDF 처리 시작 (이미지 변환 + 텍스트 추출)", type="primary"):
                 with st.spinner("PDF를 처리하는 중... (fitz 기반 이미지 추출)"):
                     try:
                         # 저장 경로 준비 (선택된 양식 폴더에 저장)
@@ -988,7 +1203,7 @@ def render_answer_editor_tab():
 
                             status_text.text(f"페이지 {page_num}/{total_pages} 처리 중...")
                             
-                            # PyMuPDF로 텍스트 추출
+                            # 텍스트 추출
                             ocr_text = extract_text_from_pdf_page(temp_pdf_path, page_num)
                             
                             page_info_list.append({
@@ -1326,18 +1541,18 @@ def render_answer_editor_tab():
                     answer_json_path = page_info["answer_json_path"]
                     
                     page_data = None
-                    # session_state에서 우선 로드 시도
-                    if f"answer_json_{page_num}" in st.session_state:
-                        try:
-                            page_data = json.loads(st.session_state[f"answer_json_{page_num}"])
-                        except:
-                            pass
-                    
-                    # 파일에서 로드 시도
-                    if page_data is None and os.path.exists(answer_json_path):
+                    # 파일에서 우선 로드 (저장 후 최신 데이터를 읽기 위해)
+                    if os.path.exists(answer_json_path):
                         try:
                             with open(answer_json_path, "r", encoding="utf-8") as f:
                                 page_data = json.load(f)
+                        except:
+                            pass
+                    
+                    # 파일이 없으면 session_state에서 로드 시도
+                    if page_data is None and f"answer_json_{page_num}" in st.session_state:
+                        try:
+                            page_data = json.loads(st.session_state[f"answer_json_{page_num}"])
                         except:
                             pass
                     
@@ -1352,7 +1567,7 @@ def render_answer_editor_tab():
                             cover_pages.append(page_data)
                 
                 # 검증 함수 호출 (양식지별)
-                from modules.ui.validation import validate_form_type01, validate_form_type02
+                from modules.ui.validation import validate_form_type01, validate_form_type02, validate_form_type03, validate_form_type04
                 
                 # 양식지 타입 확인
                 form_type = selected_form
@@ -1361,6 +1576,10 @@ def render_answer_editor_tab():
                     validate_form_type01(detail_pages, summary_pages, cover_pages)
                 elif form_type == "02":
                     validate_form_type02(detail_pages, summary_pages, cover_pages)
+                elif form_type == "03":
+                    validate_form_type03(detail_pages, summary_pages, cover_pages)
+                elif form_type == "04":
+                    validate_form_type04(detail_pages, summary_pages, cover_pages)
                 else:
                     st.warning(f"⚠️ 양식지 타입 '{form_type}'에 대한 검증 함수가 아직 구현되지 않았습니다.")
                 
@@ -1418,19 +1637,6 @@ def render_answer_editor_tab():
                 # pass
 
         # with col2:
-            # 설정에 따라 텍스트 추출 방법 표시
-            from modules.utils.config import get_rag_config
-            config = get_rag_config()
-            extraction_method = getattr(config, 'text_extraction_method', 'pymupdf')
-            
-            if extraction_method == "excel":
-                method_label = "엑셀 변환"
-                method_icon = "📊"
-            else:
-                method_label = "PyMuPDF"
-                method_icon = "📄"
-            
-
             # JSON 파일 로드 (Gemini 결과 > RAG 결과 > 파일 순으로 우선 사용)
             answer_json_path = page_info["answer_json_path"]
             default_answer_json = {
@@ -1527,7 +1733,7 @@ def render_answer_editor_tab():
                                             df,
                                             height=400,
                                             key=f"json_editor_{current_page}_{key}",
-                                            use_container_width=True
+                                            width='stretch'
                                         )
                                         # 수정된 데이터를 다시 딕셔너리로 변환
                                         edited_dict = edited_df.to_dict('records')[0] if len(edited_df) > 0 else {}
@@ -1555,7 +1761,7 @@ def render_answer_editor_tab():
                                                 list_df,
                                                 height=300,
                                                 key=f"json_editor_{current_page}_{key}_{list_key}",
-                                                use_container_width=True
+                                                width='stretch'
                                             )
                                             restored_dict[list_key] = edited_list_df.to_dict('records')
                                         else:
@@ -1565,7 +1771,7 @@ def render_answer_editor_tab():
                                                 list_df,
                                                 height=300,
                                                 key=f"json_editor_{current_page}_{key}_{list_key}",
-                                                use_container_width=True
+                                                width='stretch'
                                             )
                                             # 단일 컬럼 데이터프레임을 리스트로 변환
                                             restored_dict[list_key] = edited_list_df[list_key].tolist()
@@ -1590,7 +1796,7 @@ def render_answer_editor_tab():
                                                 df,
                                                 height=400,
                                                 key=f"json_editor_{current_page}_{key}",
-                                                use_container_width=True
+                                                width='stretch'
                                             )
                                             st.session_state[f"json_data_{current_page}_{key}"] = edited_df.to_dict('records')
                                         else:
@@ -1601,73 +1807,195 @@ def render_answer_editor_tab():
                                                 st.warning(f"⚠️ DataFrame을 생성할 수 없습니다. (items 개수: {len(value)})")
                                                 st.session_state[f"json_data_{current_page}_{key}"] = value
                                             else:
-                                                # 색상 그룹핑 기준 컬럼 선택
-                                                color_grouping_key = f"color_grouping_col_{current_page}_{key}"
+                                                # 빈값 채우기 버튼
+                                                col_btn1, col_btn2 = st.columns([1, 3])
+                                                with col_btn1:
+                                                    if st.button(
+                                                        "🔢 빈값 채우기",
+                                                        key=f"fill_empty_values_{current_page}_{key}",
+                                                        help="null인 관리번호, 거래처명, 摘要는 직전 페이지에서, 세액은 다음 페이지에서 가져와 채웁니다."
+                                                    ):
+                                                        # 직전 페이지의 마지막 관리번호, 거래처명, 摘要 읽기
+                                                        pdf_img_dir = Path(answer_json_path).parent
+                                                        total_pages = len(pdf_info["pages"])
+                                                        last_mgmt_id, last_customer, last_summary = get_last_management_id_customer_and_summary_from_previous_page(pdf_img_dir, current_page)
+                                                        
+                                                        # 다음 페이지의 첫 번째 세액 읽기
+                                                        first_tax_rate = get_first_tax_rate_from_next_page(pdf_img_dir, current_page, total_pages)
+                                                        
+                                                        if last_mgmt_id or last_customer or last_summary or first_tax_rate:
+                                                            # 가능한 관리번호 필드명 목록
+                                                            mgmt_field_names = [
+                                                                "管理番号",            # 일본어 필드명
+                                                                "請求No",              # 실제 사용 중인 필드명
+                                                                "請求番号",            # 다른 형태
+                                                                "契約No",              # 계약번호
+                                                                "契約番号",            # 계약번호 (다른 형태)
+                                                                "伝票番号"             # 전표번호
+                                                            ]
+                                                            
+                                                            # 가능한 거래처명 필드명 목록
+                                                            customer_field_names = [
+                                                                "得意先名",            # 일본어 필드명 (실제 사용 중)
+                                                                "取引先",              # 다른 형태
+                                                                "取引先名",            # 다른 형태
+                                                                "得意先"               # 다른 형태
+                                                            ]
+                                                            
+                                                            # 가능한 摘要 필드명 목록
+                                                            summary_field_names = [
+                                                                "摘要",                # 일본어 필드명 (실제 사용 중)
+                                                                "備考",                # 비고
+                                                            ]
+                                                            
+                                                            # 가능한 세액 필드명 목록
+                                                            tax_field_names = [
+                                                                "税額",                # 일본어 필드명 (실제 사용 중)
+                                                                "消費税率",            # 다른 형태
+                                                                "税率",                # 다른 형태
+                                                            ]
+                                                            
+                                                            # 현재 items에서 관리번호, 거래처명, 摘要, 세액이 null인 항목 찾아서 채우기
+                                                            updated_items = []
+                                                            updated_mgmt_count = 0
+                                                            updated_customer_count = 0
+                                                            updated_summary_count = 0
+                                                            updated_tax_count = 0
+                                                            
+                                                            for item in value:
+                                                                # 관리번호 null 체크 및 채우기
+                                                                if last_mgmt_id:
+                                                                    has_valid_mgmt_id = False
+                                                                    for field_name in mgmt_field_names:
+                                                                        mgmt_id = item.get(field_name)
+                                                                        if mgmt_id and str(mgmt_id).strip() and str(mgmt_id).strip().lower() != "null":
+                                                                            has_valid_mgmt_id = True
+                                                                            break
+                                                                    
+                                                                    # 유효한 관리번호가 없으면 채우기
+                                                                    if not has_valid_mgmt_id:
+                                                                        # 기존에 있는 필드명에 값 채우기 (있는 필드명 우선)
+                                                                        filled = False
+                                                                        for field_name in mgmt_field_names:
+                                                                            if field_name in item:
+                                                                                item[field_name] = last_mgmt_id
+                                                                                filled = True
+                                                                                break
+                                                                        # 아무 필드명도 없으면 management_id 추가
+                                                                        if not filled:
+                                                                            item["management_id"] = last_mgmt_id
+                                                                        updated_mgmt_count += 1
+                                                                
+                                                                # 거래처명 null 체크 및 채우기
+                                                                if last_customer:
+                                                                    has_valid_customer = False
+                                                                    for field_name in customer_field_names:
+                                                                        customer = item.get(field_name)
+                                                                        if customer and str(customer).strip() and str(customer).strip().lower() != "null":
+                                                                            has_valid_customer = True
+                                                                            break
+                                                                    
+                                                                    # 유효한 거래처명이 없으면 채우기
+                                                                    if not has_valid_customer:
+                                                                        # 기존에 있는 필드명에 값 채우기 (있는 필드명 우선)
+                                                                        filled = False
+                                                                        for field_name in customer_field_names:
+                                                                            if field_name in item:
+                                                                                item[field_name] = last_customer
+                                                                                filled = True
+                                                                                break
+                                                                        # 아무 필드명도 없으면 customer 추가
+                                                                        if not filled:
+                                                                            item["customer"] = last_customer
+                                                                        updated_customer_count += 1
+                                                                
+                                                                # 摘要 null 체크 및 채우기
+                                                                if last_summary:
+                                                                    has_valid_summary = False
+                                                                    for field_name in summary_field_names:
+                                                                        summary = item.get(field_name)
+                                                                        if summary and str(summary).strip() and str(summary).strip().lower() != "null":
+                                                                            has_valid_summary = True
+                                                                            break
+                                                                    
+                                                                    # 유효한 摘要가 없으면 채우기
+                                                                    if not has_valid_summary:
+                                                                        # 기존에 있는 필드명에 값 채우기 (있는 필드명 우선)
+                                                                        filled = False
+                                                                        for field_name in summary_field_names:
+                                                                            if field_name in item:
+                                                                                item[field_name] = last_summary
+                                                                                filled = True
+                                                                                break
+                                                                        # 아무 필드명도 없으면 摘要 추가
+                                                                        if not filled:
+                                                                            item["摘要"] = last_summary
+                                                                        updated_summary_count += 1
+                                                                
+                                                                # 세액 null 체크 및 채우기
+                                                                if first_tax_rate:
+                                                                    has_valid_tax = False
+                                                                    for field_name in tax_field_names:
+                                                                        tax_rate = item.get(field_name)
+                                                                        if tax_rate and str(tax_rate).strip() and str(tax_rate).strip().lower() != "null":
+                                                                            has_valid_tax = True
+                                                                            break
+                                                                    
+                                                                    # 유효한 세액이 없으면 채우기
+                                                                    if not has_valid_tax:
+                                                                        # 기존에 있는 필드명에 값 채우기 (있는 필드명 우선)
+                                                                        filled = False
+                                                                        for field_name in tax_field_names:
+                                                                            if field_name in item:
+                                                                                item[field_name] = first_tax_rate
+                                                                                filled = True
+                                                                                break
+                                                                        # 아무 필드명도 없으면 税額 추가
+                                                                        if not filled:
+                                                                            item["税額"] = first_tax_rate
+                                                                        updated_tax_count += 1
+                                                                
+                                                                updated_items.append(item)
+                                                            
+                                                            # 세션 상태 업데이트
+                                                            st.session_state[f"json_data_{current_page}_{key}"] = updated_items
+                                                            
+                                                            # 전체 JSON도 업데이트
+                                                            full_answer_json[key] = updated_items
+                                                            answer_json_str = json.dumps(full_answer_json, ensure_ascii=False, indent=2)
+                                                            st.session_state[f"answer_json_{current_page}"] = answer_json_str
+                                                            
+                                                            # 성공 메시지 생성
+                                                            success_messages = []
+                                                            if updated_mgmt_count > 0:
+                                                                success_messages.append(f"관리번호 '{last_mgmt_id}' {updated_mgmt_count}개")
+                                                            if updated_customer_count > 0:
+                                                                success_messages.append(f"거래처명 '{last_customer}' {updated_customer_count}개")
+                                                            if updated_summary_count > 0:
+                                                                success_messages.append(f"摘要 '{last_summary}' {updated_summary_count}개")
+                                                            if updated_tax_count > 0:
+                                                                success_messages.append(f"세액 '{first_tax_rate}' {updated_tax_count}개")
+                                                            
+                                                            if success_messages:
+                                                                st.success(f"✅ {', '.join(success_messages)} 적용했습니다.")
+                                                            st.rerun()
+                                                        else:
+                                                            st.warning("⚠️ 직전/다음 페이지에서 관리번호, 거래처명, 摘要, 세액을 찾을 수 없습니다.")
+                                                
+                                                # 색상 그룹핑 기준 컬럼 설정 (config에서 양식지별로 읽어옴)
                                                 available_cols = [col for col in df.columns if col != 'No']
                                                 
-                                                # 기본값 설정 (기존 mgmt_col 또는 첫 번째 컬럼)
-                                                default_col = mgmt_col if mgmt_col and mgmt_col in available_cols else (available_cols[0] if available_cols else None)
+                                                # config에서 양식지별 색상 그룹핑 기준 컬럼 읽기
+                                                config_grouping_col = get_color_grouping_column_for_form(selected_form)
                                                 
-                                                if default_col:
-                                                    selected_col = st.selectbox(
-                                                        "색상 그룹핑 기준 컬럼",
-                                                        options=["없음"] + available_cols,
-                                                        index=available_cols.index(default_col) + 1 if default_col in available_cols else 0,
-                                                        key=color_grouping_key,
-                                                        help="선택한 컬럼의 값이 같은 행들은 같은 색상으로 표시됩니다."
-                                                    )
-                                                    
-                                                    # 선택한 컬럼으로 색상 그룹핑 (없음 선택 시 None)
-                                                    grouping_col = None if selected_col == "없음" else selected_col
+                                                # config에서 읽어온 컬럼이 DataFrame에 있으면 사용, 없으면 None
+                                                if config_grouping_col and config_grouping_col in available_cols:
+                                                    grouping_col = config_grouping_col
                                                 else:
                                                     grouping_col = None
                                                 
-                                                gb = GridOptionsBuilder.from_dataframe(df)
-                                                gb.configure_default_column(editable=True, resizable=True)
-                                                
-                                                # 각 컬럼 설정
-                                                for col in df.columns:
-                                                    if col == 'No':
-                                                        gb.configure_column(col, header_name=col, editable=False, width=60, pinned='left')
-                                                    elif col == 'タイプ':
-                                                        # 'タイプ' 컬럼은 selectbox로 설정
-                                                        type_options = ["販促金請求", "役務提供"]
-                                                        # DataFrame에 있는 고유값도 옵션에 추가
-                                                        if col in df.columns:
-                                                            existing_values = df[col].dropna().unique().tolist()
-                                                            for val in existing_values:
-                                                                if val not in type_options:
-                                                                    type_options.append(str(val))
-                                                        gb.configure_column(
-                                                            col,
-                                                            header_name=col,
-                                                            editable=True,
-                                                            cellEditor='agSelectCellEditor',
-                                                            cellEditorParams={'values': type_options}
-                                                        )
-                                                    else:
-                                                        gb.configure_column(col, header_name=col)
-                                                
-                                                gb.configure_pagination(enabled=False)
-                                                
-                                                # 선택한 컬럼 기준으로 색상 지정
-                                                get_row_style_code = create_management_color_style(grouping_col, df)
-                                                grid_options = gb.build()
-                                                if get_row_style_code:
-                                                    grid_options['getRowStyle'] = get_row_style_code
-                                                grid_options['pagination'] = False
-                                                
-                                                auto_size_js = JsCode("""
-                                                function(params) {
-                                                    params.api.sizeColumnsToFit();
-                                                    var allColumnIds = [];
-                                                    params.columnApi.getColumns().forEach(function(column) {
-                                                        if (column.colId) allColumnIds.push(column.colId);
-                                                    });
-                                                    params.columnApi.autoSizeColumns(allColumnIds);
-                                                }
-                                                """)
-                                                grid_options['onGridReady'] = auto_size_js
+                                                # AgGrid 옵션 생성 (별도 함수로 분리)
+                                                grid_options = create_items_aggrid_options(df, grouping_col)
                                                 
                                                 # AG Grid 렌더링
                                                 grid_response = AgGrid(
@@ -1695,7 +2023,7 @@ def render_answer_editor_tab():
                                             df,
                                             height=400,
                                             key=f"json_editor_{current_page}_{key}",
-                                            use_container_width=True
+                                            width='stretch'
                                         )
                                         st.session_state[f"json_data_{current_page}_{key}"] = edited_df.to_dict('records')
                                 else:
@@ -1734,17 +2062,36 @@ def render_answer_editor_tab():
                         
                     if page_info.get("ocr_text"):
                         st.text_area(
-                            f"{method_label} OCR 결과",
+                            "텍스트 추출 결과",
                             value=page_info["ocr_text"],
                             height=200,
                             key=f"ocr_text_{current_page}",
                             disabled=True
                         )
                     else:
-                        st.warning(f"{method_label} 추출 결과가 없습니다.")
+                        st.warning("텍스트 추출 결과가 없습니다.")
 
             # OpenAI 질문 기능 및 RAG 기반 정답 생성 (JSON 편집창 아래로 이동)
             with st.expander("🤖 OpenAI 질문 기능 및 RAG 기반 정답 생성", expanded=False):
+                    # 모델 선택 옵션 (먼저 선언하여 다른 버튼에서도 사용 가능하도록)
+                    config = get_rag_config()
+                    available_models = [
+                        "gpt-4o-2024-11-20",
+                        "gpt-4.1-2025-04-14",
+                        "gpt-5-nano-2025-08-07",
+                        "gpt-5-mini-2025-08-07",
+                        "gpt-5.2-2025-12-11"
+                    ]
+                    selected_model = st.selectbox(
+                        "🤖 사용할 모델 선택",
+                        options=available_models,
+                        index=0 if config.openai_model in available_models else 0,
+                        key=f"model_selector_{current_page}",
+                        help="정답 생성에 사용할 OpenAI 모델을 선택하세요."
+                    )
+                    
+                    st.divider()
+                    
                     # JSON 파일 업로더
                     uploaded_json_file = st.file_uploader(
                         "참조용 정답 JSON 파일 업로드",
@@ -1762,25 +2109,76 @@ def render_answer_editor_tab():
                         except Exception as e:
                             st.error(f"❌ JSON 파일 로드 실패: {e}")
 
+                    # 업로드한 파일만 사용하는 정답 생성 버튼 (RAG 없이)
+                    if reference_json:
+                        st.divider()
+                        if st.button(
+                            "📄 업로드한 파일만 사용하여 정답 생성 (RAG 없이)",
+                            type="primary",
+                            key=f"generate_with_uploaded_file_{current_page}",
+                            help="업로드한 JSON 파일만을 참조하여 현재 페이지의 정답을 생성합니다. RAG를 사용하지 않습니다."
+                        ):
+                            question_disabled = not page_info.get("ocr_text")
+                            if question_disabled:
+                                st.error("❌ 현재 페이지의 OCR 텍스트가 없습니다.")
+                            else:
+                                with st.spinner("업로드한 파일을 사용하여 정답 생성 중..."):
+                                    try:
+                                        # PDF 경로 찾기
+                                        pdf_path = img_dir / selected_pdf / f"{selected_pdf}.pdf"
+                                        if not pdf_path.exists():
+                                            session_pdf_path = find_pdf_path(selected_pdf)
+                                            if session_pdf_path:
+                                                pdf_path = Path(session_pdf_path)
+                                        
+                                        # 현재 페이지의 OCR 텍스트 추출
+                                        ocr_text = page_info.get("ocr_text", "")
+                                        if not ocr_text and pdf_path.exists():
+                                            ocr_text = extract_text_from_pdf_page(pdf_path, current_page)
+                                        
+                                        if not ocr_text:
+                                            st.error("❌ OCR 텍스트를 추출할 수 없습니다.")
+                                        else:
+                                            # 업로드한 파일을 참조로 사용하여 정답 생성
+                                            # 참조용 OCR 텍스트는 현재 페이지의 OCR 텍스트를 사용
+                                            result_json = ask_openai_with_reference(
+                                                ocr_text=ocr_text,  # 참조용 OCR 텍스트 (GIVEN_TEXT)
+                                                answer_json=reference_json,  # 업로드한 참조용 정답 JSON (GIVEN_ANSWER)
+                                                question=ocr_text,  # 질문할 텍스트 (QUESTION) - 현재 페이지의 OCR 텍스트
+                                                model_name=selected_model,  # 선택된 모델 사용
+                                                use_langchain=False,
+                                                temperature=0.0
+                                            )
+                                            
+                                            # null 값 정규화
+                                            if result_json.get("items") is None:
+                                                result_json["items"] = []
+                                            if result_json.get("page_role") is None:
+                                                result_json["page_role"] = "detail"
+                                            if not isinstance(result_json.get("items"), list):
+                                                result_json["items"] = []
+                                            
+                                            # detail 페이지의 items에 'タイプ' 키가 없으면 추가
+                                            result_json = ensure_type_in_items(result_json)
+                                            
+                                            # 세션 상태에 저장 (정답 JSON 편집 영역에 바로 반영)
+                                            st.session_state[f"uploaded_file_result_{current_page}"] = result_json
+                                            answer_json_str = json.dumps(result_json, ensure_ascii=False, indent=2)
+                                            st.session_state[f"answer_json_{current_page}_pending"] = answer_json_str
+                                            st.session_state[f"page_role_{current_page}"] = result_json.get("page_role", "detail")
+                                            st.success("✅ 업로드한 파일을 사용한 정답 생성 완료! 아래 정답 JSON 편집 영역에서 확인하세요.")
+                                            # 탭 상태 유지
+                                            if "active_tab" not in st.session_state:
+                                                st.session_state.active_tab = "✏️ 정답지 편집"
+                                            st.rerun()
+                                            
+                                    except Exception as e:
+                                        st.error(f"❌ 정답 생성 실패: {e}")
+                                        st.code(traceback.format_exc())
+                        st.divider()
+
                     # RAG 검색 및 모델 설정 섹션
                     question_disabled = not page_info.get("ocr_text")
-                    
-                    # 모델 선택 옵션
-                    config = get_rag_config()
-                    available_models = [
-                        "gpt-4o-2024-11-20",
-                        "gpt-4.1-2025-04-14",
-                        "gpt-5-nano-2025-08-07",
-                        "gpt-5-mini-2025-08-07",
-                        "gpt-5.2-2025-12-11"
-                    ]
-                    selected_model = st.selectbox(
-                        "🤖 사용할 모델 선택",
-                        options=available_models,
-                        index=0 if config.openai_model in available_models else 0,
-                        key=f"model_selector_{current_page}",
-                        help="RAG 기반 정답 생성에 사용할 OpenAI 모델을 선택하세요."
-                    )
                     
                     # RAG 검색 버튼 (검색 결과 미리보기)
                     if st.button(
@@ -1800,7 +2198,7 @@ def render_answer_editor_tab():
                                         if session_pdf_path:
                                             pdf_path = Path(session_pdf_path)
                                     
-                                    # PyMuPDF로 텍스트 추출
+                                    # 텍스트 추출
                                     ocr_text = page_info.get("ocr_text", "")
                                     if not ocr_text and pdf_path.exists():
                                         ocr_text = extract_text_from_pdf_page(pdf_path, current_page)
@@ -1858,74 +2256,79 @@ def render_answer_editor_tab():
                                 if 'bm25_score' in ex:
                                     score_info.append(f"BM25: {ex['bm25_score']:.4f}")
                                 score_info.append(f"Similarity: {ex['similarity']:.4f}")
-                            
-                            # 메타데이터에서 PDF 정보 추출
-                            pdf_name = "Unknown"
-                            page_num = "Unknown"
-                            if 'id' in ex:
-                                doc_id = ex['id']
-                                all_examples = rag_manager.get_all_examples()
-                                for example in all_examples:
-                                    if example['id'] == doc_id:
-                                        metadata = example.get('metadata', {})
-                                        pdf_name = metadata.get('pdf_name', 'Unknown')
-                                        page_num = metadata.get('page_num', 'Unknown')
-                                        break
-                            
-                            example_label = f"[{idx+1}] {pdf_name} - Page{page_num} ({', '.join(score_info)})"
-                            example_options.append((idx, example_label, ex))
-                        
-                            # 예제 선택 드롭다운
-                            selected_example_idx = st.selectbox(
-                            "📌 사용할 참고 예제 선택",
-                            options=[opt[0] for opt in example_options],
-                            format_func=lambda x: example_options[x][1],
-                            key=f"example_selector_{current_page}",
-                            help="검색된 예제 중 하나를 선택하여 RAG 정답 생성에 사용합니다."
-                        )
-                        
-                            selected_example = example_options[selected_example_idx][2]
-                            
-                            # 선택된 예제 상세 정보 표시
-                            with st.expander("📖 선택된 예제 상세 정보", expanded=True):
-                                col_info1, col_info2 = st.columns(2)
-                            with col_info1:
-                                st.write("**점수 정보:**")
-                                if 'hybrid_score' in selected_example:
-                                    st.write(f"- Hybrid Score: {selected_example['hybrid_score']:.4f}")
-                                if 'bm25_score' in selected_example:
-                                    st.write(f"- BM25 Score: {selected_example['bm25_score']:.4f}")
-                                st.write(f"- Similarity: {selected_example['similarity']:.4f}")
-                            
-                            with col_info2:
-                                st.write("**문서 정보:**")
-                                if 'id' in selected_example:
-                                    doc_id = selected_example['id']
+                                
+                                # 메타데이터에서 PDF 정보 추출
+                                pdf_name = "Unknown"
+                                page_num = "Unknown"
+                                if 'id' in ex:
+                                    doc_id = ex['id']
                                     all_examples = rag_manager.get_all_examples()
                                     for example in all_examples:
                                         if example['id'] == doc_id:
                                             metadata = example.get('metadata', {})
-                                            st.write(f"- PDF: {metadata.get('pdf_name', 'Unknown')}")
-                                            st.write(f"- Page: {metadata.get('page_num', 'Unknown')}")
-                                            st.write(f"- Role: {selected_example['answer_json'].get('page_role', 'N/A')}")
+                                            pdf_name = metadata.get('pdf_name', 'Unknown')
+                                            page_num = metadata.get('page_num', 'Unknown')
                                             break
+                                
+                                example_label = f"[{idx+1}] {pdf_name} - Page{page_num} ({', '.join(score_info)})"
+                                example_options.append((idx, example_label, ex))
                             
-                            st.write("**OCR 텍스트 미리보기:**")
-                            ocr_preview = selected_example['ocr_text'][:500] + "..." if len(selected_example['ocr_text']) > 500 else selected_example['ocr_text']
-                            st.text_area(
-                                "참고 예제 OCR 텍스트",
-                                value=ocr_preview,
-                                height=150,
-                                key=f"example_ocr_preview_{current_page}",
-                                disabled=True
-                            )
+                            # 예제 선택 드롭다운 (example_options가 비어있지 않은 경우만)
+                            if example_options:
+                                selected_example_idx = st.selectbox(
+                                    "📌 사용할 참고 예제 선택",
+                                    options=[opt[0] for opt in example_options],
+                                    format_func=lambda x: example_options[x][1] if x < len(example_options) else f"옵션 {x}",
+                                    key=f"example_selector_{current_page}",
+                                    help="검색된 예제 중 하나를 선택하여 RAG 정답 생성에 사용합니다."
+                                )
+                                
+                                selected_example = example_options[selected_example_idx][2]
+                            else:
+                                st.warning("⚠️ 예제 옵션을 생성할 수 없습니다.")
+                                selected_example = None
                             
-                            st.write("**정답 JSON 미리보기:**")
-                            example_answer_str = json.dumps(selected_example['answer_json'], ensure_ascii=False, indent=2)
-                            st.code(example_answer_str[:1000] + "..." if len(example_answer_str) > 1000 else example_answer_str, language='json')
-                        
+                            # 선택된 예제 상세 정보 표시
+                            if selected_example:
+                                with st.expander("📖 선택된 예제 상세 정보", expanded=True):
+                                    col_info1, col_info2 = st.columns(2)
+                                    with col_info1:
+                                        st.write("**점수 정보:**")
+                                        if 'hybrid_score' in selected_example:
+                                            st.write(f"- Hybrid Score: {selected_example['hybrid_score']:.4f}")
+                                        if 'bm25_score' in selected_example:
+                                            st.write(f"- BM25 Score: {selected_example['bm25_score']:.4f}")
+                                        st.write(f"- Similarity: {selected_example['similarity']:.4f}")
+                                    
+                                    with col_info2:
+                                        st.write("**문서 정보:**")
+                                        if 'id' in selected_example:
+                                            doc_id = selected_example['id']
+                                            all_examples = rag_manager.get_all_examples()
+                                            for example in all_examples:
+                                                if example['id'] == doc_id:
+                                                    metadata = example.get('metadata', {})
+                                                    st.write(f"- PDF: {metadata.get('pdf_name', 'Unknown')}")
+                                                    st.write(f"- Page: {metadata.get('page_num', 'Unknown')}")
+                                                    st.write(f"- Role: {selected_example.get('answer_json', {}).get('page_role', 'N/A')}")
+                                                    break
+                                    
+                                    st.write("**OCR 텍스트 미리보기:**")
+                                    ocr_preview = selected_example.get('ocr_text', '')[:500] + "..." if len(selected_example.get('ocr_text', '')) > 500 else selected_example.get('ocr_text', '')
+                                    st.text_area(
+                                        "참고 예제 OCR 텍스트",
+                                        value=ocr_preview,
+                                        height=150,
+                                        key=f"example_ocr_preview_{current_page}",
+                                        disabled=True
+                                    )
+                                    
+                                    st.write("**정답 JSON 미리보기:**")
+                                    example_answer_str = json.dumps(selected_example.get('answer_json', {}), ensure_ascii=False, indent=2)
+                                    st.code(example_answer_str[:1000] + "..." if len(example_answer_str) > 1000 else example_answer_str, language='json')
+                            
                             # 정답 생성 버튼
-                            if st.button(
+                            if selected_example and st.button(
                                 "🚀 선택한 예제로 정답 생성",
                                 type="primary",
                                 key=f"generate_with_selected_{current_page}"
@@ -2053,7 +2456,7 @@ def render_answer_editor_tab():
                                         if session_pdf_path:
                                             pdf_path = Path(session_pdf_path)
                                     
-                                    # PyMuPDF로 텍스트 추출
+                                    # 텍스트 추출
                                     ocr_text = page_info.get("ocr_text", "")
                                     if not ocr_text and pdf_path.exists():
                                         ocr_text = extract_text_from_pdf_page(pdf_path, current_page)
@@ -2189,6 +2592,9 @@ def render_answer_editor_tab():
                             os.makedirs(os.path.dirname(answer_json_path), exist_ok=True)
                             with open(answer_json_path, "w", encoding="utf-8") as f:
                                 json.dump(answer_json, f, ensure_ascii=False, indent=2)
+
+                            # session_state는 위젯이 생성된 후 수정할 수 없으므로,
+                            # 검증 섹션에서 파일을 우선적으로 읽도록 변경됨
 
                             st.success(f"✅ 정답 JSON 저장 완료! (파일 크기: {os.path.getsize(answer_json_path)} bytes)")
                             st.caption(f"저장 경로: `{answer_json_path}`")
